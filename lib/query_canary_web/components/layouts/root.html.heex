@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <.live_title default="QueryCanary" suffix=" · Phoenix Framework">
+      {assigns[:page_title]}
+    </.live_title>
+    <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
+    <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
+    </script>
+    <script>
+      (() => {
+        const setTheme = (theme) => {
+          if (theme === "system") {
+            localStorage.removeItem("phx:theme");
+            document.documentElement.removeAttribute("data-theme");
+          } else {
+            localStorage.setItem("phx:theme", theme);
+            document.documentElement.setAttribute("data-theme", theme);
+          }
+        };
+        if (!document.documentElement.hasAttribute("data-theme")) {
+          setTheme(localStorage.getItem("phx:theme") || "system");
+        }
+        window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
+        window.addEventListener("phx:set-theme", ({ detail: { theme } }) => setTheme(theme));
+      })();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js">
+    </script>
+  </head>
+  <body>
+    <div class="navbar">
+      <div class="container mx-auto max-w-6xl flex justify-between">
+        <a href="/" class="btn btn-ghost text-xl flex items-center">
+          <img src={~p"/images/QueryCanary.svg"} alt="QueryCanary" class="size-8" /> Query Canary
+        </a>
+        <div class="flex gap-4">
+          <%= if @current_scope do %>
+            <.link navigate={~p"/checks"} class="btn btn-ghost">Checks</.link>
+            <.link navigate={~p"/servers"} class="btn btn-ghost">Servers</.link>
+            <.link navigate={~p"/users/settings"} class="btn btn-ghost">Settings</.link>
+            <.link href={~p"/users/log-out"} class="btn btn-ghost" method="delete">
+              Log out
+            </.link>
+          <% else %>
+            <.link class="btn btn-ghost" navigate="/#features">Features</.link>
+            <.link class="btn btn-ghost" navigate="/#demo">Demo</.link>
+            <.link class="btn btn-primary" navigate="/quickstart">Get Started</.link>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    {@inner_content}
+  </body>
+</html>
