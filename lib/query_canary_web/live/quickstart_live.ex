@@ -9,7 +9,7 @@ defmodule QueryCanaryWeb.QuickstartLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <h1 class="text-3xl font-bold mb-6">Query Canary Quickstart</h1>
+      <h1 class="text-3xl font-bold mb-6">QueryCanary Quickstart</h1>
       
     <!-- Step 1: Choose Database Type -->
       <section class="mb-12">
@@ -71,7 +71,7 @@ defmodule QueryCanaryWeb.QuickstartLive do
       <section :if={@engine} class="mb-12">
         <h2 class="text-2xl font-semibold mb-2">2. Connect to Your Database</h2>
         <p class="mb-4">
-          Enter your database connection details below. It's strongly recommended to create a specific user for Query Canary, with permissions limited to connect & select.
+          Enter your database connection details below. It's strongly recommended to create a specific user for QueryCanary, with permissions limited to connect & select.
         </p>
 
         <.form
@@ -309,7 +309,7 @@ defmodule QueryCanaryWeb.QuickstartLive do
 
     {:ok,
      socket
-     |> assign(:page_title, "Query Canary Quickstart")
+     |> assign(:page_title, "QueryCanary Quickstart")
      |> assign(:engine, nil)
      |> assign(:server, server)
      |> assign(:check, check)

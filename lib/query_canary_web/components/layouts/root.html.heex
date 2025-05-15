@@ -35,7 +35,7 @@
     <div class="navbar">
       <div class="container mx-auto max-w-6xl flex justify-between">
         <a href="/" class="btn btn-ghost text-xl flex items-center">
-          <img src={~p"/images/QueryCanary.svg"} alt="QueryCanary" class="size-8" /> Query Canary
+          <img src={~p"/images/QueryCanary.svg"} alt="QueryCanary" class="size-8" /> QueryCanary
         </a>
         <div class="flex gap-4">
           <%= if @current_scope do %>
@@ -55,5 +55,14 @@
     </div>
 
     {@inner_content}
+
+    <footer class="footer sm:footer-horizontal footer-center bg-base-300 text-base-content p-4 mt-4">
+      <aside>
+        <p>
+          Copyright © {Date.utc_today().year} - All right reserved
+          <a href="https://axxim.net/" target="_blank">Axxim, LLC</a>
+        </p>
+      </aside>
+    </footer>
   </body>
 </html>
