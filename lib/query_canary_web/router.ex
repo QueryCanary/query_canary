@@ -66,6 +66,8 @@ defmodule QueryCanaryWeb.Router do
       live "/checks/:id/edit", CheckLive.Form, :edit
 
       live "/quickstart", QuickstartLive, :new
+
+      live "/billing", BillingLive
     end
 
     post "/users/update-password", UserSessionController, :update_password

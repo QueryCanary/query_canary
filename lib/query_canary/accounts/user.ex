@@ -9,6 +9,12 @@ defmodule QueryCanary.Accounts.User do
     field :confirmed_at, :utc_datetime
     field :authenticated_at, :utc_datetime, virtual: true
 
+    field :stripe_customer_id, :string
+    field :stripe_subscription_id, :string
+    field :plan, :string, default: "free"
+    field :billing_status, :string
+    field :billing_started_at, :utc_datetime
+
     timestamps(type: :utc_datetime)
   end
 
@@ -128,5 +134,19 @@ defmodule QueryCanary.Accounts.User do
   def valid_password?(_, _) do
     Bcrypt.no_user_verify()
     false
+  end
+
+  def stripe_changeset(user, attrs) do
+    fields = [
+      :stripe_customer_id,
+      :stripe_subscription_id,
+      :plan,
+      :billing_status,
+      :billing_started_at
+    ]
+
+    user
+    |> cast(attrs, fields)
+    |> validate_required(fields)
   end
 end

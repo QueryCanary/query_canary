@@ -301,7 +301,7 @@ defmodule QueryCanaryWeb.QuickstartLive do
   end
 
   @impl true
-  def mount(params, _session, socket) do
+  def mount(_params, _session, socket) do
     server = %Server{user_id: socket.assigns.current_scope.user.id}
     check = %Checks.Check{user_id: socket.assigns.current_scope.user.id}
 
@@ -323,7 +323,7 @@ defmodule QueryCanaryWeb.QuickstartLive do
   end
 
   @impl true
-  def handle_params(unsigned_params, uri, socket) do
+  def handle_params(unsigned_params, _uri, socket) do
     {:noreply,
      socket
      |> assign(:engine, Map.get(unsigned_params, "engine"))

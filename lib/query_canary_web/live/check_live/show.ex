@@ -91,7 +91,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
                   <div class="flex items-center gap-2">
                     <%= if is_list(result.result) && length(result.result) > 0 do %>
                       <span class="font-mono">
-                        {result.result |> extract_primary_value() |> format_number()}
+                        {Enum.map(hd(result.result), fn {k, v} -> "#{k}=#{v}" end) |> Enum.join(" ")}
                       </span>
                     <% end %>
                     <span class="text-xs opacity-70">{result.time_taken} ms</span>
@@ -154,7 +154,6 @@ defmodule QueryCanaryWeb.CheckLive.Show do
           </div>
         </div>
       </div>
-      <button class="btn btn-sm" phx-click="dismiss_alert">Dismiss</button>
     </div>
     """
   end
@@ -239,11 +238,10 @@ defmodule QueryCanaryWeb.CheckLive.Show do
             </div>
           <% true -> %>
             <pre class="text-xs bg-base-300 p-2 rounded mt-2 font-mono overflow-auto max-h-40">
-              <%= inspect(details, pretty: true) %>
+              {inspect(details, pretty: true)}
             </pre>
         <% end %>
       </div>
-      <button class="btn btn-sm" phx-click="dismiss_alert">Dismiss</button>
     </div>
     """
   end
@@ -376,7 +374,8 @@ defmodule QueryCanaryWeb.CheckLive.Show do
 
     labels =
       Enum.map(chronological_results, fn result ->
-        Calendar.strftime(result.inserted_at, "%H:%M")
+        # TODO: Be smarter, only show format based on specificity of cron schedule
+        Calendar.strftime(result.inserted_at, "%Y-%m-%d")
       end)
 
     values =
@@ -398,7 +397,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
 
     # Set alert thresholds for anomaly detection
     alert_threshold =
-      case analysis do
+      case analysis |> dbg() do
         {:alert, %{type: :anomaly, details: details}} ->
           %{
             upper: details.mean + details.std_dev * 3,

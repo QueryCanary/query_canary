@@ -42,7 +42,7 @@ defmodule QueryCanary.Checks do
 
   """
   def list_checks(%Scope{} = scope) do
-    Repo.all(from check in Check, where: check.user_id == ^scope.user.id)
+    Repo.all(from check in Check, where: check.user_id == ^scope.user.id) |> Repo.preload(:server)
   end
 
   @doc """
@@ -265,6 +265,86 @@ defmodule QueryCanary.Checks do
         order_by: [desc: r.inserted_at],
         limit: ^limit
     )
+  end
+
+  @doc """
+  Returns the list of checks with their status information.
+  This includes the last result, last run time, and alert status.
+
+  ## Parameters
+    * scope - The user scope for authorization
+
+  ## Returns
+    * [%{check: %Check{}, last_result: %CheckResult{}, last_run_at: DateTime.t(), alert_status: String.t()}]
+  """
+  def list_checks_with_status(%Scope{} = scope) do
+    # First get all checks for this scope
+    checks = list_checks(scope)
+
+    # For each check, get the latest result and analyze status
+    Enum.map(checks, fn check ->
+      # Get the most recent results (limit to what we need for analysis)
+      recent_results = get_recent_check_results(check, 20)
+
+      # Get the most recent result (if any)
+      last_result = List.first(recent_results)
+      last_run_at = if last_result, do: last_result.inserted_at, else: nil
+
+      # Determine alert status from recent results
+      alert_status =
+        case QueryCanary.CheckResultAnalyzer.analyze_results(recent_results) do
+          {:alert, %{type: type}} -> to_string(type)
+          _ -> "none"
+        end
+
+      # Return a map with all the check data enriched with status info
+      Map.merge(check, %{
+        last_result: last_result,
+        recent_results: recent_results,
+        last_run_at: last_run_at,
+        alert_status: alert_status
+      })
+    end)
+  end
+
+  @doc """
+  Gets a single check with its status information.
+  Similar to list_checks_with_status/1 but for a single check.
+
+  ## Parameters
+    * scope - The user scope for authorization
+    * id - ID of the check to get
+
+  ## Returns
+    * %{check: %Check{}, last_result: %CheckResult{}, last_run_at: DateTime.t(), alert_status: String.t()}
+  """
+  def get_check_with_status(%Scope{} = scope, id) do
+    # Get the specific check
+    check = get_check!(scope, id)
+
+    # Get the most recent results
+    recent_results = get_recent_check_results(check, 20)
+
+    # Get the most recent result (if any)
+    last_result = List.first(recent_results)
+    last_run_at = if last_result, do: last_result.inserted_at, else: nil
+
+    # Determine alert status from recent results
+    alert_status =
+      case QueryCanary.CheckResultAnalyzer.analyze_results(recent_results) do
+        {:alert, %{type: type}} -> to_string(type)
+        {:alert, %{details: details}} when is_map_key(details, :z_score) -> "anomaly"
+        {:alert, %{details: details}} when is_map_key(details, :percent_change) -> "diff"
+        _ -> "none"
+      end
+
+    # Return a map with all the check data enriched with status info
+    Map.merge(check, %{
+      last_result: last_result,
+      recent_results: recent_results,
+      last_run_at: last_run_at,
+      alert_status: alert_status
+    })
   end
 
   # @doc """

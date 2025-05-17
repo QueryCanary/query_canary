@@ -64,7 +64,9 @@ defmodule QueryCanary.MixProject do
       {:myxql, "~> 0.7.1"},
       # Scheduling
       {:crontab, "~> 1.1"},
-      {:oban, "~> 2.19"}
+      {:oban, "~> 2.19"},
+      # Billing
+      {:stripity_stripe, "~> 3.2"}
     ]
   end
 
