@@ -61,7 +61,10 @@ defmodule QueryCanary.MixProject do
       {:bandit, "~> 1.5"},
       # Engines
       {:postgrex, ">= 0.0.0"},
-      {:myxql, "~> 0.7.1"}
+      {:myxql, "~> 0.7.1"},
+      # Scheduling
+      {:crontab, "~> 1.1"},
+      {:oban, "~> 2.19"}
     ]
   end
 

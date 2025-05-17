@@ -6,8 +6,9 @@ defmodule QueryCanary.Checks do
   import Ecto.Query, warn: false
   alias QueryCanary.Repo
 
-  alias QueryCanary.Checks.Check
+  alias QueryCanary.Checks.{Check, CheckResult}
   alias QueryCanary.Accounts.Scope
+  alias QueryCanary.Connections.ConnectionManager
 
   @doc """
   Subscribes to scoped notifications about any check changes.
@@ -60,6 +61,11 @@ defmodule QueryCanary.Checks do
   """
   def get_check!(%Scope{} = scope, id) do
     Repo.get_by!(Check, id: id, user_id: scope.user.id)
+    |> Repo.preload(:server)
+  end
+
+  def get_check_for_system!(id) do
+    Repo.get_by!(Check, id: id)
     |> Repo.preload(:server)
   end
 
@@ -153,4 +159,145 @@ defmodule QueryCanary.Checks do
         order_by: [desc: c.updated_at]
     )
   end
+
+  def list_enabled_checks_for_everyone do
+    Repo.all(from c in Check, where: c.enabled == true)
+  end
+
+  @doc """
+  Runs a specific check and records the result.
+
+  ## Parameters
+    * check - The check to run
+    * scope - The user scope for authorization
+
+  ## Returns
+    * {:ok, %CheckResult{}} - Check completed and result saved
+    * {:error, reason} - Check failed to run or save
+  """
+  def run_check(%Check{} = check) do
+    check = Repo.preload(check, :server)
+    start_time = System.monotonic_time(:millisecond)
+
+    # Run the query using the ConnectionManager
+    result =
+      try do
+        case ConnectionManager.run_query(check.server, check.query) do
+          {:ok, %{rows: rows}} ->
+            # Calculate time taken
+            end_time = System.monotonic_time(:millisecond)
+            time_taken = end_time - start_time
+
+            # Build successful result
+            %{
+              success: true,
+              result: rows,
+              time_taken: time_taken,
+              check_id: check.id
+            }
+
+          {:error, error} ->
+            # Calculate time taken
+            end_time = System.monotonic_time(:millisecond)
+            time_taken = end_time - start_time
+
+            # Build error result
+            %{
+              success: false,
+              result: %{},
+              error: "#{inspect(error)}",
+              time_taken: time_taken,
+              check_id: check.id
+            }
+        end
+      rescue
+        e ->
+          # Handle any exceptions
+          end_time = System.monotonic_time(:millisecond)
+          time_taken = end_time - start_time
+
+          # Build error result for exception
+          %{
+            success: false,
+            result: %{},
+            error: "Exception: #{inspect(e)}",
+            time_taken: time_taken,
+            check_id: check.id
+          }
+      end
+
+    # Save the check result
+    create_check_result(result) |> dbg()
+  end
+
+  @doc """
+  Creates a check result.
+
+  ## Parameters
+    * scope - The user scope for authorization
+    * attrs - Attributes for the check result
+
+  ## Returns
+    * {:ok, %CheckResult{}} - Result created successfully
+    * {:error, changeset} - Failed to create result
+  """
+  def create_check_result(attrs) do
+    %CheckResult{}
+    |> CheckResult.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Gets the most recent results for a check.
+
+  ## Parameters
+    * scope - The user scope for authorization
+    * check_id - The ID of the check to get results for
+    * limit - Maximum number of results to return (default: 10)
+
+  ## Returns
+    * [%CheckResult{}] - List of check results, newest first
+  """
+  def get_recent_check_results(%Check{id: check_id}, limit \\ 10) do
+    Repo.all(
+      from r in CheckResult,
+        where: r.check_id == ^check_id,
+        order_by: [desc: r.inserted_at],
+        limit: ^limit
+    )
+  end
+
+  # @doc """
+  # Gets a summary of check results for a specific check.
+
+  # ## Parameters
+  #   * scope - The user scope for authorization
+  #   * check_id - The ID of the check to get results for
+  #   * days - Number of days to include in the summary (default: 7)
+
+  # ## Returns
+  #   * %{success_count: integer, error_count: integer, average_time: float}
+  # """
+  # def get_check_results_summary(%Scope{} = scope, check_id, days \\ 7) do
+  #   since = DateTime.add(DateTime.utc_now(), -days * 24 * 60 * 60, :second)
+
+  #   result =
+  #     Repo.one(
+  #       from r in CheckResult,
+  #         where:
+  #           r.user_id == ^scope.user.id and r.check_id == ^check_id and r.inserted_at > ^since,
+  #         select: %{
+  #           success_count: sum(fragment("CASE WHEN ? = true THEN 1 ELSE 0 END", r.success)),
+  #           error_count: sum(fragment("CASE WHEN ? = false THEN 1 ELSE 0 END", r.success)),
+  #           average_time: avg(r.time_taken)
+  #         }
+  #     )
+
+  #   # Handle case when no results exist
+  #   case result do
+  #     %{success_count: nil} -> %{success_count: 0, error_count: 0, average_time: 0}
+  #     nil -> %{success_count: 0, error_count: 0, average_time: 0}
+  #     result -> result
+  #   end
+  # end
 end

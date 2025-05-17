@@ -3,8 +3,11 @@ defmodule QueryCanary.Checks.Check do
   import Ecto.Changeset
 
   schema "checks" do
+    field :name, :string
+    field :schedule, :string
+    field :enabled, :boolean, default: false
     field :query, :string
-    field :expectation, :string
+    field :expectation, :map
 
     belongs_to :server, QueryCanary.Servers.Server
     belongs_to :user, QueryCanary.Accounts.User
@@ -15,8 +18,8 @@ defmodule QueryCanary.Checks.Check do
   @doc false
   def changeset(check, attrs, user_scope) do
     check
-    |> cast(attrs, [:query, :expectation, :server_id])
-    |> validate_required([:query, :server_id])
+    |> cast(attrs, [:name, :schedule, :enabled, :query, :server_id])
+    |> validate_required([:name, :schedule, :enabled, :query, :server_id])
     |> foreign_key_constraint(:server_id)
     |> put_change(:user_id, user_scope.user.id)
   end

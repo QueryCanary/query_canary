@@ -157,41 +157,39 @@ defmodule QueryCanaryWeb.QuickstartLive do
           phx-submit="save_check"
           class=""
         >
-          <.live_component
-            module={QueryCanaryWeb.Components.SQLEditor}
-            id="check-sql-editor"
-            server={@server}
-            input_name={@check_form[:query].name}
-            value={@check_form[:query].value}
-          />
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <input
+          <div class="mb-4">
+            <.input
+              field={@check_form[:name]}
               type="text"
               placeholder="Check Name (e.g. Daily User Count)"
-              class="input input-bordered w-full"
+              label="Check Name"
+              required
             />
-            <select class="select select-bordered w-full">
-              <option disabled selected>Alert Condition</option>
-              <option>≠ Expected Value</option>
-              <option>Above Threshold</option>
-              <option>Below Threshold</option>
-              <option>Anomaly Detection</option>
-            </select>
-            <input
-              type="number"
-              placeholder="Threshold (optional)"
-              class="input input-bordered w-full"
+          </div>
+
+          <div class="mb-4">
+            <label class="font-medium mb-1 block">SQL Query</label>
+            <.live_component
+              module={QueryCanaryWeb.Components.SQLEditor}
+              id="check-sql-editor"
+              server={@server}
+              input_name={@check_form[:query].name}
+              value={@check_form[:query].value}
             />
-            <select class="select select-bordered w-full">
-              <option disabled selected>Run Frequency</option>
-              <option>Every 5 Minutes</option>
-              <option>Hourly</option>
-              <option>Daily</option>
-              <option>Custom Cron</option>
-            </select>
-            <div class="md:col-span-2">
-              <.button phx-disable-with="Running..." variant="success" class="w-full">
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label class="font-medium mb-1 block">Schedule</label>
+              <.input
+                field={@check_form[:schedule]}
+                type="text"
+                value={@check_form[:schedule].value || "0 8 * * *"}
+              />
+            </div>
+
+            <div class="text-right">
+              <.button phx-disable-with="Running..." variant="success">
                 Run Query
               </.button>
             </div>

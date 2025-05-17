@@ -14,6 +14,9 @@ defmodule QueryCanaryWeb.CheckLive.Form do
       </.header>
 
       <.form for={@form} id="check-form" phx-change="validate" phx-submit="save">
+        <.input field={@form[:name]} type="text" label="Name" />
+        <.input field={@form[:enabled]} type="checkbox" label="Enabled" />
+        <.input field={@form[:schedule]} type="text" label="Cron Schedule" />
         <.live_component
           module={QueryCanaryWeb.Components.SQLEditor}
           id="check-sql-editor"
@@ -21,7 +24,6 @@ defmodule QueryCanaryWeb.CheckLive.Form do
           input_name={@form[:query].name}
           value={@form[:query].value}
         />
-        <.input field={@form[:expectation]} type="text" label="Expectation" />
         <footer>
           <.button phx-disable-with="Saving..." variant="primary">Save Check</.button>
           <.button navigate={return_path(@current_scope, @return_to, @check)}>Cancel</.button>

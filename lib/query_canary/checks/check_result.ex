@@ -4,19 +4,20 @@ defmodule QueryCanary.Checks.CheckResult do
 
   schema "check_results" do
     field :success, :boolean, default: false
-    field :result, :string
+    field :error, :string
+    field :result, {:array, :map}
     field :time_taken, :integer
-    field :check_id, :id
-    field :user_id, :id
+
+    belongs_to :check, QueryCanary.Checks.Check
 
     timestamps(type: :utc_datetime)
   end
 
   @doc false
-  def changeset(checks, attrs, user_scope) do
-    checks
-    |> cast(attrs, [:success, :result, :time_taken])
-    |> validate_required([:success, :result, :time_taken])
-    |> put_change(:user_id, user_scope.user.id)
+  def changeset(check_result, attrs) do
+    check_result
+    |> cast(attrs, [:success, :error, :result, :time_taken, :check_id])
+    |> validate_required([:success, :result, :time_taken, :check_id])
+    |> foreign_key_constraint(:check_id)
   end
 end

@@ -12,6 +12,8 @@ defmodule QueryCanary.Application do
       QueryCanary.Repo,
       {DNSCluster, query: Application.get_env(:query_canary, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: QueryCanary.PubSub},
+      {Oban, Application.fetch_env!(:query_canary, Oban)},
+      QueryCanary.CheckScheduler,
       # Start a worker by calling: QueryCanary.Worker.start_link(arg)
       # {QueryCanary.Worker, arg},
       # Start to serve requests, typically the last entry

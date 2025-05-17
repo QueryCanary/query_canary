@@ -130,16 +130,36 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
 
   # Formats query results into a more usable structure
   defp format_results(%Postgrex.Result{} = result) do
-    columns = Enum.map(result.columns, &String.to_atom/1)
+    # Create indexed column names to handle duplicates
+    {columns, _} =
+      Enum.reduce(result.columns, {[], %{}}, fn col_name, {cols, counts} ->
+        # Get the current count for this column name (default 0)
+        count = Map.get(counts, col_name, 0)
 
+        # Create a unique column name if needed
+        col_atom =
+          if count > 0 do
+            # Add a suffix for duplicate columns
+            String.to_atom("#{col_name}_#{count}")
+          else
+            String.to_atom(col_name)
+          end
+
+        # Update counts and add to columns list
+        {cols ++ [col_atom], Map.put(counts, col_name, count + 1)}
+      end)
+
+    # Map rows using the deduplicated column names
     rows =
       Enum.map(result.rows, fn row ->
         Enum.zip(columns, row) |> Map.new()
       end)
 
+    # Store original column names alongside deduplicated ones
     %{
       rows: rows,
       columns: columns,
+      original_columns: result.columns,
       num_rows: result.num_rows,
       raw: result
     }
