@@ -11,7 +11,7 @@ defmodule QueryCanaryWeb.HomeLive do
             <p class="py-4 text-lg">
               Define automated SQL checks against your production database. Get alerts when the data looks wrong.
             </p>
-            <a href="/quickstart" class="btn btn-primary">Start Monitoring Now</a>
+            <.link navigate={~p"/quickstart"} class="btn btn-primary">Start Monitoring Now</.link>
           </div>
         </div>
       </section>
@@ -282,7 +282,9 @@ defmodule QueryCanaryWeb.HomeLive do
               </ul>
 
               <div class="card-actions mt-6">
-                <a href="/quickstart" class="btn btn-outline btn-primary">Start Free</a>
+                <.link navigate={~p"/quickstart"} class="btn btn-outline btn-primary">
+                  Start Free
+                </.link>
               </div>
             </div>
           </div>
@@ -402,20 +404,22 @@ defmodule QueryCanaryWeb.HomeLive do
               </ul>
 
               <div class="card-actions mt-6">
-                <a href="/quickstart" class="btn btn-primary">Upgrade Now</a>
+                <.link navigate={~p"/quickstart"} class="btn btn-primary">Upgrade Now</.link>
               </div>
             </div>
           </div>
         </div>
       </section>
-      <section id="cta" class="hero bg-primary text-primary-content py-16">
+      <section id="cta" class="hero bg-primary text-primary-content py-16 rounded-xl">
         <div class="hero-content text-center">
           <div class="max-w-xl">
             <h2 class="text-4xl font-bold mb-4">Start Monitoring in Minutes</h2>
             <p class="mb-6">
               No credit card required. Connect your database and create your first check in under 5 minutes.
             </p>
-            <a href="/quickstart" class="btn btn-accent btn-lg">Get Started for Free</a>
+            <.link navigate={~p"/quickstart"} class="btn btn-accent btn-lg">
+              Get Started for Free
+            </.link>
           </div>
         </div>
       </section>

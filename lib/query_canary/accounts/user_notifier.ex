@@ -9,7 +9,7 @@ defmodule QueryCanary.Accounts.UserNotifier do
     email =
       new()
       |> to(recipient)
-      |> from({"QueryCanary", "contact@example.com"})
+      |> from({"QueryCanary", "support@querycanary.com"})
       |> subject(subject)
       |> text_body(body)
 

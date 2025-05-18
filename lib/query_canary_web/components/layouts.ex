@@ -37,6 +37,8 @@ defmodule QueryCanaryWeb.Layouts do
       </div>
     </main>
 
+    <.theme_toggle />
+
     <.flash_group flash={@flash} />
     """
   end

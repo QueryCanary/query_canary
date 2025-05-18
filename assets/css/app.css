@@ -79,7 +79,7 @@
   --color-success: oklch(76% 0.177 163.223);
   --color-success-content: oklch(37% 0.077 168.94);
   --color-warning: oklch(82% 0.189 84.429);
-  --color-warnin  g-content: oklch(41% 0.112 45.904);
+  --color-warning-content: oklch(41% 0.112 45.904);
   --color-error: oklch(70% 0.191 22.216);
   --color-error-content: oklch(39% 0.141 25.723);
   --radius-selector: 1rem;
@@ -100,7 +100,6 @@
 [data-phx-session] {
   display: contents;
 }
-
 
 /* This file is for your main application CSS */
 .cm-editor {
