@@ -46,12 +46,12 @@
   </head>
   <body>
     <div class="navbar">
-      <div class="container mx-auto max-w-6xl flex justify-between">
+      <div class="container mx-auto max-w-6xl flex flex-col md:flex-row justify-between items-center">
         <a href="/" class="btn btn-ghost text-xl flex items-center">
           <img src={~p"/images/QueryCanary.svg"} alt="QueryCanary Logo" class="size-8" />
           QueryCanary
         </a>
-        <div class="flex gap-4">
+        <div class="flex gap md:gap-4">
           <%= if @current_scope do %>
             <.link navigate={~p"/checks"} class="btn btn-ghost">Checks</.link>
             <.link navigate={~p"/servers"} class="btn btn-ghost">Servers</.link>
