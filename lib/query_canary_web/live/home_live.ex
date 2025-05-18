@@ -402,7 +402,7 @@ defmodule QueryCanaryWeb.HomeLive do
               </ul>
 
               <div class="card-actions mt-6">
-                <a href="/pricing" class="btn btn-primary">Upgrade Now</a>
+                <a href="/quickstart" class="btn btn-primary">Upgrade Now</a>
               </div>
             </div>
           </div>

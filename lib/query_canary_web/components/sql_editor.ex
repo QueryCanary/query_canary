@@ -2,8 +2,6 @@ defmodule QueryCanaryWeb.Components.SQLEditor do
   use Phoenix.LiveComponent
   import Phoenix.HTML
 
-  alias QueryCanary.Connections.SQLSchemaProvider
-
   def render(assigns) do
     ~H"""
     <div id={@id} class="w-full" phx-update="ignore">
@@ -17,7 +15,7 @@ defmodule QueryCanaryWeb.Components.SQLEditor do
       </div>
 
       <script id={"#{@id}-schema"} type="application/json">
-        <%= raw(SQLSchemaProvider.get_schema_js(@server)) %>
+        <%= raw(JSON.encode!(@server.schema || %{})) %>
       </script>
 
       <input type="hidden" name={@input_name} id={"#{@id}-input"} value={@value} />

@@ -1,4 +1,5 @@
 defmodule QueryCanaryWeb.CheckLive.Show do
+  alias Crontab.CronExpression
   alias QueryCanary.CheckResultAnalyzer
   use QueryCanaryWeb, :live_view
 
@@ -13,7 +14,9 @@ defmodule QueryCanaryWeb.CheckLive.Show do
           <.icon name="hero-circle-stack" /> {@check.server.name}
         </div>
         {@check.name}
-        <:subtitle>Last run: 2 minutes ago • Every 5 min</:subtitle>
+        <:subtitle>
+          Last run: {@last_run} • Next run: {@next_run} • Schedule: {@check.schedule}
+        </:subtitle>
         <:actions>
           <.button navigate={~p"/checks"}>
             <.icon name="hero-arrow-left" />
@@ -344,6 +347,11 @@ defmodule QueryCanaryWeb.CheckLive.Show do
     check = Checks.get_check!(socket.assigns.current_scope, id)
     results = Checks.get_recent_check_results(check, 20)
 
+    last_run =
+      if length(results) == 0,
+        do: "No previous run",
+        else: hd(results) |> Map.get(:inserted_at) |> Calendar.strftime("%Y-%m-%d %H:%M:%S")
+
     # Default threshold for UI display
     threshold = 0.25
 
@@ -356,10 +364,17 @@ defmodule QueryCanaryWeb.CheckLive.Show do
     # Get basic stats
     stats = calculate_stats(results)
 
+    next_run =
+      CronExpression.Parser.parse!(check.schedule)
+      |> Crontab.Scheduler.get_next_run_date!()
+      |> Calendar.strftime("%Y-%m-%d %H:%M:%S")
+
     {:ok,
      socket
      |> assign(:page_title, check.name)
      |> assign(:check, check)
+     |> assign(:last_run, last_run)
+     |> assign(:next_run, next_run)
      |> assign(:results, results)
      |> assign(:analysis, analysis)
      |> assign(:chart_data, chart_data)

@@ -89,13 +89,14 @@ defmodule QueryCanaryWeb.CoreComponents do
       <.button navigate={~p"/"}>Home</.button>
   """
   attr :rest, :global, include: ~w(href navigate patch method)
-  attr :variant, :string, values: ~w(primary success)
+  attr :variant, :string, values: ~w(primary success info)
   slot :inner_block, required: true
 
   def button(%{rest: rest} = assigns) do
     variants = %{
       "primary" => "btn-primary",
       "success" => "btn-success",
+      "info" => "btn-info",
       nil => "btn-primary btn-soft"
     }
 

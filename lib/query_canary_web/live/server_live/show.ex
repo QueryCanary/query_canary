@@ -23,6 +23,9 @@ defmodule QueryCanaryWeb.ServerLive.Show do
           <.button variant="success" phx-click="test_connection">
             <.icon name="hero-play" /> Test Connection
           </.button>
+          <.button variant="info" phx-click="update_schema">
+            <.icon name="hero-circle-stack" /> Update Schema
+          </.button>
         </:actions>
       </.header>
 
@@ -81,7 +84,7 @@ defmodule QueryCanaryWeb.ServerLive.Show do
       <% end %>
 
       <div class="mt-6">
-        <h2 class="text-lg font-semibold mb-3">Related Checks</h2>
+        <h2 class="text-2xl font-semibold mb-2">Related Checks</h2>
         <.link navigate={~p"/quickstart?server_id=#{@server.id}"} class="btn btn-primary btn-sm">
           <.icon name="hero-plus" class="h-4 w-4 mr-1" /> Add Check
         </.link>
@@ -119,6 +122,17 @@ defmodule QueryCanaryWeb.ServerLive.Show do
           </div>
         <% end %>
       </div>
+
+      <section class="mb-12 space-y-4">
+        <h2 class="text-2xl font-semibold mb-2">Current Schema</h2>
+
+        <p>
+          This schema is a mapping of your available tables & their fields which is used to help generate the SQL editor. You can update this schema if necessary using the Update Schema button at the top of the page.
+        </p>
+        <div class="bg-base-200 rounded-lg p-4  max-h-96 overflow-y-auto text-sm font-mono break-words border border-base-300">
+          <pre>{Jason.encode!(@server.schema, pretty: true)}</pre>
+        </div>
+      </section>
     </Layouts.app>
     """
   end
@@ -159,6 +173,21 @@ defmodule QueryCanaryWeb.ServerLive.Show do
         }
 
         {:noreply, assign(socket, :connection_result, connection_result)}
+    end
+  end
+
+  def handle_event("update_schema", _, socket) do
+    case Servers.update_introspection(socket.assigns.server) do
+      {:ok, server} ->
+        {:noreply,
+         socket
+         |> assign(:server, server)
+         |> put_flash(:info, "Schema introspection updated")}
+
+      _ ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Schema introspection failed to update")}
     end
   end
 

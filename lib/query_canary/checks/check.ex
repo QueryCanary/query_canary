@@ -1,4 +1,5 @@
 defmodule QueryCanary.Checks.Check do
+  alias Crontab.CronExpression
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -20,7 +21,21 @@ defmodule QueryCanary.Checks.Check do
     check
     |> cast(attrs, [:name, :schedule, :enabled, :query, :server_id])
     |> validate_required([:name, :schedule, :enabled, :query, :server_id])
+    |> validate_cron_expression(:schedule)
     |> foreign_key_constraint(:server_id)
     |> put_change(:user_id, user_scope.user.id)
+  end
+
+  defp validate_cron_expression(changeset, field) do
+    validate_change(changeset, field, fn _, raw_exp ->
+      if raw_exp in ["", nil] do
+        []
+      else
+        case CronExpression.Parser.parse(raw_exp) do
+          {:ok, _} -> []
+          {:error, message} -> [{field, message}]
+        end
+      end
+    end)
   end
 end

@@ -3,7 +3,30 @@ defmodule QueryCanaryWeb.BillingLive do
 
   def render(assigns) do
     ~H"""
-    <section class="max-w-2xl mx-auto p-6 space-y-8 text-center">
+    <section class="max-w-lg mx-auto p-6 space-y-8 text-center">
+      <div class="card bg-base-200 max-w-md w-full text-center space-y-6 p-8">
+        <h1 class="text-3xl font-bold">Paid Plans Coming Soon</h1>
+        <p class="text-sm opacity-70">
+          You're currently on our free early access plan with unlimited checks. Paid plans will launch soon — but you're all set for now.
+        </p>
+        <div class="text-sm text-success font-medium">
+          ✅ You're getting full access at no cost.
+        </div>
+
+        <div class="divider">What’s coming</div>
+        <ul class="text-left text-sm list-disc list-inside space-y-1">
+          <li>Simple flat pricing</li>
+          <li>Slack & webhook alerting</li>
+          <li>Check history & charts</li>
+          <li>Team support</li>
+        </ul>
+
+        <div class="mt-6">
+          <button class="btn btn-disabled btn-wide">Upgrade to Pro — Coming Soon</button>
+        </div>
+      </div>
+    </section>
+    <%!-- <section class="max-w-2xl mx-auto p-6 space-y-8 text-center">
       <h2 class="text-3xl font-bold">Simple Pricing</h2>
       <p class="text-sm opacity-70 mb-6">Unlimited checks. Flat $15/month.</p>
 
@@ -17,7 +40,7 @@ defmodule QueryCanaryWeb.BillingLive do
           </button>
         </div>
       </div>
-    </section>
+    </section> --%>
     """
   end
 

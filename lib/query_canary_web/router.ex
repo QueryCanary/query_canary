@@ -61,11 +61,13 @@ defmodule QueryCanaryWeb.Router do
       live "/servers/:id/edit", ServerLive.Form, :edit
 
       live "/checks", CheckLive.Index, :index
-      live "/checks/new", CheckLive.Form, :new
+      live "/checks/new", CheckLive.New
       live "/checks/:id", CheckLive.Show, :show
       live "/checks/:id/edit", CheckLive.Form, :edit
 
-      live "/quickstart", QuickstartLive, :new
+      live "/quickstart", Quickstart.DatabaseLive
+      live "/quickstart/check", Quickstart.CheckLive
+      # live "/quickstart", QuickstartLive, :new
 
       live "/billing", BillingLive
     end

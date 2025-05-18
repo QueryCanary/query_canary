@@ -64,6 +64,11 @@ defmodule QueryCanary.Checks do
     |> Repo.preload(:server)
   end
 
+  def get_check(%Scope{} = scope, id) do
+    Repo.get_by(Check, id: id, user_id: scope.user.id)
+    |> Repo.preload(:server)
+  end
+
   def get_check_for_system!(id) do
     Repo.get_by!(Check, id: id)
     |> Repo.preload(:server)
@@ -227,7 +232,7 @@ defmodule QueryCanary.Checks do
       end
 
     # Save the check result
-    create_check_result(result) |> dbg()
+    create_check_result(result)
   end
 
   @doc """

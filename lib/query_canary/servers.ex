@@ -62,6 +62,10 @@ defmodule QueryCanary.Servers do
     Repo.get_by!(Server, id: id, user_id: scope.user.id)
   end
 
+  def get_server(%Scope{} = scope, id) do
+    Repo.get_by(Server, id: id, user_id: scope.user.id)
+  end
+
   @doc """
   Creates a server.
 
@@ -143,5 +147,17 @@ defmodule QueryCanary.Servers do
     true = server.user_id == scope.user.id
 
     Server.changeset(server, attrs, scope)
+  end
+
+  def update_introspection(%Server{} = server) do
+    with {:ok, schema} <- QueryCanary.Connections.SQLSchemaProvider.get_codemirror_schema(server),
+         changeset <- Server.schema_changeset(server, %{schema: schema}),
+         {:ok, %Server{} = server} <- Repo.update(changeset) do
+      {:ok, server}
+    else
+      error ->
+        error
+    end
+    |> dbg()
   end
 end

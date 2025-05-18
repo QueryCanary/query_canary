@@ -10,7 +10,7 @@ defmodule QueryCanaryWeb.ServerLive.Index do
       <.header>
         Listing Servers
         <:actions>
-          <.button variant="primary" navigate={~p"/servers/new"}>
+          <.button variant="primary" navigate={~p"/quickstart"}>
             <.icon name="hero-plus" /> New Server
           </.button>
         </:actions>

@@ -35,7 +35,7 @@ defmodule QueryCanary.Connections.SQLSchemaProvider do
         end)
         |> Enum.into(%{})
 
-      {:ok, Jason.encode!(schema)}
+      {:ok, schema}
     end
   end
 
@@ -51,7 +51,7 @@ defmodule QueryCanary.Connections.SQLSchemaProvider do
     * JavaScript object literal string for embedding in scripts
   """
   def get_schema_js(server, fallback \\ "{}") do
-    case get_codemirror_schema(server) do
+    case get_codemirror_schema(server) |> dbg() do
       {:ok, schema_json} -> schema_json
       {:error, _} -> fallback
     end

@@ -22,6 +22,8 @@ defmodule QueryCanary.Servers.Server do
     field :ssh_private_key, :string, redact: true
     field :ssh_private_key_input, :string, virtual: true
 
+    field :schema, :map, default: %{}
+
     belongs_to :user, QueryCanary.Accounts.User
 
     timestamps(type: :utc_datetime)
@@ -58,6 +60,11 @@ defmodule QueryCanary.Servers.Server do
     |> transfer_password_fields()
     |> encrypt_sensitive_fields()
     |> put_change(:user_id, user_scope.user.id)
+  end
+
+  def schema_changeset(server, attrs) do
+    server
+    |> cast(attrs, [:schema])
   end
 
   defp validate_password_field(changeset, input_field, target_field) do
