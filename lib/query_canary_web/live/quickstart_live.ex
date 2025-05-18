@@ -24,7 +24,7 @@ defmodule QueryCanaryWeb.QuickstartLive do
             ]}
           >
             <img
-              src="https://raw.githubusercontent.com/devicons/devicon/master/icons/postgresql/postgresql-original.svg"
+              src={~p"/images/engines/postgresql-original.svg"}
               alt="PostgreSQL"
               class="w-8 h-8 mb-2"
             /> PostgreSQL
@@ -36,18 +36,15 @@ defmodule QueryCanaryWeb.QuickstartLive do
               if(@engine == "mysql", do: "btn-active")
             ]}
           >
-            <img
-              src="https://raw.githubusercontent.com/devicons/devicon/master/icons/mysql/mysql-original.svg"
-              alt="MySQL"
-              class="w-8 h-8 mb-2"
-            /> MySQL
+            <img src={~p"/images/engines/mysql-original.svg"} alt="MySQL" class="w-8 h-8 mb-2" />
+            MySQL
           </.link>
           <.link
             patch={~p"/quickstart?engine=sqlserver"}
             class="btn btn-disabled flex flex-col items-center p-4 relative h-full"
           >
             <img
-              src="https://raw.githubusercontent.com/devicons/devicon/master/icons/microsoftsqlserver/microsoftsqlserver-plain.svg"
+              src={~p"/images/engines/microsoftsqlserver-plain.svg"}
               alt="SQL Server"
               class="w-8 h-8 mb-2"
             /> SQL Server
@@ -58,7 +55,7 @@ defmodule QueryCanaryWeb.QuickstartLive do
             class="btn btn-disabled flex flex-col items-center p-4 relative h-full"
           >
             <img
-              src="https://raw.githubusercontent.com/devicons/devicon/master/icons/mongodb/mongodb-original.svg"
+              src={~p"/images/engines/mongodb-original.svg"}
               alt="MongoDB"
               class="w-8 h-8 mb-2 opacity-50"
             /> MongoDB
