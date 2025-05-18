@@ -15,7 +15,7 @@ defmodule QueryCanaryWeb.CheckLive.New do
           </:subtitle>
         </.header>
 
-        <div class="mt-8 bg-base-100 shadow-lg rounded-lg p-8">
+        <div class="mt-8 bg-base-100 shadow-md rounded-lg p-8">
           <%= if Enum.empty?(@server_options) do %>
             <div class="mt-8 text-center">
               <div class="bg-base-200 rounded-full p-4 inline-block mb-4">

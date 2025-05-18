@@ -7,6 +7,19 @@
     <.live_title default="QueryCanary" suffix=" · QueryCanary">
       {assigns[:page_title]}
     </.live_title>
+
+    <%= if assigns[:custom_meta] do %>
+      <meta name="description" content={assigns.custom_meta.description} />
+      <meta property="og:url" content="https://glimesh.tv/" />
+      <meta property="og:title" content={assigns.custom_meta.title} />
+      <meta property="og:description" content={assigns.custom_meta.description} />
+      <meta property="og:image" content={assigns.custom_meta.image_url} />
+      <meta name="twitter:card" content="summary" />
+      <meta name="twitter:title" content={assigns.custom_meta.title} />
+      <meta name="twitter:description" content={assigns.custom_meta.description} />
+      <meta name="twitter:image" content={assigns.custom_meta.image_url} />
+    <% end %>
+
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
     </script>
@@ -35,7 +48,8 @@
     <div class="navbar">
       <div class="container mx-auto max-w-6xl flex justify-between">
         <a href="/" class="btn btn-ghost text-xl flex items-center">
-          <img src={~p"/images/QueryCanary.svg"} alt="QueryCanary" class="size-8" /> QueryCanary
+          <img src={~p"/images/QueryCanary.svg"} alt="QueryCanary Logo" class="size-8" />
+          QueryCanary
         </a>
         <div class="flex gap-4">
           <%= if @current_scope do %>

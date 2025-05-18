@@ -8,7 +8,7 @@ defmodule QueryCanaryWeb.ServerLive.Index do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <.header>
-        Listing Servers
+        Database Servers
         <:actions>
           <.button variant="primary" navigate={~p"/quickstart"}>
             <.icon name="hero-plus" /> New Server
@@ -50,7 +50,7 @@ defmodule QueryCanaryWeb.ServerLive.Index do
 
     {:ok,
      socket
-     |> assign(:page_title, "Listing Servers")
+     |> assign(:page_title, "Database Servers")
      |> stream(:servers, Servers.list_servers(socket.assigns.current_scope))}
   end
 

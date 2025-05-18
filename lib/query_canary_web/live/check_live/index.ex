@@ -8,7 +8,7 @@ defmodule QueryCanaryWeb.CheckLive.Index do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <.header>
-        Checks Dashboard
+        Database Checks
         <:subtitle>
           Monitor your database health and performance with scheduled SQL checks
         </:subtitle>
@@ -115,7 +115,7 @@ defmodule QueryCanaryWeb.CheckLive.Index do
 
     {:ok,
      socket
-     |> assign(:page_title, "Checks Dashboard")
+     |> assign(:page_title, "Database Checks")
      |> assign(:view_mode, :table)
      |> assign(:overall_success_rate, success_rate)
      |> assign(:alert_count, alert_count)

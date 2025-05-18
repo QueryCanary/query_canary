@@ -1,6 +1,18 @@
 defmodule QueryCanaryWeb.HomeLive do
   use QueryCanaryWeb, :live_view
 
+  def mount(_params, _session, socket) do
+    {:ok,
+     socket
+     |> assign(:page_title, "SQL-Powered Data Monitoring")
+     |> assign(:custom_meta, %{
+       title: "SQL-Powered Data Monitoring",
+       description:
+         "Define automated SQL checks against your production database. Get alerts when the data looks wrong.",
+       image_url: url(~p"/assets/images/QueryCanary.svg")
+     })}
+  end
+
   def render(assigns) do
     ~H"""
     <div class="container mx-auto max-w-4xl">
@@ -18,7 +30,7 @@ defmodule QueryCanaryWeb.HomeLive do
 
       <section id="features" class="container mx-auto py-20">
         <div class="grid md:grid-cols-2 gap-10">
-          <div class="card bg-base-100 shadow-xl">
+          <div class="card bg-base-100 shadow-md">
             <div class="card-body">
               <h2 class="card-title">Define Checks with SQL</h2>
               <pre class="bg-neutral text-neutral-content p-4 rounded font-mono">
@@ -32,7 +44,7 @@ defmodule QueryCanaryWeb.HomeLive do
             </div>
           </div>
 
-          <div class="card bg-base-100 shadow-xl">
+          <div class="card bg-base-100 shadow-md">
             <div class="card-body">
               <h2 class="card-title">Automated Scheduling</h2>
               <div class="bg-neutral text-neutral-content p-4 rounded">
@@ -124,7 +136,7 @@ defmodule QueryCanaryWeb.HomeLive do
             </div>
           </div>
 
-          <div class="card bg-base-100 shadow-xl">
+          <div class="card bg-base-100 shadow-md">
             <div class="card-body">
               <h2 class="card-title">Visualize Results</h2>
               <canvas id="checkChart" class="w-full h-64"></canvas>
@@ -132,7 +144,7 @@ defmodule QueryCanaryWeb.HomeLive do
             </div>
           </div>
 
-          <div class="card bg-base-100 shadow-xl">
+          <div class="card bg-base-100 shadow-md">
             <div class="card-body">
               <h2 class="card-title">Instant Alerts</h2>
               <p>
@@ -426,80 +438,50 @@ defmodule QueryCanaryWeb.HomeLive do
     </div>
 
     <script>
-          const ctx = document.getElementById('checkChart').getContext('2d');
-          let good = "#00d390";
-          let warning = "#fcb700";
-          let data = [124, 130, 98, 102, 180, 90, 45];
-          new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-              datasets: [
-                {
-                  label: 'User Registrations',
-                  data: data,
-                  borderColor: 'rgb(59, 130, 246)',
-                  backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                  fill: true,
-                  tension: 0.4,
-                },
-                {
-                  label: "% Change from Avg",
-                  data: [-9, -3, -26, -22, 33, -29, -60],
-                  type: "bar",
-                  backgroundColor: [good, good, good, good, good, good, warning],
-                  yAxisID: 'y1',
-                }
-              ]
+      const ctx = document.getElementById('checkChart').getContext('2d');
+      let good = "#00d390";
+      let warning = "#fcb700";
+      let data = [124, 130, 98, 102, 180, 90, 45];
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          datasets: [
+            {
+              label: 'User Registrations',
+              data: data,
+              borderColor: 'rgb(59, 130, 246)',
+              backgroundColor: 'rgba(59, 130, 246, 0.2)',
+              fill: true,
+              tension: 0.4,
             },
-            options: {
-              responsive: true,
-              scales: {
-                y: {
-                  beginAtZero: true
-                },
-
-                  y1: {
-                    type: 'linear',
-                    position: 'right',
-                    min: -100,
-                    max: 100,
-                    grid: { drawOnChartArea: false },
-                    title: { display: true, text: 'Moving Average' },
-                  }
-              }
+            {
+              label: "% Change from Avg",
+              data: [-9, -3, -26, -22, 33, -29, -60],
+              type: "bar",
+              backgroundColor: [good, good, good, good, good, good, warning],
+              yAxisID: 'y1',
             }
-          });
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true
+            },
 
-          let avg = rollingAverage([135, 120, 110, 140, 160, 150, 124, 130, 98, 102, 180, 90, 72]);
-          console.log(avg.forEach((el, index) => console.log(percIncrease(el, data[index]))))
-
-        function rollingAverage(arr) {
-        const windowSize = 7;
-
-        const result = [];
-
-        for (let i = 0; i <= arr.length - windowSize; i++) {
-        const window = arr.slice(i, i + windowSize);
-        const avg = window.reduce((sum, num) => sum + num, 0) / windowSize;
-        result.push(Math.ceil(avg));
-        }
-
-        return result;
-        }
-        function percIncrease(a, b) {
-          let percent;
-          if(b !== 0) {
-              if(a !== 0) {
-                  percent = (b - a) / a * 100;
-              } else {
-                  percent = b * 100;
+              y1: {
+                type: 'linear',
+                position: 'right',
+                min: -100,
+                max: 100,
+                grid: { drawOnChartArea: false },
+                title: { display: true, text: 'Moving Average' },
               }
-          } else {
-              percent = - a * 100;
           }
-          return Math.floor(percent);
-      }
+        }
+      });
     </script>
     """
   end
