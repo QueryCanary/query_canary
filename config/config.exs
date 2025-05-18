@@ -76,7 +76,13 @@ config :phoenix, :json_library, Jason
 config :query_canary, Oban,
   engine: Oban.Engines.Basic,
   queues: [default: 10, checks: 10],
-  repo: QueryCanary.Repo
+  repo: QueryCanary.Repo,
+  plugins: [
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"* * * * *", QueryCanary.Jobs.CheckScheduler}
+     ]}
+  ]
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
