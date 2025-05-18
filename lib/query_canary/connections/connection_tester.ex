@@ -89,13 +89,19 @@ defmodule QueryCanary.Connections.ConnectionTester do
       {:ok, _} ->
         {:ok, :hostname_resolved}
 
-      {:error, reason} ->
-        {:error,
-         %{
-           type: :dns_error,
-           message:
-             "Cannot resolve database hostname: #{server.db_hostname}. Error: #{inspect(reason)}"
-         }}
+      {:error, _reason} ->
+        case :inet.getaddr(String.to_charlist(server.db_hostname), :inet6) do
+          {:ok, _} ->
+            {:ok, :hostname_resolved}
+
+          {:error, _reason} ->
+            {:error,
+             %{
+               type: :dns_error,
+               message:
+                 "Cannot resolve database hostname: #{server.db_hostname} into an IPv4 or IPv6 address."
+             }}
+        end
     end
   end
 

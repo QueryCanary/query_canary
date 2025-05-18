@@ -16,32 +16,6 @@ defmodule QueryCanaryWeb.CheckLive.New do
         </.header>
 
         <div class="mt-8 bg-base-100 shadow-lg rounded-lg p-8">
-          <.form for={@form} phx-submit="select_server" class="space-y-6">
-            <div class="form-control">
-              <label class="label">
-                <span class="label-text text-lg">Select a Database Server</span>
-              </label>
-              <.input
-                field={@form[:server_id]}
-                type="select"
-                options={@server_options}
-                prompt="Choose a server to monitor"
-                required
-              />
-              <div class="text-xs text-base-content/60 mt-2">
-                Or
-                <.link navigate={~p"/quickstart"} class="link link-primary">
-                  create a new server
-                </.link>
-                first
-              </div>
-            </div>
-
-            <.button type="submit" variant="primary" class="w-full">
-              <.icon name="hero-rocket-launch" class="w-5 h-5 mr-2" /> Continue to Quick Setup
-            </.button>
-          </.form>
-
           <%= if Enum.empty?(@server_options) do %>
             <div class="mt-8 text-center">
               <div class="bg-base-200 rounded-full p-4 inline-block mb-4">
@@ -54,6 +28,32 @@ defmodule QueryCanaryWeb.CheckLive.New do
                 <.icon name="hero-plus" class="w-5 h-5 mr-2" /> Add Your First Server
               </.button>
             </div>
+          <% else %>
+            <.form for={@form} phx-submit="select_server" class="space-y-6">
+              <div class="form-control">
+                <label class="label">
+                  <span class="label-text text-lg">Select a Database Server</span>
+                </label>
+                <.input
+                  field={@form[:server_id]}
+                  type="select"
+                  options={@server_options}
+                  prompt="Choose a server to monitor"
+                  required
+                />
+                <div class="text-xs text-base-content/60 mt-2">
+                  Or
+                  <.link navigate={~p"/quickstart"} class="link link-primary">
+                    create a new server
+                  </.link>
+                  first
+                </div>
+              </div>
+
+              <.button type="submit" variant="primary" class="w-full">
+                <.icon name="hero-rocket-launch" class="w-5 h-5 mr-2" /> Continue to Quick Setup
+              </.button>
+            </.form>
           <% end %>
         </div>
 
