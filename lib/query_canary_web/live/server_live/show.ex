@@ -85,7 +85,7 @@ defmodule QueryCanaryWeb.ServerLive.Show do
 
       <div class="mt-6">
         <h2 class="text-2xl font-semibold mb-2">Related Checks</h2>
-        <.link navigate={~p"/quickstart?server_id=#{@server.id}"} class="btn btn-primary btn-sm">
+        <.link navigate={~p"/quickstart/check?server_id=#{@server.id}"} class="btn btn-primary btn-sm">
           <.icon name="hero-plus" class="h-4 w-4 mr-1" /> Add Check
         </.link>
 

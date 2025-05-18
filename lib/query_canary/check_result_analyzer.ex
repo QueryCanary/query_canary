@@ -47,7 +47,7 @@ defmodule QueryCanary.CheckResultAnalyzer do
     recent_results = Enum.take(results, history_window)
 
     # Extract values for analysis if possible
-    case extract_numeric_values(recent_results) |> dbg() do
+    case extract_numeric_values(recent_results) do
       {:ok, values} when length(values) >= min_samples ->
         # We have enough numeric values for time series analysis
         case detect_anomaly(values, anomaly_threshold) do

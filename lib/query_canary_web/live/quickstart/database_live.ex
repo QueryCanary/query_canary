@@ -294,7 +294,7 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
   end
 
   defp password_placeholder(form, field) do
-    if Phoenix.HTML.Form.input_value(form, field) |> dbg() do
+    if Phoenix.HTML.Form.input_value(form, field) do
       "•••••• previously set ••••••"
     else
       nil

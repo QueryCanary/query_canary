@@ -47,7 +47,7 @@ defmodule QueryCanaryWeb.BillingLive do
   def handle_event("start_checkout", _, socket) do
     user = socket.assigns.current_scope.user
 
-    case create_stripe_checkout_session(user) |> dbg() do
+    case create_stripe_checkout_session(user) do
       {:ok, %Stripe.Checkout.Session{url: session_url}} ->
         {:noreply, redirect(socket, external: session_url)}
 

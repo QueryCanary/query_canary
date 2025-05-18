@@ -158,6 +158,5 @@ defmodule QueryCanary.Servers do
       error ->
         error
     end
-    |> dbg()
   end
 end

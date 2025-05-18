@@ -261,31 +261,6 @@ defmodule QueryCanaryWeb.CheckLive.Show do
     """
   end
 
-  # @impl true
-  # def mount(%{"id" => id}, _session, socket) do
-  #   if connected?(socket) do
-  #     Checks.subscribe_checks(socket.assigns.current_scope)
-  #   end
-
-  #   check = Checks.get_check!(socket.assigns.current_scope, id)
-  #   check_results = Checks.get_recent_check_results(check, 20)
-
-  #   analysis = CheckResultAnalyzer.analyze_results(check_results) |> dbg()
-
-  #   formatted_results =
-  #     Enum.map(check_results, fn check ->
-  #       check.result
-  #     end)
-  #     |> dbg()
-
-  #   {:ok,
-  #    socket
-  #    |> assign(:page_title, "Show Check")
-  #    |> assign(:check, check)
-  #    |> stream(:results, check_results)
-  #    |> assign(:analysis, analysis)}
-  # end
-
   @impl true
   def handle_info(
         {:updated, %QueryCanary.Checks.Check{id: id} = check},
@@ -412,7 +387,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
 
     # Set alert thresholds for anomaly detection
     alert_threshold =
-      case analysis |> dbg() do
+      case analysis do
         {:alert, %{type: :anomaly, details: details}} ->
           %{
             upper: details.mean + details.std_dev * 3,

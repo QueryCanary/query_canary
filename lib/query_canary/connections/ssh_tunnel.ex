@@ -28,26 +28,29 @@ defmodule QueryCanary.Connections.SSHTunnel do
     * {:ok, tunnel_ref} - Tunnel successfully created
     * {:error, reason} - Failed to create tunnel
   """
-  def start_tunnel(ssh_opts, target_opts, local_port) do
+  def start_tunnel(ssh_opts, target_opts) do
     Logger.info("Starting SSH tunnel to #{ssh_opts.host}:#{ssh_opts.port}")
 
     # Determine authentication method
     ssh_connection_opts = [
       {:user, String.to_charlist(ssh_opts.user)},
       {:port, ssh_opts.port},
-      {:silently_accept_hosts, true}
+      {:silently_accept_hosts, true},
+      # Add timeout for clearer error messages
+      {:connect_timeout, 10000}
     ]
 
     # Add appropriate auth method
     auth_opts =
       cond do
-        not is_nil(ssh_opts.password) ->
+        not is_nil(ssh_opts.password) and ssh_opts.password != "" ->
           [{:password, String.to_charlist(ssh_opts.password)}]
 
-        not is_nil(ssh_opts.private_key) ->
-          [{:key_cb, {SSHTunnelKeyProvider, private_key: ssh_opts.private_key}}]
+        not is_nil(ssh_opts.private_key) and ssh_opts.private_key != "" ->
+          [{:key_cb, {SSHTunnelKeyProvider, [{:private_key, ssh_opts.private_key}]}}]
 
         true ->
+          # Try default key location if no explicit auth provided
           []
       end
 
@@ -56,20 +59,20 @@ defmodule QueryCanary.Connections.SSHTunnel do
     # Start the SSH connection
     case :ssh.connect(String.to_charlist(ssh_opts.host), ssh_opts.port, ssh_connection_opts) do
       {:ok, conn} ->
-        # Set up the port forwarding
-        case :ssh.tcpip_tunnel_from_server(
+        # Set up the port forwarding - CHANGED to tcpip_tunnel_to_server
+        case :ssh.tcpip_tunnel_to_server(
                conn,
-               'localhost',
-               local_port,
+               ~c"localhost",
+               0,
                String.to_charlist(target_opts.host),
                target_opts.port
              ) do
-          {:ok, channel_id} ->
+          {:ok, local_port} ->
             Logger.info(
               "SSH tunnel established, forwarding localhost:#{local_port} to #{target_opts.host}:#{target_opts.port}"
             )
 
-            {:ok, {conn, channel_id}}
+            {:ok, {conn, local_port}}
 
           {:error, reason} ->
             :ssh.close(conn)
@@ -81,6 +84,10 @@ defmodule QueryCanary.Connections.SSHTunnel do
         Logger.error("Failed to connect to SSH server: #{inspect(reason)}")
         {:error, reason}
     end
+  rescue
+    e ->
+      Logger.error("Exception occurred during SSH tunnel setup: #{inspect(e)}")
+      {:error, "SSH tunnel exception: #{inspect(e)}"}
   end
 
   @doc """
@@ -89,8 +96,8 @@ defmodule QueryCanary.Connections.SSHTunnel do
   ## Parameters
     * tunnel_ref - Reference to the tunnel returned by start_tunnel
   """
-  def stop_tunnel({conn, channel_id}) do
-    :ssh_connection.close(conn, channel_id)
+  def stop_tunnel({conn, local_port}) do
+    :ssh_connection.close(conn, local_port)
     :ssh.close(conn)
     :ok
   end
@@ -100,19 +107,47 @@ end
 defmodule SSHTunnelKeyProvider do
   @behaviour :ssh_client_key_api
 
-  def host_key(_algorithm, _host, _port, _key_fingerprint, _callback_data, _ssh_opts) do
-    :accept_once
-  end
-
-  def is_host_key(_key, _host, _algorithm, _ssh_opts) do
-    :accept_once
-  end
-
-  def sign_data(_algorithm, _data, _key, _opts) do
-    {:error, :not_implemented}
-  end
-
-  def add_host_key(_host, _port, _pubkey_bin, _fingerprint, _ssh_opts) do
+  def add_host_key(_hostnames, _key, _connect_opts) do
     :ok
+  end
+
+  def is_host_key(_key, _host, _algorithm, _connect_opts) do
+    true
+  end
+
+  def sign_data(algorithm, data, key, opts) do
+    try do
+      :ssh_client_key_api.sign_data(:ssh_file, algorithm, data, key, opts)
+    rescue
+      _ -> {:error, :sign_failed}
+    end
+  end
+
+  def user_key(algorithm, options) do
+    try do
+      key =
+        Keyword.get(options, :key_cb_private)
+        |> Keyword.get(:private_key)
+        |> :public_key.pem_decode()
+        |> List.first()
+        |> :public_key.pem_entry_decode()
+        |> rsa_to_ssh_key(algorithm)
+
+      {:ok, key}
+    rescue
+      e ->
+        require Logger
+        Logger.error("Failed to load SSH key: #{inspect(e)}")
+        {:error, :bad_key}
+    end
+  end
+
+  # Convert RSA key to SSH-compatible format if needed
+  defp rsa_to_ssh_key(key = {:RSAPrivateKey, _, _, _, _, _, _, _, _, _, _}, :"ssh-rsa") do
+    key
+  end
+
+  defp rsa_to_ssh_key(key, _algorithm) do
+    key
   end
 end

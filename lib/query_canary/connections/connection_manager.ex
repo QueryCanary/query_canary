@@ -100,9 +100,6 @@ defmodule QueryCanary.Connections.ConnectionManager do
     # Decrypt any encrypted credentials from the server
     server = decrypt_credentials(server)
 
-    # Get a random available local port
-    local_port = find_available_port()
-
     ssh_opts = %{
       host: server.ssh_hostname,
       port: server.ssh_port,
@@ -116,8 +113,8 @@ defmodule QueryCanary.Connections.ConnectionManager do
       port: server.db_port
     }
 
-    case SSHTunnel.start_tunnel(ssh_opts, target_opts, local_port) do
-      {:ok, tunnel_ref} ->
+    case SSHTunnel.start_tunnel(ssh_opts, target_opts) do
+      {:ok, {_conn, port} = tunnel_ref} ->
         # Store the tunnel reference in the process dictionary
         # so we can clean it up later
         Process.put(:ssh_tunnel_ref, tunnel_ref)
@@ -126,7 +123,7 @@ defmodule QueryCanary.Connections.ConnectionManager do
         {:ok,
          %{
            hostname: "localhost",
-           port: local_port,
+           port: port,
            username: server.db_username,
            password: server.db_password,
            database: server.db_name,
@@ -205,9 +202,9 @@ defmodule QueryCanary.Connections.ConnectionManager do
     # Try ports in range 10000-65535
     port = :rand.uniform(55535) + 10000
 
-    case :gen_tcp.listen(port, []) do
+    case :gen_tcp.listen(port, [:binary]) do
       {:ok, socket} ->
-        :gen_tcp.close(socket)
+        :ok = :gen_tcp.close(socket)
         port
 
       {:error, _} ->
@@ -229,7 +226,7 @@ defmodule QueryCanary.Connections.ConnectionManager do
   defp decrypt_if_needed(nil, _), do: nil
 
   defp decrypt_if_needed(encrypted, salt) do
-    case Phoenix.Token.decrypt(QueryCanaryWeb.Endpoint, salt, encrypted) do
+    case Phoenix.Token.decrypt(QueryCanaryWeb.Endpoint, salt, encrypted, max_age: :infinity) do
       {:ok, decrypted} ->
         decrypted
 
