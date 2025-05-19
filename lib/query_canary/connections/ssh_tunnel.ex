@@ -57,7 +57,7 @@ defmodule QueryCanary.Connections.SSHTunnel do
         # Set up the port forwarding - CHANGED to tcpip_tunnel_to_server
         case :ssh.tcpip_tunnel_to_server(
                conn,
-               ~c"localhost",
+               {127, 0, 0, 1},
                0,
                String.to_charlist(target_opts.host),
                target_opts.port

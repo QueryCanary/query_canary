@@ -121,7 +121,7 @@ defmodule QueryCanary.Connections.ConnectionManager do
         # Return connection details that point to the local tunnel endpoint
         {:ok,
          %{
-           hostname: "localhost",
+           hostname: "127.0.0.1",
            port: port,
            username: server.db_username,
            password: server.db_password,
