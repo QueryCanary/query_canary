@@ -1,10 +1,9 @@
 defmodule QueryCanaryWeb.Quickstart.CheckLive do
-  alias Crontab.CronExpression
-  alias DBConnection.Query
   use QueryCanaryWeb, :live_view
 
   import Crontab.CronExpression
 
+  alias Crontab.CronExpression
   alias QueryCanary.Servers
   alias QueryCanary.Checks
   alias QueryCanary.Checks.Check
@@ -198,7 +197,7 @@ defmodule QueryCanaryWeb.Quickstart.CheckLive do
 
       socket |> assign(:next_schedule, next_schedule)
     catch
-      e ->
+      _e ->
         socket.assigns.next_schedule
     end
   end

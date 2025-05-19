@@ -3,6 +3,7 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
 
   alias QueryCanary.Servers
   alias QueryCanary.Servers.Server
+  alias QueryCanary.Connections.SSHKeygen
 
   @impl true
   def render(assigns) do
@@ -149,42 +150,41 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
               <.input field={@form[:ssh_tunnel]} type="checkbox" label="Use SSH Tunnel?" />
             </div>
           </div>
+
           <div
-            :if={Phoenix.HTML.Form.input_value(@form, :ssh_tunnel) == true}
+            :if={Phoenix.HTML.Form.input_value(@form, :ssh_tunnel) in [true, "true"]}
             class="md:col-span-3 p-4 bg-base-200 rounded-lg mb-2"
           >
             <h3 class="font-semibold mb-2">SSH Tunnel Configuration</h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div class="md:col-span-2">
-                <.input field={@form[:ssh_hostname]} type="text" label="SSH Hostname" />
-              </div>
+              <.input field={@form[:ssh_hostname]} type="text" label="SSH Hostname" />
               <.input field={@form[:ssh_port]} type="number" label="SSH Port" value={22} />
               <.input field={@form[:ssh_username]} type="text" label="SSH Username" />
+            </div>
 
-              <div class="md:col-span-3">
-                <.input
-                  field={@form[:ssh_password_input]}
-                  type="password"
-                  label="SSH Password"
-                  placeholder={password_placeholder(@form, :ssh_password)}
-                />
-                <.input
-                  field={@form[:ssh_private_key_input]}
-                  type="textarea"
-                  rows="3"
-                  label="SSH Private Key"
-                  class="font-mono"
-                />
+            <div class="mt-4 border-t pt-4 border-base-300">
+              <h4 class="font-medium mb-2">SSH Key Authentication</h4>
+
+              <div class="space-y-4">
+                <p>
+                  We've generated a keypair for QueryCanary to access your server to create the SSH Tunnel for your Database. Add this public key to your server's
+                  <code class="font-mono">~/.ssh/authorized_keys</code>
+                  file to authorize the connection.
+                </p>
+
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-medium">Public Key</span>
+                  </label>
+                  <div class="bg-base-200 rounded-lg p-4  max-h-96 overflow-y-auto text-sm font-mono break-words border border-base-300">
+                    <pre>{@ssh_public_key}</pre>
+                  </div>
+                </div>
               </div>
-              <.input
-                field={@form[:ssh_key_passphrase]}
-                type="password"
-                label="Key Passphrase (optional)"
-              />
             </div>
           </div>
 
-          <footer class="md:col-span-3 space-y-6  ">
+          <footer class="md:col-span-3 space-y-6">
             <div :if={@connection_error} class="alert alert-error">
               <span>
                 {inspect(@connection_error)}
@@ -204,11 +204,17 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
   def mount(_params, _session, socket) do
     server = %Server{user_id: socket.assigns.current_scope.user.id}
 
+    # Generate SSH keys when the component mounts
+    # These will be stored in the session and used when saving
+    {public_key, private_key} = generate_ssh_keys()
+
     {:ok,
      socket
      |> assign(:page_title, "QueryCanary Quickstart")
      |> assign(:server, server)
      |> assign(:connection_error, nil)
+     |> assign(:ssh_public_key, public_key)
+     |> assign(:ssh_private_key, private_key)
      |> assign(
        :form,
        to_form(Servers.change_server(socket.assigns.current_scope, server))
@@ -219,9 +225,20 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
   def handle_params(%{"server_id" => server_id}, _uri, socket) do
     case Servers.get_server(socket.assigns.current_scope, server_id) do
       %Server{} = server ->
+        # For existing servers, check if we already have a generated key
+        {public_key, private_key} =
+          if server.ssh_public_key do
+            {server.ssh_public_key, nil}
+          else
+            # Generate new keys for existing servers that don't have them yet
+            generate_ssh_keys()
+          end
+
         {:noreply,
          socket
          |> assign(:server, server)
+         |> assign(:ssh_public_key, public_key)
+         |> assign(:ssh_private_key, private_key)
          |> assign(
            :form,
            to_form(Servers.change_server(socket.assigns.current_scope, server))
@@ -252,6 +269,15 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
   end
 
   def handle_event("save", %{"server" => server_params}, socket) do
+    # Add the pre-generated SSH keys to the server params if SSH tunnel is enabled
+    server_params =
+      Map.drop(server_params, [
+        "ssh_public_key",
+        "ssh_private_key",
+        "ssh_key_type",
+        "ssh_key_generated_at"
+      ])
+
     server =
       if socket.assigns.server.id do
         Servers.update_server(
@@ -260,6 +286,14 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
           server_params
         )
       else
+        server_params =
+          Map.merge(server_params, %{
+            "ssh_public_key" => socket.assigns.ssh_public_key,
+            "ssh_private_key" => socket.assigns.ssh_private_key,
+            "ssh_key_type" => "secp256r1",
+            "ssh_key_generated_at" => DateTime.utc_now() |> DateTime.to_string()
+          })
+
         Servers.create_server(socket.assigns.current_scope, server_params)
       end
 
@@ -290,6 +324,20 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
+    end
+  end
+
+  # Generate SSH keys with a predictable comment to ensure consistency
+  defp generate_ssh_keys do
+    comment = "querycanary.com"
+
+    case SSHKeygen.generate_keypair(comment) do
+      {:ok, private_key, public_key} ->
+        {public_key, private_key}
+
+      _ ->
+        # Fallback in case the key generation fails - should never happen
+        raise "SSH Key generation failed"
     end
   end
 

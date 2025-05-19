@@ -26,7 +26,7 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
         password: conn_details.password,
         database: conn_details.database,
         timeout: 10_000,
-        socket_options: [:inet6]
+        socket_options: conn_details.socket_options
       ]
 
       case Postgrex.start_link(opts) do

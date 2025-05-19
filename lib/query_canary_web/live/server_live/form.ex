@@ -47,37 +47,15 @@ defmodule QueryCanaryWeb.ServerLive.Form do
           </div>
         </div>
         <div
-          :if={Phoenix.HTML.Form.input_value(@form, :ssh_tunnel) == true}
+          :if={Phoenix.HTML.Form.input_value(@form, :ssh_tunnel) in [true, "true"]}
           class="md:col-span-3 p-4 bg-base-200 rounded-lg mb-2"
         >
           <h3 class="font-semibold mb-2">SSH Tunnel Configuration</h3>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="md:col-span-2">
-              <.input field={@form[:ssh_hostname]} type="text" label="SSH Hostname" />
-            </div>
+            <.input field={@form[:ssh_hostname]} type="text" label="SSH Hostname" />
+
             <.input field={@form[:ssh_port]} type="number" label="SSH Port" value={22} />
             <.input field={@form[:ssh_username]} type="text" label="SSH Username" />
-
-            <div class="md:col-span-3">
-              <.input
-                field={@form[:ssh_password_input]}
-                type="password"
-                label="SSH Password"
-                placeholder={password_placeholder(@form, :ssh_password)}
-              />
-              <.input
-                field={@form[:ssh_private_key_input]}
-                type="textarea"
-                rows="3"
-                label="SSH Private Key"
-                class="font-mono"
-              />
-            </div>
-            <.input
-              field={@form[:ssh_key_passphrase]}
-              type="password"
-              label="Key Passphrase (optional)"
-            />
           </div>
         </div>
         <footer class="md:col-span-2">
@@ -128,6 +106,14 @@ defmodule QueryCanaryWeb.ServerLive.Form do
   end
 
   def handle_event("save", %{"server" => server_params}, socket) do
+    server_params =
+      Map.drop(server_params, [
+        "ssh_public_key",
+        "ssh_private_key",
+        "ssh_key_type",
+        "ssh_key_generated_at"
+      ])
+
     save_server(socket, socket.assigns.live_action, server_params)
   end
 

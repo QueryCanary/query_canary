@@ -17,12 +17,10 @@ defmodule QueryCanary.Connections.SSHTunnel do
       * :host - SSH server hostname
       * :port - SSH server port
       * :user - SSH username
-      * :password - SSH password (optional)
-      * :private_key - SSH private key (optional)
+      * :private_key - SSH private key
     * target_opts - Target connection to tunnel to
       * :host - Target hostname (from SSH server perspective)
       * :port - Target port
-    * local_port - Local port to forward from
 
   ## Returns
     * {:ok, tunnel_ref} - Tunnel successfully created
@@ -43,9 +41,6 @@ defmodule QueryCanary.Connections.SSHTunnel do
     # Add appropriate auth method
     auth_opts =
       cond do
-        not is_nil(ssh_opts.password) and ssh_opts.password != "" ->
-          [{:password, String.to_charlist(ssh_opts.password)}]
-
         not is_nil(ssh_opts.private_key) and ssh_opts.private_key != "" ->
           [{:key_cb, {SSHTunnelKeyProvider, [{:private_key, ssh_opts.private_key}]}}]
 
@@ -115,15 +110,7 @@ defmodule SSHTunnelKeyProvider do
     true
   end
 
-  def sign_data(algorithm, data, key, opts) do
-    try do
-      :ssh_client_key_api.sign_data(:ssh_file, algorithm, data, key, opts)
-    rescue
-      _ -> {:error, :sign_failed}
-    end
-  end
-
-  def user_key(algorithm, options) do
+  def user_key(_algorithm, options) do
     try do
       key =
         Keyword.get(options, :key_cb_private)
@@ -131,7 +118,6 @@ defmodule SSHTunnelKeyProvider do
         |> :public_key.pem_decode()
         |> List.first()
         |> :public_key.pem_entry_decode()
-        |> rsa_to_ssh_key(algorithm)
 
       {:ok, key}
     rescue
@@ -140,14 +126,5 @@ defmodule SSHTunnelKeyProvider do
         Logger.error("Failed to load SSH key: #{inspect(e)}")
         {:error, :bad_key}
     end
-  end
-
-  # Convert RSA key to SSH-compatible format if needed
-  defp rsa_to_ssh_key(key = {:RSAPrivateKey, _, _, _, _, _, _, _, _, _, _}, :"ssh-rsa") do
-    key
-  end
-
-  defp rsa_to_ssh_key(key, _algorithm) do
-    key
   end
 end

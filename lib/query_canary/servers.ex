@@ -41,7 +41,11 @@ defmodule QueryCanary.Servers do
 
   """
   def list_servers(%Scope{} = scope) do
-    Repo.all(from server in Server, where: server.user_id == ^scope.user.id)
+    Repo.all(
+      from server in Server,
+        where: server.user_id == ^scope.user.id,
+        order_by: server.inserted_at
+    )
   end
 
   @doc """

@@ -104,7 +104,6 @@ defmodule QueryCanary.Connections.ConnectionManager do
       host: server.ssh_hostname,
       port: server.ssh_port,
       user: server.ssh_username,
-      password: server.ssh_password,
       private_key: server.ssh_private_key
     }
 
@@ -127,7 +126,8 @@ defmodule QueryCanary.Connections.ConnectionManager do
            username: server.db_username,
            password: server.db_password,
            database: server.db_name,
-           ssl: true
+           ssl: true,
+           socket_options: []
          }}
 
       {:error, reason} ->
@@ -147,8 +147,19 @@ defmodule QueryCanary.Connections.ConnectionManager do
        username: server.db_username,
        password: server.db_password,
        database: server.db_name,
-       ssl: true
+       ssl: true,
+       socket_options: socket_options(server)
      }}
+  end
+
+  defp socket_options(%Server{} = server) do
+    case :inet_res.gethostbyname(String.to_charlist(server.db_hostname), :inet6) do
+      {:ok, {:hostent, _host, [], _, _, _}} ->
+        [:inet6]
+
+      _ ->
+        []
+    end
   end
 
   # Returns the appropriate database adapter module based on db_engine
@@ -218,7 +229,6 @@ defmodule QueryCanary.Connections.ConnectionManager do
     %{
       server
       | db_password: decrypt_if_needed(server.db_password, "db_password"),
-        ssh_password: decrypt_if_needed(server.ssh_password, "ssh_password"),
         ssh_private_key: decrypt_if_needed(server.ssh_private_key, "ssh_private_key")
     }
   end

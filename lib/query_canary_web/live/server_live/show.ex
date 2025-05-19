@@ -2,6 +2,7 @@ defmodule QueryCanaryWeb.ServerLive.Show do
   use QueryCanaryWeb, :live_view
 
   alias QueryCanary.Servers
+  alias QueryCanary.Connections.SSHKeygen
 
   @impl true
   def render(assigns) do
@@ -40,7 +41,6 @@ defmodule QueryCanaryWeb.ServerLive.Show do
               <:item title="Port">{@server.db_port}</:item>
               <:item title="Database">{@server.db_name}</:item>
               <:item title="Username">{@server.db_username}</:item>
-              <:item title="Password">••••••••••</:item>
             </.list>
           </div>
         </div>
@@ -55,12 +55,39 @@ defmodule QueryCanaryWeb.ServerLive.Show do
                 <:item title="Hostname">{@server.ssh_hostname}</:item>
                 <:item title="Port">{@server.ssh_port}</:item>
                 <:item title="Username">{@server.ssh_username}</:item>
-                <:item :if={@server.ssh_password} title="Password">••••••••••</:item>
-                <:item :if={@server.ssh_private_key} title="Private Key">
-                  <div class="font-mono text-xs bg-base-300 p-2 rounded">
-                    <span>[SSH Private Key Configured]</span>
+                <:item title="Public Key">
+                  <div class="flex flex-col gap-2">
+                    <div class="font-mono text-xs bg-base-300 p-2 rounded max-h-32 overflow-y-auto">
+                      <span id="ssh-public-key">{@server.ssh_public_key}</span>
+                    </div>
+                    <div class="flex gap-2">
+                      <%= if @confirming_regenerate do %>
+                        <div class="mt-2 p-2 border border-warning bg-warning bg-opacity-10 rounded-md">
+                          <p class="text-sm font-medium mb-2">
+                            Are you sure? This will invalidate your current key.
+                          </p>
+                          <div class="flex gap-2">
+                            <.button type="button" class="btn-xs" phx-click="cancel_regenerate">
+                              Cancel
+                            </.button>
+                            <.button
+                              type="button"
+                              class="btn-xs btn-error"
+                              phx-click="regenerate_ssh_keys"
+                            >
+                              Yes, Regenerate
+                            </.button>
+                          </div>
+                        </div>
+                      <% else %>
+                        <.button type="button" phx-click="confirm_regenerate" variant="primary-sm">
+                          <.icon name="hero-arrow-path" class="h-3 w-3 mr-1" /> Regenerate Key
+                        </.button>
+                      <% end %>
+                    </div>
                   </div>
                 </:item>
+                <:item title="Key Created">{@server.ssh_key_generated_at}</:item>
               </.list>
             </div>
           </div>
@@ -103,7 +130,7 @@ defmodule QueryCanaryWeb.ServerLive.Show do
               <%= for check <- @checks do %>
                 <tr>
                   <td class="font-mono text-xs">{truncate(check.query, 50)}</td>
-                  <td>{format_timestamp(check.updated_at)}</td>
+                  <td>{check.updated_at}</td>
                   <td>
                     <span class="badge badge-success">Active</span>
                   </td>
@@ -151,7 +178,8 @@ defmodule QueryCanaryWeb.ServerLive.Show do
      |> assign(:page_title, "Server Details")
      |> assign(:server, server)
      |> assign(:checks, checks)
-     |> assign(:connection_result, nil)}
+     |> assign(:connection_result, nil)
+     |> assign(:confirming_regenerate, false)}
   end
 
   @impl true
@@ -191,6 +219,53 @@ defmodule QueryCanaryWeb.ServerLive.Show do
     end
   end
 
+  def handle_event("confirm_regenerate", _, socket) do
+    {:noreply, assign(socket, :confirming_regenerate, true)}
+  end
+
+  def handle_event("cancel_regenerate", _, socket) do
+    {:noreply, assign(socket, :confirming_regenerate, false)}
+  end
+
+  def handle_event("regenerate_ssh_keys", _, socket) do
+    server = socket.assigns.server
+
+    case SSHKeygen.generate_keypair("querycanary.com") do
+      {:ok, private_key, public_key} ->
+        # Update the server with the new keys
+        attrs = %{
+          "ssh_public_key" => public_key,
+          "ssh_private_key" => private_key,
+          "ssh_key_type" => "ed25519",
+          "ssh_key_generated_at" => DateTime.utc_now()
+        }
+
+        case Servers.update_server(socket.assigns.current_scope, server, attrs) do
+          {:ok, updated_server} ->
+            {:noreply,
+             socket
+             |> assign(:server, updated_server)
+             |> assign(:confirming_regenerate, false)
+             |> put_flash(
+               :info,
+               "SSH key regenerated successfully. Don't forget to update your server's authorized_keys file!"
+             )}
+
+          {:error, _changeset} ->
+            {:noreply,
+             socket
+             |> assign(:confirming_regenerate, false)
+             |> put_flash(:error, "Failed to update server with new SSH keys")}
+        end
+
+      {:error, reason} ->
+        {:noreply,
+         socket
+         |> assign(:confirming_regenerate, false)
+         |> put_flash(:error, "Failed to generate new SSH keys: #{inspect(reason)}")}
+    end
+  end
+
   @impl true
   def handle_info(
         {:updated, %QueryCanary.Servers.Server{id: id} = server},
@@ -224,12 +299,6 @@ defmodule QueryCanaryWeb.ServerLive.Show do
   end
 
   defp truncate(nil, _), do: ""
-
-  defp format_timestamp(%DateTime{} = dt) do
-    Calendar.strftime(dt, "%Y-%m-%d %H:%M:%S")
-  end
-
-  defp format_timestamp(_), do: "N/A"
 
   defp format_cell_value(nil), do: "<NULL>"
   defp format_cell_value(value) when is_binary(value), do: value

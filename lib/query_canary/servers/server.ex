@@ -17,10 +17,10 @@ defmodule QueryCanary.Servers.Server do
     field :ssh_hostname, :string
     field :ssh_username, :string
     field :ssh_port, :integer
-    field :ssh_password, :string, redact: true
-    field :ssh_password_input, :string, virtual: true
+    field :ssh_public_key, :string
     field :ssh_private_key, :string, redact: true
-    field :ssh_private_key_input, :string, virtual: true
+    field :ssh_key_type, :string
+    field :ssh_key_generated_at, :utc_datetime
 
     field :schema, :map, default: %{}
 
@@ -44,8 +44,10 @@ defmodule QueryCanary.Servers.Server do
       :ssh_hostname,
       :ssh_username,
       :ssh_port,
-      :ssh_password_input,
-      :ssh_private_key_input
+      :ssh_public_key,
+      :ssh_private_key,
+      :ssh_key_type,
+      :ssh_key_generated_at
     ])
     |> validate_required([
       :name,
@@ -83,24 +85,15 @@ defmodule QueryCanary.Servers.Server do
     if get_field(changeset, :ssh_tunnel) do
       # SSH tunnel is enabled, so require SSH hostname, username, and port
       changeset
-      |> validate_required([:ssh_hostname, :ssh_username, :ssh_port])
-      |> validate_ssh_auth_method()
-    else
-      changeset
-    end
-  end
-
-  defp validate_ssh_auth_method(changeset) do
-    ssh_password = get_field(changeset, :ssh_password_input)
-    ssh_private_key = get_field(changeset, :ssh_private_key_input)
-
-    # Make sure at least one authentication method is provided
-    if is_nil(ssh_password) and is_nil(ssh_private_key) do
-      changeset
-      |> validate_password_field(:ssh_password_input, :ssh_password)
-      |> validate_password_field(:ssh_private_key_input, :ssh_private_key)
-
-      # add_error(changeset, :ssh_authentication, "must provide either SSH password or private key")
+      |> validate_required([
+        :ssh_hostname,
+        :ssh_username,
+        :ssh_port,
+        :ssh_public_key,
+        :ssh_private_key,
+        :ssh_key_type,
+        :ssh_key_generated_at
+      ])
     else
       changeset
     end
@@ -109,8 +102,6 @@ defmodule QueryCanary.Servers.Server do
   defp transfer_password_fields(changeset) do
     changeset
     |> maybe_put_password(:db_password_input, :db_password)
-    |> maybe_put_password(:ssh_password_input, :ssh_password)
-    |> maybe_put_password(:ssh_private_key_input, :ssh_private_key)
   end
 
   defp maybe_put_password(changeset, input_field, target_field) do
@@ -127,7 +118,6 @@ defmodule QueryCanary.Servers.Server do
   defp encrypt_sensitive_fields(changeset) do
     changeset
     |> update_change(:db_password, &encrypt(&1, "db_password"))
-    |> update_change(:ssh_password, &maybe_encrypt(&1, "ssh_password"))
     |> update_change(:ssh_private_key, &maybe_encrypt(&1, "ssh_private_key"))
   end
 
