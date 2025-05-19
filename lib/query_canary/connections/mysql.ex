@@ -113,6 +113,10 @@ defmodule QueryCanary.Connections.Adapters.MySQL do
     end
   end
 
+  def get_database_schema(_conn, _database_name) do
+    {:error, :not_implemented}
+  end
+
   # Formats query results into a more usable structure
   defp format_results(%MyXQL.Result{} = result) do
     columns = Enum.map(result.columns || [], &String.to_atom/1)

@@ -84,7 +84,7 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
   def list_tables(conn) do
     query = """
     SELECT table_name FROM information_schema.tables
-    WHERE table_schema = 'public'
+    WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
     ORDER BY table_name;
     """
 
@@ -126,6 +126,58 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
     case query(conn, query, [table_name]) do
       {:ok, results} -> {:ok, results}
       {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc """
+  Gets complete database schema information in a single query.
+
+  ## Parameters
+    * conn - Database connection
+    * database_name - The database name
+
+  ## Returns
+    * {:ok, schema} - Complete database schema information
+    * {:error, reason} - Operation failed
+  """
+  def get_database_schema(conn, database_name) do
+    # Query to get all tables and their columns in one go
+    query = """
+    SELECT
+       table_name,
+       column_name,
+       data_type
+    FROM information_schema.columns
+    WHERE table_catalog = $1 and table_schema = 'public'
+    ORDER BY ordinal_position;
+    """
+
+    case query(conn, query, [database_name]) do
+      {:ok, %{rows: rows}} ->
+        # Process the rows into a structured schema map
+
+        schema =
+          Enum.reduce(rows, %{}, fn %{
+                                      table_name: table_name,
+                                      column_name: column_name,
+                                      data_type: data_type
+                                    },
+                                    acc ->
+            entry = %{
+              detail: data_type,
+              label: column_name,
+              section: table_name,
+              type: "keyword"
+            }
+
+            Map.update(acc, table_name, [entry], fn existing -> [entry | existing] end)
+          end)
+          |> Map.new(fn {table, fields} -> {table, Enum.reverse(fields)} end)
+
+        {:ok, schema}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

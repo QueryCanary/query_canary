@@ -81,10 +81,10 @@ defmodule QueryCanary.Connections.ConnectionManager do
     * {:ok, schema} - Schema information
     * {:error, reason} - Operation failed with reason
   """
-  def get_table_schema(%Server{} = server, table_name) do
+  def get_database_schema(%Server{} = server) do
     with {:ok, conn_details} <- prepare_connection(server),
          {:ok, conn} <- get_adapter(server).connect(conn_details),
-         {:ok, schema} <- get_adapter(server).get_table_schema(conn, table_name) do
+         {:ok, schema} <- get_adapter(server).get_database_schema(conn, server.db_name) do
       {:ok, schema}
     else
       {:error, reason} -> {:error, reason}
@@ -111,8 +111,6 @@ defmodule QueryCanary.Connections.ConnectionManager do
       host: server.db_hostname,
       port: server.db_port
     }
-
-    IO.puts(server.ssh_private_key)
 
     case SSHTunnel.start_tunnel(ssh_opts, target_opts) do
       {:ok, {_conn, port} = tunnel_ref} ->
