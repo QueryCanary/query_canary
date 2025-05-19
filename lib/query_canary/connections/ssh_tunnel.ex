@@ -32,7 +32,6 @@ defmodule QueryCanary.Connections.SSHTunnel do
     # Determine authentication method
     ssh_connection_opts = [
       {:user, String.to_charlist(ssh_opts.user)},
-      {:port, ssh_opts.port},
       {:silently_accept_hosts, true},
       # Add timeout for clearer error messages
       {:connect_timeout, 10000}

@@ -112,6 +112,8 @@ defmodule QueryCanary.Connections.ConnectionManager do
       port: server.db_port
     }
 
+    IO.puts(server.ssh_private_key)
+
     case SSHTunnel.start_tunnel(ssh_opts, target_opts) do
       {:ok, {_conn, port} = tunnel_ref} ->
         # Store the tunnel reference in the process dictionary
