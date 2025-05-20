@@ -10,6 +10,7 @@ defmodule QueryCanary.Checks do
   alias QueryCanary.Checks.{Check, CheckResult}
   alias QueryCanary.Accounts.Scope
   alias QueryCanary.Connections.ConnectionManager
+  alias QueryCanary.Checks.CheckNotifier
 
   @doc """
   Subscribes to scoped notifications about any check changes.
@@ -241,12 +242,19 @@ defmodule QueryCanary.Checks do
         analysis = CheckResultAnalyzer.analyze_results(recent_results)
         {alert_type, is_alert, details, summary} = format_analysis_result(analysis)
 
-        update_check_result(check_result, %{
-          alert_type: alert_type,
-          is_alert: is_alert,
-          analysis_details: details,
-          analysis_summary: summary
-        })
+        # Update the check result with analysis data
+        {:ok, updated_result} =
+          update_check_result(check_result, %{
+            alert_type: alert_type,
+            is_alert: is_alert,
+            analysis_details: details,
+            analysis_summary: summary
+          })
+
+        # Send notification if this is an alert
+        maybe_send_check_notification(check, updated_result)
+
+        {:ok, updated_result}
 
       {:error, _} = error ->
         error
@@ -347,5 +355,34 @@ defmodule QueryCanary.Checks do
 
   defp format_analysis_result({:error, reason}) do
     {:none, false, %{error: reason}, "Analysis failed: #{inspect(reason)}"}
+  end
+
+  @doc """
+  Sends a notification for a check alert if needed.
+
+  ## Parameters
+    * check - The check that may have triggered an alert
+    * check_result - The check result to analyze for alerts
+
+  ## Returns
+    * {:ok, :notification_sent} - Notification was sent
+    * {:ok, :no_alert} - No alert detected, no notification needed
+    * {:error, reason} - Error sending notification
+  """
+  def maybe_send_check_notification(%Check{} = check, %CheckResult{} = check_result) do
+    if check_result.is_alert do
+      # Only send notifications for actual alerts
+      check = Repo.preload(check, :user)
+      url = QueryCanaryWeb.Endpoint.url() <> "/checks/#{check.id}"
+
+      CheckNotifier.deliver_check_alert_notification(
+        check.user,
+        check,
+        check_result,
+        url
+      )
+    else
+      {:ok, :no_alert}
+    end
   end
 end
