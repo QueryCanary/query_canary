@@ -1,10 +1,7 @@
 defmodule QueryCanaryWeb.Components.CheckAnalysis do
-  alias QueryCanary.Checks.CheckAnalysis
   use Phoenix.Component
 
   import QueryCanaryWeb.CoreComponents
-
-  # Other components...
 
   attr :result, CheckResult
 
@@ -113,11 +110,4 @@ defmodule QueryCanaryWeb.Components.CheckAnalysis do
   defp format_number(nil), do: "N/A"
   defp format_number(num) when is_float(num), do: :erlang.float_to_binary(num, decimals: 2)
   defp format_number(num), do: to_string(num)
-
-  defp format_datetime(datetime) do
-    Calendar.strftime(datetime, "%Y-%m-%d %H:%M")
-  end
-
-  defp extract_primary_value(nil), do: nil
-  defp extract_primary_value([]), do: nil
 end

@@ -1,11 +1,9 @@
 defmodule QueryCanaryWeb.CheckLive.Show do
-  alias QueryCanary.Checks.CheckResult
-  alias QueryCanary.Checks.CheckAnalysis
-  alias Crontab.CronExpression
-  alias QueryCanary.CheckResultAnalyzer
   use QueryCanaryWeb, :live_view
 
+  alias Crontab.CronExpression
   alias QueryCanary.Checks
+  alias QueryCanary.Checks.CheckResult
 
   import QueryCanaryWeb.Components.CheckAnalysis
 
@@ -43,7 +41,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
       <.check_analysis result={@latest_analysis} />
 
       <div class="card bg-base-200">
-        <div class="card-body">
+        <div class="card-body space-y-4">
           <h2 class="card-title">Result History</h2>
 
           <%= if length(@results) > 0 do %>
@@ -56,11 +54,11 @@ defmodule QueryCanaryWeb.CheckLive.Show do
               data-success={Jason.encode!(@chart_data.success)}
               data-average={Jason.encode!(@chart_data.average)}
               data-alert-threshold={Jason.encode!(@chart_data.alert_threshold)}
-              data-alert-type={@latest_analysis |> get_alert_type()}
+              data-alert-type={@chart_data.alert_type}
             >
             </canvas>
 
-            <div class="grid grid-cols-3 gap-2 text-sm mt-2">
+            <div class="grid grid-cols-4 gap-2 text-sm mt-2 text-center">
               <div class="stat p-0">
                 <div class="stat-title text-xs">Avg Value</div>
                 <div class="stat-value text-lg">{format_number(@stats.avg_value)}</div>
@@ -70,286 +68,40 @@ defmodule QueryCanaryWeb.CheckLive.Show do
                 <div class="stat-value text-lg">{@stats.success_rate}%</div>
               </div>
               <div class="stat p-0">
+                <div class="stat-title text-xs">Alert Rate</div>
+                <div class="stat-value text-lg">{@stats.alert_rate}%</div>
+              </div>
+              <div class="stat p-0">
                 <div class="stat-title text-xs">Avg Response</div>
                 <div class="stat-value text-lg">{@stats.avg_time} ms</div>
               </div>
             </div>
+
+            <.table id="table-results" rows={@results}>
+              <:col :let={result} label="Ran At">{format_datetime(result.inserted_at)}</:col>
+              <:col :let={result} label="Fields">
+                {Enum.map(hd(result.result), fn {k, v} -> "#{k}=#{v}" end) |> Enum.join(" ")}
+              </:col>
+              <:col :let={result} label="Alert Type">
+                <%= if result.is_alert do %>
+                  <span class={alert_class(result.alert_type)}>
+                    {String.capitalize(to_string(result.alert_type))}
+                  </span>
+                <% else %>
+                  <span class="badge badge-success" title={result.error}>OK</span>
+                <% end %>
+              </:col>
+              <:col :let={result} label="Duration">{result.time_taken} ms</:col>
+            </.table>
           <% else %>
             <div class="alert mt-3">No result history available</div>
           <% end %>
         </div>
       </div>
-      
-    <!-- Recent Results -->
-      <%!-- <div class="card bg-base-200">
-        <div class="card-body">
-          <h2 class="card-title">Recent Runs</h2>
-
-          <%= if length(@results) > 0 do %>
-            <ul class="divide-y divide-base-300 text-sm">
-              <%= for result <- Enum.take(@results, 7) do %>
-                <li class="py-2 flex justify-between items-center">
-                  <span>{format_datetime(result.inserted_at)}</span>
-
-                  <%= if result.success do %>
-                    <span class="badge badge-success">Pass</span>
-                  <% else %>
-                    <span class="badge badge-error" title={result.error}>Fail</span>
-                  <% end %>
-
-                  <div class="flex items-center gap-2">
-                    <%= if is_list(result.result) && length(result.result) > 0 do %>
-                      <span class="font-mono">
-                        {Enum.map(hd(result.result), fn {k, v} -> "#{k}=#{v}" end) |> Enum.join(" ")}
-                      </span>
-                    <% end %>
-                    <span class="text-xs opacity-70">{result.time_taken} ms</span>
-                  </div>
-                </li>
-              <% end %>
-            </ul>
-
-            <%= if length(@results) > 7 do %>
-              <div class="text-center mt-2">
-                <button class="btn btn-ghost btn-xs" phx-click="show_more_results">
-                  Show all {length(@results)} results
-                </button>
-              </div>
-            <% end %>
-          <% else %>
-            <div class="alert mt-3">No recent runs available</div>
-          <% end %>
-        </div>
-      </div> --%>
-
-      <%!-- <div class="mt-4">
-            <h3 class="text-lg font-semibold mb-2">Recent Analysis History</h3>
-            <%= if length(@recent_analyses) > 0 do %>
-              <div class="space-y-2">
-                <%= for analysis <- @recent_analyses do %>
-                  <div class={[
-                    "p-2 rounded-md flex justify-between items-center",
-                    analysis.is_alert && "bg-warning bg-opacity-20 border border-warning",
-                    !analysis.is_alert && "bg-base-300"
-                  ]}>
-                    <div>
-                      <span class="font-medium">{analysis.summary}</span>
-                      <div class="text-xs">{format_date(analysis.analyzed_at)}</div>
-                    </div>
-                    <div>
-                      <%= if analysis.is_alert do %>
-                        <span class="badge badge-warning">Alert</span>
-                      <% else %>
-                        <span class="badge badge-success">OK</span>
-                      <% end %>
-                    </div>
-                  </div>
-                <% end %>
-              </div>
-            <% else %>
-              <div class="alert alert-info">
-                <span>No recent analysis history available.</span>
-              </div>
-            <% end %>
-          </div> --%>
     </Layouts.app>
     """
   end
 
-  defp analysis(%{analysis: {:ok, nil}} = assigns) do
-    ~H"""
-    <div class="alert alert-success mt-3">
-      <.icon name="hero-check-circle" class="w-6 h-6" />
-      <div>
-        <h3 class="font-bold">All good!</h3>
-        <div class="text-sm">No anomalies or concerning patterns detected in recent results.</div>
-      </div>
-    </div>
-    """
-  end
-
-  defp analysis(%{analysis: {:alert, %{type: :anomaly, details: details}}} = assigns) do
-    ~H"""
-    <div class="alert alert-warning mt-3">
-      <.icon name="hero-exclamation-triangle" class="w-6 h-6" />
-      <div>
-        <h3 class="font-bold">Anomaly Detected</h3>
-        <div class="text-sm">{details.message}</div>
-        <div class="grid grid-cols-3 gap-2 mt-2 text-xs">
-          <div class="stat bg-base-300 rounded p-2">
-            <div class="stat-title">Current Value</div>
-            <div class="stat-value text-lg">{format_number(details.current_value)}</div>
-          </div>
-          <div class="stat bg-base-300 rounded p-2">
-            <div class="stat-title">Expected Range</div>
-            <div class="stat-value text-lg">
-              {format_number(details.mean - details.std_dev)} - {format_number(
-                details.mean + details.std_dev
-              )}
-            </div>
-          </div>
-          <div class="stat bg-base-300 rounded p-2">
-            <div class="stat-title">Z-Score</div>
-            <div class="stat-value text-lg">{format_number(details.z_score)}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    """
-  end
-
-  defp analysis(%{analysis: {:alert, %{type: :diff, details: details}}} = assigns) do
-    ~H"""
-    <div class="alert alert-error mt-3">
-      <.icon name="hero-arrow-trending-up" class="w-6 h-6" />
-      <div>
-        <h3 class="font-bold">Significant Change Detected</h3>
-        <div class="text-sm">{details.message}</div>
-
-        <%= cond do %>
-          <% Map.has_key?(details, :current_value) && Map.has_key?(details, :previous_value) -> %>
-            <div class="grid grid-cols-3 gap-2 mt-2 text-xs">
-              <div class="stat bg-base-300 rounded p-2">
-                <div class="stat-title">Previous Value</div>
-                <div class="stat-value text-lg">
-                  {format_number(details.previous_value)}
-                </div>
-              </div>
-              <div class="stat bg-base-300 rounded p-2">
-                <div class="stat-title">Current Value</div>
-                <div class="stat-value text-lg">{format_number(details.current_value)}</div>
-                <%= if Map.has_key?(details, :percent_change) do %>
-                  <div class={[
-                    "stat-desc",
-                    if(details.percent_change > 0, do: "text-success", else: "text-error")
-                  ]}>
-                    {(details.current_value > details.previous_value && "+") || "-"}
-                    {Float.round(abs(details.percent_change) * 100, 1)}%
-                  </div>
-                <% end %>
-              </div>
-              <div class="stat bg-base-300 rounded p-2">
-                <div class="stat-title">Threshold</div>
-                <div class="stat-value text-lg">{Float.round(@threshold * 100, 0)}%</div>
-              </div>
-            </div>
-          <% Map.has_key?(details, :current_status) && Map.has_key?(details, :previous_status) -> %>
-            <div class="grid grid-cols-2 gap-2 mt-2 text-xs">
-              <div class="stat bg-base-300 rounded p-2">
-                <div class="stat-title">Previous Status</div>
-                <div class="stat-value text-lg">
-                  <span class={"badge #{details.previous_status && "badge-success" || "badge-error"}"}>
-                    {(details.previous_status && "Success") || "Failure"}
-                  </span>
-                </div>
-              </div>
-              <div class="stat bg-base-300 rounded p-2">
-                <div class="stat-title">Current Status</div>
-                <div class="stat-value text-lg">
-                  <span class={"badge #{details.current_status && "badge-success" || "badge-error"}"}>
-                    {(details.current_status && "Success") || "Failure"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          <% Map.has_key?(details, :current_structure) && Map.has_key?(details, :previous_structure) -> %>
-            <div class="mt-2">
-              <details class="collapse collapse-arrow bg-base-300">
-                <summary class="collapse-title text-sm font-medium">
-                  View Structure Changes
-                </summary>
-                <div class="collapse-content text-xs font-mono">
-                  <div class="grid grid-cols-2 gap-2">
-                    <div>
-                      <div class="font-bold mb-1">Previous</div>
-                      <pre class="bg-base-200 p-2 rounded overflow-auto max-h-40">
-                        <%= inspect(details.previous_structure, pretty: true) %>
-                      </pre>
-                    </div>
-                    <div>
-                      <div class="font-bold mb-1">Current</div>
-                      <pre class="bg-base-200 p-2 rounded overflow-auto max-h-40">
-                        <%= inspect(details.current_structure, pretty: true) %>
-                      </pre>
-                    </div>
-                  </div>
-                </div>
-              </details>
-            </div>
-          <% true -> %>
-            <pre class="text-xs bg-base-300 p-2 rounded mt-2 font-mono overflow-auto max-h-40">
-              {inspect(details, pretty: true)}
-            </pre>
-        <% end %>
-      </div>
-    </div>
-    """
-  end
-
-  defp analysis(%{analysis: {:error, reason}} = assigns) do
-    ~H"""
-    <div class="alert alert-error mt-3">
-      <.icon name="hero-x-circle" class="w-6 h-6" />
-      <div>
-        <h3 class="font-bold">Analysis Error</h3>
-        <div class="text-sm">Unable to analyze check results: {reason}</div>
-      </div>
-    </div>
-    """
-  end
-
-  @impl true
-  def handle_info(
-        {:updated, %QueryCanary.Checks.Check{id: id} = check},
-        %{assigns: %{check: %{id: id}}} = socket
-      ) do
-    {:noreply, assign(socket, :check, check)}
-  end
-
-  def handle_info(
-        {:deleted, %QueryCanary.Checks.Check{id: id}},
-        %{assigns: %{check: %{id: id}}} = socket
-      ) do
-    {:noreply,
-     socket
-     |> put_flash(:error, "The current check was deleted.")
-     |> push_navigate(to: ~p"/checks")}
-  end
-
-  def handle_info({type, %QueryCanary.Checks.Check{}}, socket)
-      when type in [:created, :updated, :deleted] do
-    {:noreply, socket}
-  end
-
-  # Helper functions for formatting display values
-  defp format_number(nil), do: "N/A"
-  defp format_number(num) when is_float(num), do: :erlang.float_to_binary(num, decimals: 2)
-  defp format_number(num), do: to_string(num)
-
-  defp format_datetime(datetime) do
-    Calendar.strftime(datetime, "%Y-%m-%d %H:%M")
-  end
-
-  defp extract_primary_value(nil), do: nil
-  defp extract_primary_value([]), do: nil
-
-  defp extract_primary_value([row | _]) when is_map(row) do
-    # Try to get the first numeric value
-    Map.values(row)
-    |> Enum.find(fn v -> is_number(v) end)
-    |> case do
-      nil -> Map.values(row) |> List.first()
-      val -> val
-    end
-  end
-
-  defp extract_primary_value(other), do: other
-
-  # Get alert type from analysis result tuple
-  defp get_alert_type(%CheckAnalysis{alert_type: type}), do: to_string(type)
-  defp get_alert_type(_), do: "none"
-
-  # Update mount function to prepare data for chart
   @impl true
   def mount(%{"id" => id}, _session, socket) do
     check = Checks.get_check!(socket.assigns.current_scope, id)
@@ -382,6 +134,177 @@ defmodule QueryCanaryWeb.CheckLive.Show do
      |> assign(:chart_data, prepare_chart_data(recent_results))
      |> assign(:stats, calculate_stats(recent_results))}
   end
+
+  defp alert_class(:failure), do: "badge badge-error"
+  defp alert_class(:anomaly), do: "badge badge-warning"
+  defp alert_class(:diff), do: "badge badge-warning"
+  defp alert_class(_), do: "badge badge-ghost"
+
+  # defp analysis(%{analysis: {:ok, nil}} = assigns) do
+  #   ~H"""
+  #   <div class="alert alert-success mt-3">
+  #     <.icon name="hero-check-circle" class="w-6 h-6" />
+  #     <div>
+  #       <h3 class="font-bold">All good!</h3>
+  #       <div class="text-sm">No anomalies or concerning patterns detected in recent results.</div>
+  #     </div>
+  #   </div>
+  #   """
+  # end
+
+  # defp analysis(%{analysis: {:alert, %{type: :anomaly, details: details}}} = assigns) do
+  #   ~H"""
+  #   <div class="alert alert-warning mt-3">
+  #     <.icon name="hero-exclamation-triangle" class="w-6 h-6" />
+  #     <div>
+  #       <h3 class="font-bold">Anomaly Detected</h3>
+  #       <div class="text-sm">{details.message}</div>
+  #       <div class="grid grid-cols-3 gap-2 mt-2 text-xs">
+  #         <div class="stat bg-base-300 rounded p-2">
+  #           <div class="stat-title">Current Value</div>
+  #           <div class="stat-value text-lg">{format_number(details.current_value)}</div>
+  #         </div>
+  #         <div class="stat bg-base-300 rounded p-2">
+  #           <div class="stat-title">Expected Range</div>
+  #           <div class="stat-value text-lg">
+  #             {format_number(details.mean - details.std_dev)} - {format_number(
+  #               details.mean + details.std_dev
+  #             )}
+  #           </div>
+  #         </div>
+  #         <div class="stat bg-base-300 rounded p-2">
+  #           <div class="stat-title">Z-Score</div>
+  #           <div class="stat-value text-lg">{format_number(details.z_score)}</div>
+  #         </div>
+  #       </div>
+  #     </div>
+  #   </div>
+  #   """
+  # end
+
+  # defp analysis(%{analysis: {:alert, %{type: :diff, details: details}}} = assigns) do
+  #   ~H"""
+  #   <div class="alert alert-error mt-3">
+  #     <.icon name="hero-arrow-trending-up" class="w-6 h-6" />
+  #     <div>
+  #       <h3 class="font-bold">Significant Change Detected</h3>
+  #       <div class="text-sm">{details.message}</div>
+
+  #       <%= cond do %>
+  #         <% Map.has_key?(details, :current_value) && Map.has_key?(details, :previous_value) -> %>
+  #           <div class="grid grid-cols-3 gap-2 mt-2 text-xs">
+  #             <div class="stat bg-base-300 rounded p-2">
+  #               <div class="stat-title">Previous Value</div>
+  #               <div class="stat-value text-lg">
+  #                 {format_number(details.previous_value)}
+  #               </div>
+  #             </div>
+  #             <div class="stat bg-base-300 rounded p-2">
+  #               <div class="stat-title">Current Value</div>
+  #               <div class="stat-value text-lg">{format_number(details.current_value)}</div>
+  #               <%= if Map.has_key?(details, :percent_change) do %>
+  #                 <div class={[
+  #                   "stat-desc",
+  #                   if(details.percent_change > 0, do: "text-success", else: "text-error")
+  #                 ]}>
+  #                   {(details.current_value > details.previous_value && "+") || "-"}
+  #                   {Float.round(abs(details.percent_change) * 100, 1)}%
+  #                 </div>
+  #               <% end %>
+  #             </div>
+  #             <div class="stat bg-base-300 rounded p-2">
+  #               <div class="stat-title">Threshold</div>
+  #               <div class="stat-value text-lg">{Float.round(@threshold * 100, 0)}%</div>
+  #             </div>
+  #           </div>
+  #         <% Map.has_key?(details, :current_status) && Map.has_key?(details, :previous_status) -> %>
+  #           <div class="grid grid-cols-2 gap-2 mt-2 text-xs">
+  #             <div class="stat bg-base-300 rounded p-2">
+  #               <div class="stat-title">Previous Status</div>
+  #               <div class="stat-value text-lg">
+  #                 <span class={"badge #{details.previous_status && "badge-success" || "badge-error"}"}>
+  #                   {(details.previous_status && "Success") || "Failure"}
+  #                 </span>
+  #               </div>
+  #             </div>
+  #             <div class="stat bg-base-300 rounded p-2">
+  #               <div class="stat-title">Current Status</div>
+  #               <div class="stat-value text-lg">
+  #                 <span class={"badge #{details.current_status && "badge-success" || "badge-error"}"}>
+  #                   {(details.current_status && "Success") || "Failure"}
+  #                 </span>
+  #               </div>
+  #             </div>
+  #           </div>
+  #         <% Map.has_key?(details, :current_structure) && Map.has_key?(details, :previous_structure) -> %>
+  #           <div class="mt-2">
+  #             <details class="collapse collapse-arrow bg-base-300">
+  #               <summary class="collapse-title text-sm font-medium">
+  #                 View Structure Changes
+  #               </summary>
+  #               <div class="collapse-content text-xs font-mono">
+  #                 <div class="grid grid-cols-2 gap-2">
+  #                   <div>
+  #                     <div class="font-bold mb-1">Previous</div>
+  #                     <pre class="bg-base-200 p-2 rounded overflow-auto max-h-40">
+  #                       <%= inspect(details.previous_structure, pretty: true) %>
+  #                     </pre>
+  #                   </div>
+  #                   <div>
+  #                     <div class="font-bold mb-1">Current</div>
+  #                     <pre class="bg-base-200 p-2 rounded overflow-auto max-h-40">
+  #                       <%= inspect(details.current_structure, pretty: true) %>
+  #                     </pre>
+  #                   </div>
+  #                 </div>
+  #               </div>
+  #             </details>
+  #           </div>
+  #         <% true -> %>
+  #           <pre class="text-xs bg-base-300 p-2 rounded mt-2 font-mono overflow-auto max-h-40">
+  #             {inspect(details, pretty: true)}
+  #           </pre>
+  #       <% end %>
+  #     </div>
+  #   </div>
+  #   """
+  # end
+
+  # defp analysis(%{analysis: {:error, reason}} = assigns) do
+  #   ~H"""
+  #   <div class="alert alert-error mt-3">
+  #     <.icon name="hero-x-circle" class="w-6 h-6" />
+  #     <div>
+  #       <h3 class="font-bold">Analysis Error</h3>
+  #       <div class="text-sm">Unable to analyze check results: {reason}</div>
+  #     </div>
+  #   </div>
+  #   """
+  # end
+
+  # Helper functions for formatting display values
+  defp format_number(nil), do: "N/A"
+  defp format_number(num) when is_float(num), do: :erlang.float_to_binary(num, decimals: 2)
+  defp format_number(num), do: to_string(num)
+
+  defp format_datetime(datetime) do
+    Calendar.strftime(datetime, "%Y-%m-%d %H:%M")
+  end
+
+  defp extract_primary_value(nil), do: nil
+  defp extract_primary_value([]), do: nil
+
+  defp extract_primary_value([row | _]) when is_map(row) do
+    # Try to get the first numeric value
+    Map.values(row)
+    |> Enum.find(fn v -> is_number(v) end)
+    |> case do
+      nil -> Map.values(row) |> List.first()
+      val -> val
+    end
+  end
+
+  defp extract_primary_value(other), do: other
 
   # Prepare chart data from check results
   defp prepare_chart_data([]), do: %{}
@@ -432,17 +355,24 @@ defmodule QueryCanaryWeb.CheckLive.Show do
       values: values,
       success: success,
       average: average,
-      alert_threshold: alert_threshold
+      alert_threshold: alert_threshold,
+      alert_type: latest_result.alert_type
     }
   end
 
   # Calculate basic statistics
   defp calculate_stats(results) do
     success_count = Enum.count(results, & &1.success)
+    alert_count = Enum.count(results, & &1.is_alert)
 
     success_rate =
       if length(results) > 0,
         do: trunc(success_count / length(results) * 100),
+        else: 0
+
+    alert_rate =
+      if length(results) > 0,
+        do: trunc(alert_count / length(results) * 100),
         else: 0
 
     # Extract numeric values for average calculation
@@ -463,6 +393,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
 
     %{
       success_rate: success_rate,
+      alert_rate: alert_rate,
       avg_value: avg_value,
       avg_time: avg_time
     }

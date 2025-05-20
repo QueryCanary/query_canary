@@ -317,202 +317,20 @@ defmodule QueryCanary.Checks do
     # For each check, get the latest result and analyze status
     Enum.map(checks, fn check ->
       # Get the most recent results (limit to what we need for analysis)
-      recent_results = get_recent_check_results(check, 20)
+      recent_results = get_recent_check_results(check, 1)
 
       # Get the most recent result (if any)
       last_result = List.first(recent_results)
       last_run_at = if last_result, do: last_result.inserted_at, else: nil
 
-      # Determine alert status from recent results
-      alert_status =
-        case QueryCanary.CheckResultAnalyzer.analyze_results(recent_results) do
-          {:alert, %{type: type}} -> to_string(type)
-          _ -> "none"
-        end
-
       # Return a map with all the check data enriched with status info
       Map.merge(check, %{
         last_result: last_result,
         recent_results: recent_results,
-        last_run_at: last_run_at,
-        alert_status: alert_status
+        last_run_at: last_run_at
       })
     end)
   end
-
-  @doc """
-  Gets a single check with its status information.
-  Similar to list_checks_with_status/1 but for a single check.
-
-  ## Parameters
-    * scope - The user scope for authorization
-    * id - ID of the check to get
-
-  ## Returns
-    * %{check: %Check{}, last_result: %CheckResult{}, last_run_at: DateTime.t(), alert_status: String.t()}
-  """
-  def get_check_with_status(%Scope{} = scope, id) do
-    # Get the specific check
-    check = get_check!(scope, id)
-
-    # Get the most recent results
-    recent_results = get_recent_check_results(check, 20)
-
-    # Get the most recent result (if any)
-    last_result = List.first(recent_results)
-    last_run_at = if last_result, do: last_result.inserted_at, else: nil
-
-    # Determine alert status from recent results
-    alert_status =
-      case QueryCanary.CheckResultAnalyzer.analyze_results(recent_results) do
-        {:alert, %{type: type}} -> to_string(type)
-        {:alert, %{details: details}} when is_map_key(details, :z_score) -> "anomaly"
-        {:alert, %{details: details}} when is_map_key(details, :percent_change) -> "diff"
-        _ -> "none"
-      end
-
-    # Return a map with all the check data enriched with status info
-    Map.merge(check, %{
-      last_result: last_result,
-      recent_results: recent_results,
-      last_run_at: last_run_at,
-      alert_status: alert_status
-    })
-  end
-
-  # @doc """
-  # Gets a summary of check results for a specific check.
-
-  # ## Parameters
-  #   * scope - The user scope for authorization
-  #   * check_id - The ID of the check to get results for
-  #   * days - Number of days to include in the summary (default: 7)
-
-  # ## Returns
-  #   * %{success_count: integer, error_count: integer, average_time: float}
-  # """
-  # def get_check_results_summary(%Scope{} = scope, check_id, days \\ 7) do
-  #   since = DateTime.add(DateTime.utc_now(), -days * 24 * 60 * 60, :second)
-
-  #   result =
-  #     Repo.one(
-  #       from r in CheckResult,
-  #         where:
-  #           r.user_id == ^scope.user.id and r.check_id == ^check_id and r.inserted_at > ^since,
-  #         select: %{
-  #           success_count: sum(fragment("CASE WHEN ? = true THEN 1 ELSE 0 END", r.success)),
-  #           error_count: sum(fragment("CASE WHEN ? = false THEN 1 ELSE 0 END", r.success)),
-  #           average_time: avg(r.time_taken)
-  #         }
-  #     )
-
-  #   # Handle case when no results exist
-  #   case result do
-  #     %{success_count: nil} -> %{success_count: 0, error_count: 0, average_time: 0}
-  #     nil -> %{success_count: 0, error_count: 0, average_time: 0}
-  #     result -> result
-  #   end
-  # end
-
-  # alias QueryCanary.Checks.CheckAnalysis
-
-  # @doc """
-  # Gets the most recent analysis for a check.
-
-  # ## Parameters
-  #   * scope - The user or organization scope
-  #   * check_id - The ID of the check
-
-  # ## Returns
-  #   * %CheckAnalysis{} - The most recent analysis
-  #   * nil - No analysis found
-  # """
-  # def get_latest_analysis(scope, check_id) do
-  #   Repo.one(
-  #     from a in CheckAnalysis,
-  #       where: a.check_id == ^check_id,
-  #       order_by: [desc: a.analyzed_at],
-  #       limit: 1,
-  #       preload: [:check]
-  #   )
-  # end
-
-  # @doc """
-  # Lists recent analyses for a check.
-
-  # ## Parameters
-  #   * scope - The user or organization scope
-  #   * check_id - The ID of the check
-  #   * limit - Maximum number of analyses to return (default: 10)
-
-  # ## Returns
-  #   * List of %CheckAnalysis{} - The recent analyses
-  # """
-  # def list_check_analyses(scope, check_id, limit \\ 10) do
-  #   Repo.all(
-  #     from a in CheckAnalysis,
-  #       where: a.check_id == ^check_id,
-  #       order_by: [desc: a.analyzed_at],
-  #       limit: ^limit,
-  #       preload: [:check]
-  #   )
-  # end
-
-  # @doc """
-  # Creates a check analysis.
-
-  # ## Parameters
-  #   * attrs - The attributes for the new check analysis
-
-  # ## Returns
-  #   * {:ok, %CheckAnalysis{}} - The created analysis
-  #   * {:error, %Ecto.Changeset{}} - Validation failed
-  # """
-  # def create_check_analysis(attrs) do
-  #   %CheckAnalysis{}
-  #   |> CheckAnalysis.changeset(attrs)
-  #   |> Repo.insert()
-  # end
-
-  # @doc """
-  # Analyzes check results and stores the analysis in the database.
-
-  # ## Parameters
-  #   * check - The check to analyze
-  #   * latest_result - The latest result that triggered this analysis
-  #   * opts - Analysis options to pass to CheckResultAnalyzer
-
-  # ## Returns
-  #   * {:ok, %CheckAnalysis{}} - Analysis created
-  #   * {:error, reason} - Analysis failed
-  # """
-  # def analyze_and_store_check_results(check, opts \\ []) do
-  #   # Get recent check results for analysis (newest first)
-  #   results = get_recent_check_results(check, 20)
-
-  #   if Enum.empty?(results) do
-  #     {:error, :not_enough_data}
-  #   else
-  #     latest_result = hd(results)
-
-  #     # Perform the analysis
-  #     analysis_result = QueryCanary.CheckResultAnalyzer.analyze_results(results, opts)
-
-  #     # Format the analysis for storage
-  #     {alert_type, is_alert, details, summary} = format_analysis_result(analysis_result)
-
-  #     # Create the analysis record
-  #     create_check_analysis(%{
-  #       check_id: check.id,
-  #       alert_type: alert_type,
-  #       is_alert: is_alert,
-  #       details: details,
-  #       summary: summary,
-  #       analyzed_at: DateTime.utc_now(),
-  #       check_result_id: latest_result.id
-  #     })
-  #   end
-  # end
 
   # Format the analysis result for storage
   defp format_analysis_result({:ok, nil}) do

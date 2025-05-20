@@ -36,7 +36,7 @@ const CheckChart = {
             console.log(context);
             // Highlight the problematic points
             if (success[context.dataIndex] === 0) {
-              return 'red';
+              return '#fbbe23';
             }
             if (alertType === 'diff' && context.dataIndex === values.length - 1) {
               return "#f87272";
@@ -73,6 +73,7 @@ const CheckChart = {
       }
       
       // Add threshold lines for anomaly detection
+      console.log(alertType)
       if (alertType === 'anomaly' && alertThreshold && alertThreshold.upper !== null && alertThreshold.lower !== null) {
         datasets.push({
           label: "Upper Threshold",

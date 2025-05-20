@@ -208,22 +208,6 @@ defmodule QueryCanary.Connections.ConnectionManager do
     end
   end
 
-  # Find an available port on localhost
-  defp find_available_port do
-    # Try ports in range 10000-65535
-    port = :rand.uniform(55535) + 10000
-
-    case :gen_tcp.listen(port, [:binary]) do
-      {:ok, socket} ->
-        :ok = :gen_tcp.close(socket)
-        port
-
-      {:error, _} ->
-        # Port is in use, try another one
-        find_available_port()
-    end
-  end
-
   # Decrypt sensitive credentials from the server
   defp decrypt_credentials(server) do
     %{
