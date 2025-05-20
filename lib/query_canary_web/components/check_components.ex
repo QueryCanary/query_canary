@@ -5,7 +5,7 @@ defmodule QueryCanaryWeb.Components.CheckAnalysis do
 
   attr :result, CheckResult
 
-  def check_analysis(%{result: %{is_alert: false}} = assigns) do
+  def check_analysis(%{result: nil} = assigns) do
     ~H"""
     <div class="alert alert-info">
       <span>No analysis data available yet.</span>
