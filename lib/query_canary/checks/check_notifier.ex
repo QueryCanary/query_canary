@@ -72,7 +72,7 @@ defmodule QueryCanary.Checks.CheckNotifier do
                   <table border="0" cellpadding="0" cellspacing="0" width="100%">
                     <tr>
                       <td width="80" align="center" valign="top">
-                        <img src="https://querycanary.com/images/QueryCanary.svg" alt="QueryCanary Logo" width="54" style="display: block;" />
+                        <img src="https://querycanary.com/images/querycanary-email.png" alt="QueryCanary Logo" width="54" style="display: block;" />
                       </td>
                       <td style="color: #{@brand_dark}; padding-left: 15px;">
                         <h1 style="margin: 0; font-size: 24px; font-weight: 600;">Alert Notification</h1>
