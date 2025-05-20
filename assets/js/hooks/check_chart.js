@@ -33,25 +33,29 @@ const CheckChart = {
           pointRadius: 4,
           pointHoverRadius: 6,
           pointBackgroundColor: (context) => {
+            console.log(context);
             // Highlight the problematic points
-            if (alertType === 'diff' && context.dataIndex === 0) {
+            if (success[context.dataIndex] === 0) {
+              return 'red';
+            }
+            if (alertType === 'diff' && context.dataIndex === values.length - 1) {
               return "#f87272";
-            } else if (alertType === 'anomaly' && context.dataIndex === 0) {
+            } else if (alertType === 'anomaly' && context.dataIndex === values.length - 1) {
               return "#fbbd23";
             }
             return "#5c6ac4";
           },
         },
-        {
-          label: "Success",
-          data: success,
-          type: "bar",
-          backgroundColor: (context) => {
-            return success[context.dataIndex] === 1 ? "#36d399" : "#f87272";
-          },
-          yAxisID: 'y1',
-          barPercentage: 0.2,
-        }
+        // {
+        //   label: "Success",
+        //   data: success,
+        //   type: "bar",
+        //   backgroundColor: (context) => {
+        //     return success[context.dataIndex] === 1 ? "#36d399" : "#f87272";
+        //   },
+        //   yAxisID: 'y1',
+        //   barPercentage: 0.2,
+        // }
       ];
       
       // Add average line if available
@@ -157,18 +161,18 @@ const CheckChart = {
                 title: { display: true, text: 'Value' },
                 beginAtZero: true
               },
-              y1: {
-                type: 'linear',
-                position: 'right',
-                min: 0,
-                max: 1,
-                grid: { drawOnChartArea: false },
-                title: { display: true, text: 'Status' },
-                ticks: {
-                  callback: (val) => (val === 1 ? '✓' : '×'),
-                  stepSize: 1
-                }
-              }
+              // y1: {
+              //   type: 'linear',
+              //   position: 'right',
+              //   min: 0,
+              //   max: 1,
+              //   grid: { drawOnChartArea: false },
+              //   title: { display: true, text: 'Status' },
+              //   ticks: {
+              //     callback: (val) => (val === 1 ? '✓' : '×'),
+              //     stepSize: 1
+              //   }
+              // }
             },
           },
         });

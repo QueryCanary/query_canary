@@ -4,6 +4,7 @@ defmodule QueryCanary.Checks do
   """
 
   import Ecto.Query, warn: false
+  alias QueryCanary.CheckResultAnalyzer
   alias QueryCanary.Repo
 
   alias QueryCanary.Checks.{Check, CheckResult}
@@ -232,7 +233,24 @@ defmodule QueryCanary.Checks do
       end
 
     # Save the check result
-    create_check_result(result)
+    case create_check_result(result) do
+      {:ok, check_result} ->
+        # Run analysis on the new result
+        recent_results = get_recent_check_results(check, 20)
+
+        analysis = CheckResultAnalyzer.analyze_results(recent_results)
+        {alert_type, is_alert, details, summary} = format_analysis_result(analysis)
+
+        update_check_result(check_result, %{
+          alert_type: alert_type,
+          is_alert: is_alert,
+          analysis_details: details,
+          analysis_summary: summary
+        })
+
+      {:error, _} = error ->
+        error
+    end
   end
 
   @doc """
@@ -250,6 +268,16 @@ defmodule QueryCanary.Checks do
     %CheckResult{}
     |> CheckResult.changeset(attrs)
     |> Repo.insert()
+  end
+
+  def update_check_result(%CheckResult{} = check_result, attrs) do
+    with {:ok, check_result = %CheckResult{}} <-
+           check_result
+           |> CheckResult.changeset(attrs)
+           |> Repo.update() do
+      # broadcast(scope, {:updated, check})
+      {:ok, check_result}
+    end
   end
 
   @doc """
@@ -385,4 +413,121 @@ defmodule QueryCanary.Checks do
   #     result -> result
   #   end
   # end
+
+  # alias QueryCanary.Checks.CheckAnalysis
+
+  # @doc """
+  # Gets the most recent analysis for a check.
+
+  # ## Parameters
+  #   * scope - The user or organization scope
+  #   * check_id - The ID of the check
+
+  # ## Returns
+  #   * %CheckAnalysis{} - The most recent analysis
+  #   * nil - No analysis found
+  # """
+  # def get_latest_analysis(scope, check_id) do
+  #   Repo.one(
+  #     from a in CheckAnalysis,
+  #       where: a.check_id == ^check_id,
+  #       order_by: [desc: a.analyzed_at],
+  #       limit: 1,
+  #       preload: [:check]
+  #   )
+  # end
+
+  # @doc """
+  # Lists recent analyses for a check.
+
+  # ## Parameters
+  #   * scope - The user or organization scope
+  #   * check_id - The ID of the check
+  #   * limit - Maximum number of analyses to return (default: 10)
+
+  # ## Returns
+  #   * List of %CheckAnalysis{} - The recent analyses
+  # """
+  # def list_check_analyses(scope, check_id, limit \\ 10) do
+  #   Repo.all(
+  #     from a in CheckAnalysis,
+  #       where: a.check_id == ^check_id,
+  #       order_by: [desc: a.analyzed_at],
+  #       limit: ^limit,
+  #       preload: [:check]
+  #   )
+  # end
+
+  # @doc """
+  # Creates a check analysis.
+
+  # ## Parameters
+  #   * attrs - The attributes for the new check analysis
+
+  # ## Returns
+  #   * {:ok, %CheckAnalysis{}} - The created analysis
+  #   * {:error, %Ecto.Changeset{}} - Validation failed
+  # """
+  # def create_check_analysis(attrs) do
+  #   %CheckAnalysis{}
+  #   |> CheckAnalysis.changeset(attrs)
+  #   |> Repo.insert()
+  # end
+
+  # @doc """
+  # Analyzes check results and stores the analysis in the database.
+
+  # ## Parameters
+  #   * check - The check to analyze
+  #   * latest_result - The latest result that triggered this analysis
+  #   * opts - Analysis options to pass to CheckResultAnalyzer
+
+  # ## Returns
+  #   * {:ok, %CheckAnalysis{}} - Analysis created
+  #   * {:error, reason} - Analysis failed
+  # """
+  # def analyze_and_store_check_results(check, opts \\ []) do
+  #   # Get recent check results for analysis (newest first)
+  #   results = get_recent_check_results(check, 20)
+
+  #   if Enum.empty?(results) do
+  #     {:error, :not_enough_data}
+  #   else
+  #     latest_result = hd(results)
+
+  #     # Perform the analysis
+  #     analysis_result = QueryCanary.CheckResultAnalyzer.analyze_results(results, opts)
+
+  #     # Format the analysis for storage
+  #     {alert_type, is_alert, details, summary} = format_analysis_result(analysis_result)
+
+  #     # Create the analysis record
+  #     create_check_analysis(%{
+  #       check_id: check.id,
+  #       alert_type: alert_type,
+  #       is_alert: is_alert,
+  #       details: details,
+  #       summary: summary,
+  #       analyzed_at: DateTime.utc_now(),
+  #       check_result_id: latest_result.id
+  #     })
+  #   end
+  # end
+
+  # Format the analysis result for storage
+  defp format_analysis_result({:ok, nil}) do
+    {:none, false, %{}, "No issues detected"}
+  end
+
+  defp format_analysis_result({:alert, %{type: type, details: details}})
+       when type in [:diff, :anomaly] do
+    # Create a human-readable summary from the details
+    summary = details.message || "#{String.capitalize(to_string(type))} detected"
+
+    {type, true, details, summary}
+  end
+
+  defp format_analysis_result({:error, reason}) do
+    {:none, false, %{error: reason}, "Analysis failed: #{inspect(reason)}"}
+  end
 end

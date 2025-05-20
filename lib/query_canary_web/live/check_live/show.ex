@@ -1,9 +1,13 @@
 defmodule QueryCanaryWeb.CheckLive.Show do
+  alias QueryCanary.Checks.CheckResult
+  alias QueryCanary.Checks.CheckAnalysis
   alias Crontab.CronExpression
   alias QueryCanary.CheckResultAnalyzer
   use QueryCanaryWeb, :live_view
 
   alias QueryCanary.Checks
+
+  import QueryCanaryWeb.Components.CheckAnalysis
 
   @impl true
   def render(assigns) do
@@ -27,7 +31,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
         </:actions>
       </.header>
 
-      <.analysis analysis={@analysis} threshold={@threshold} />
+      <%!-- <.analysis analysis={@analysis} threshold={@threshold} /> --%>
       <!-- SQL Query Viewer -->
       <div class="card bg-base-200">
         <div class="card-body">
@@ -35,6 +39,8 @@ defmodule QueryCanaryWeb.CheckLive.Show do
           <pre class="bg-base-300 text-sm p-4 rounded-lg overflow-x-auto font-mono">{@check.query}</pre>
         </div>
       </div>
+
+      <.check_analysis result={@latest_analysis} />
 
       <div class="card bg-base-200">
         <div class="card-body">
@@ -50,7 +56,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
               data-success={Jason.encode!(@chart_data.success)}
               data-average={Jason.encode!(@chart_data.average)}
               data-alert-threshold={Jason.encode!(@chart_data.alert_threshold)}
-              data-alert-type={@analysis |> get_alert_type()}
+              data-alert-type={@latest_analysis |> get_alert_type()}
             >
             </canvas>
 
@@ -75,7 +81,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
       </div>
       
     <!-- Recent Results -->
-      <div class="card bg-base-200">
+      <%!-- <div class="card bg-base-200">
         <div class="card-body">
           <h2 class="card-title">Recent Runs</h2>
 
@@ -114,7 +120,38 @@ defmodule QueryCanaryWeb.CheckLive.Show do
             <div class="alert mt-3">No recent runs available</div>
           <% end %>
         </div>
-      </div>
+      </div> --%>
+
+      <%!-- <div class="mt-4">
+            <h3 class="text-lg font-semibold mb-2">Recent Analysis History</h3>
+            <%= if length(@recent_analyses) > 0 do %>
+              <div class="space-y-2">
+                <%= for analysis <- @recent_analyses do %>
+                  <div class={[
+                    "p-2 rounded-md flex justify-between items-center",
+                    analysis.is_alert && "bg-warning bg-opacity-20 border border-warning",
+                    !analysis.is_alert && "bg-base-300"
+                  ]}>
+                    <div>
+                      <span class="font-medium">{analysis.summary}</span>
+                      <div class="text-xs">{format_date(analysis.analyzed_at)}</div>
+                    </div>
+                    <div>
+                      <%= if analysis.is_alert do %>
+                        <span class="badge badge-warning">Alert</span>
+                      <% else %>
+                        <span class="badge badge-success">OK</span>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% else %>
+              <div class="alert alert-info">
+                <span>No recent analysis history available.</span>
+              </div>
+            <% end %>
+          </div> --%>
     </Layouts.app>
     """
   end
@@ -309,35 +346,25 @@ defmodule QueryCanaryWeb.CheckLive.Show do
   defp extract_primary_value(other), do: other
 
   # Get alert type from analysis result tuple
-  defp get_alert_type({:alert, %{type: type}}), do: to_string(type)
+  defp get_alert_type(%CheckAnalysis{alert_type: type}), do: to_string(type)
   defp get_alert_type(_), do: "none"
 
   # Update mount function to prepare data for chart
   @impl true
   def mount(%{"id" => id}, _session, socket) do
-    if connected?(socket) do
-      Checks.subscribe_checks(socket.assigns.current_scope)
-    end
-
     check = Checks.get_check!(socket.assigns.current_scope, id)
-    results = Checks.get_recent_check_results(check, 20)
+    recent_results = Checks.get_recent_check_results(check, 10)
+
+    latest_result =
+      if length(recent_results) == 0,
+        do: nil,
+        else: hd(recent_results)
 
     last_run =
-      if length(results) == 0,
+      if length(recent_results) == 0,
         do: "No previous run",
-        else: hd(results) |> Map.get(:inserted_at) |> Calendar.strftime("%Y-%m-%d %H:%M:%S")
-
-    # Default threshold for UI display
-    threshold = 0.25
-
-    # Get analysis result
-    analysis = CheckResultAnalyzer.analyze_results(results, diff_threshold: threshold)
-
-    # Prepare data for chart
-    chart_data = prepare_chart_data(results, analysis)
-
-    # Get basic stats
-    stats = calculate_stats(results)
+        else:
+          hd(recent_results) |> Map.get(:inserted_at) |> Calendar.strftime("%Y-%m-%d %H:%M:%S")
 
     next_run =
       CronExpression.Parser.parse!(check.schedule)
@@ -346,21 +373,23 @@ defmodule QueryCanaryWeb.CheckLive.Show do
 
     {:ok,
      socket
-     |> assign(:page_title, check.name)
+     |> assign(:page_title, "Check Details")
      |> assign(:check, check)
+     |> assign(:latest_analysis, latest_result)
+     |> assign(:results, recent_results)
      |> assign(:last_run, last_run)
      |> assign(:next_run, next_run)
-     |> assign(:results, results)
-     |> assign(:analysis, analysis)
-     |> assign(:chart_data, chart_data)
-     |> assign(:stats, stats)
-     |> assign(:threshold, threshold)}
+     |> assign(:chart_data, prepare_chart_data(recent_results))
+     |> assign(:stats, calculate_stats(recent_results))}
   end
 
   # Prepare chart data from check results
-  defp prepare_chart_data(results, analysis) do
+  defp prepare_chart_data([]), do: %{}
+
+  defp prepare_chart_data(results) do
     # Reverse results to get chronological order (oldest to newest)
     chronological_results = Enum.reverse(results)
+    latest_result = hd(results)
 
     labels =
       Enum.map(chronological_results, fn result ->
@@ -375,7 +404,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
 
     success =
       Enum.map(chronological_results, fn result ->
-        if result.success, do: 1, else: 0
+        if result.is_alert, do: 0, else: 1
       end)
 
     # Calculate average for reference line
@@ -387,11 +416,11 @@ defmodule QueryCanaryWeb.CheckLive.Show do
 
     # Set alert thresholds for anomaly detection
     alert_threshold =
-      case analysis do
-        {:alert, %{type: :anomaly, details: details}} ->
+      case latest_result do
+        %CheckResult{alert_type: :anomaly, analysis_details: details} ->
           %{
-            upper: details.mean + details.std_dev * 3,
-            lower: details.mean - details.std_dev * 3
+            upper: details["mean"] + details["std_dev"] * 3,
+            lower: details["mean"] - details["std_dev"] * 3
           }
 
         _ ->
