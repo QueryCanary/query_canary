@@ -8,9 +8,7 @@ defmodule QueryCanary.Checks.CheckNotifier do
 
   @support_email "support@querycanary.com"
   # Brand colors
-  # Yellow brand color
   @brand_primary "#fbc700"
-  # Dark color for text on yellow background
   @brand_dark "#333333"
 
   @doc """
@@ -38,8 +36,6 @@ defmodule QueryCanary.Checks.CheckNotifier do
         |> html_body(check_alert_html(user, check, check_result, url))
         |> text_body(check_alert_text(user, check, check_result, url))
 
-      # |> attachment(logo_attachment())
-
       case Mailer.deliver(email) do
         {:ok, _metadata} ->
           Logger.info("Sent alert email for check #{check.id} to #{user.email}")
@@ -55,221 +51,98 @@ defmodule QueryCanary.Checks.CheckNotifier do
     end
   end
 
-  # Add logo as embedded attachment
-  defp logo_attachment do
-    path = Application.app_dir(:query_canary, "priv/static/images/QueryCanary.svg")
-
-    Swoosh.Attachment.new(path,
-      type: "image/svg+xml",
-      type: :inline,
-      filename: "QueryCanary.svg",
-      cid: "logo@querycanary"
-    )
-  end
-
   # HTML template for check alert emails
   defp check_alert_html(user, check, check_result, url) do
     """
-    <!DOCTYPE html>
-    <html>
+    <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+    <html xmlns="http://www.w3.org/1999/xhtml">
     <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>QueryCanary Alert: #{check.name}</title>
-      <style>
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-          line-height: 1.5;
-          color: #374151;
-          background-color: #f9fafb;
-          margin: 0;
-          padding: 0;
-        }
-        .container {
-          max-width: 600px;
-          margin: 0 auto;
-          padding: 20px;
-        }
-        .logo {
-          display: block;
-          margin: 0 auto 10px;
-          width: 54px;
-          height: auto;
-        }
-        .header {
-          background-color: #{@brand_primary};
-          color: #{@brand_dark};
-          padding: 20px;
-          border-radius: 8px 8px 0 0;
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 10px;
-        }
-        .header .header-left {
-          grid-area: 1 / 1 / 2 / 2;
-          text-align: center;
-        }
-        .header .header-right {
-          text-align: left;
-          grid-area: 1 / 2 / 2 / 5;
-        }
-        .header h1 {
-          margin: 0;
-          font-size: 24px;
-          font-weight: 600;
-        }
-        .header p {
-          margin: 5px 0 0;
-          opacity: 0.8;
-        }
-        .content {
-          background-color: white;
-          padding: 20px;
-          border-radius: 0 0 8px 8px;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-        .alert-container {
-          margin: 20px 0;
-          padding: 15px;
-          border-radius: 8px;
-          border-left: 4px solid #ef4444;
-          background-color: #fee2e2;
-        }
-        .alert-anomaly {
-          border-color: #eab308;
-          background-color: #fef9c3;
-        }
-        .alert-diff {
-          border-color: #3b82f6;
-          background-color: #dbeafe;
-        }
-        .alert-heading {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          margin-bottom: 10px;
-        }
-        .alert-heading h2 {
-          margin: 0;
-          font-size: 18px;
-          font-weight: 600;
-          color: #111827;
-        }
-        .alert-summary {
-          margin-bottom: 15px;
-        }
-        .comparison-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 10px;
-          margin-top: 15px;
-        }
-        .comparison-item {
-          padding: 10px;
-          background-color: #f3f4f6;
-          border-radius: 6px;
-        }
-        .comparison-label {
-          font-size: 12px;
-          font-weight: 600;
-          margin-bottom: 5px;
-          color: #4b5563;
-        }
-        .comparison-value {
-          font-family: monospace;
-          font-size: 14px;
-          word-break: break-all;
-        }
-        .anomaly-stats {
-          display: grid;
-          grid-template-columns: 1fr 1fr 1fr;
-          gap: 10px;
-          margin-top: 15px;
-        }
-        .stat-item {
-          padding: 10px;
-          background-color: #f3f4f6;
-          border-radius: 6px;
-          text-align: center;
-        }
-        .stat-label {
-          font-size: 12px;
-          font-weight: 600;
-          color: #4b5563;
-        }
-        .stat-value {
-          font-size: 16px;
-          font-weight: 600;
-          margin-top: 5px;
-        }
-        .footer {
-          margin-top: 20px;
-          text-align: center;
-          font-size: 13px;
-          color: #6b7280;
-        }
-        .button {
-          display: inline-block;
-          background-color: #{@brand_primary};
-          color: #{@brand_dark};
-          text-decoration: none;
-          padding: 12px 24px;
-          border-radius: 6px;
-          font-weight: 600;
-          margin-top: 15px;
-          transition: all 0.2s;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        .button:hover {
-          background-color: #{darken(@brand_primary)};
-        }
-        .view-check-container {
-          text-align: center;
-          margin: 25px 0 15px;
-        }
-      </style>
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <div class="header-left">
-            <img src="https://querycanary.com/images/QueryCanary.svg" alt="QueryCanary Logo" class="logo" />
-          </div>
-          <div class="header-right">
-            <h1>Alert Notification</h1>
-            <p>#{format_datetime(check_result.inserted_at)}</p>
-          </div>
-        </div>
+    <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.5; color: #374151; background-color: #f9fafb;">
+      <table border="0" cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+          <td>
+            <table align="center" border="0" cellpadding="0" cellspacing="0" width="600" style="border-collapse: collapse;">
+              <!-- Header -->
+              <tr>
+                <td bgcolor="#{@brand_primary}" style="padding: 20px; border-radius: 8px 8px 0 0;">
+                  <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                    <tr>
+                      <td width="80" align="center" valign="top">
+                        <img src="https://querycanary.com/images/QueryCanary.svg" alt="QueryCanary Logo" width="54" style="display: block;" />
+                      </td>
+                      <td style="color: #{@brand_dark}; padding-left: 15px;">
+                        <h1 style="margin: 0; font-size: 24px; font-weight: 600;">Alert Notification</h1>
+                        <p style="margin: 5px 0 0; opacity: 0.8;">#{format_datetime(check_result.inserted_at)}</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
 
-        <div class="content">
-          <p>Hi #{user_greeting(user)},</p>
+              <!-- Content -->
+              <tr>
+                <td bgcolor="#ffffff" style="padding: 20px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);">
+                  <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                    <tr>
+                      <td>
+                        <p style="margin-top: 0;">Hi #{user_greeting(user)},</p>
+                        <p>Your check <strong>#{check.name}</strong> has detected an issue:</p>
+                      </td>
+                    </tr>
 
-          <p>Your check <strong>#{check.name}</strong> has detected an issue:</p>
+                    <!-- Alert Container -->
+                    <tr>
+                      <td style="padding: 15px; border-radius: 8px; border-left: 4px solid #{alert_type_border_color(check_result.alert_type)}; background-color: #{alert_type_bg_color(check_result.alert_type)}; margin: 20px 0;">
+                        <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                          <tr>
+                            <td>
+                              <h2 style="margin: 0 0 10px 0; font-size: 18px; font-weight: 600; color: #111827;">#{alert_type_title(check_result.alert_type)}</h2>
+                              <p style="margin-bottom: 15px;">#{check_result.analysis_summary || "An issue was detected with your data."}</p>
 
-          <div class="alert-container #{alert_type_class(check_result.alert_type)}">
-            <div class="alert-heading">
-              <h2>#{alert_type_title(check_result.alert_type)}</h2>
-            </div>
+                              #{render_alert_details_table(check_result)}
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
 
-            <div class="alert-summary">
-              #{check_result.analysis_summary || "An issue was detected with your data."}
-            </div>
+                    <tr>
+                      <td style="padding-top: 20px;">
+                        <p>You can view more details and the complete check history by clicking the button below:</p>
+                      </td>
+                    </tr>
 
-            #{render_alert_details(check_result)}
-          </div>
+                    <!-- Button -->
+                    <tr>
+                      <td align="center" style="padding: 25px 0 15px 0;">
+                        <table border="0" cellpadding="0" cellspacing="0">
+                          <tr>
+                            <td bgcolor="#{@brand_primary}" style="border-radius: 6px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+                              <a href="#{url}" target="_blank" style="display: inline-block; padding: 12px 24px; font-weight: 600; color: #{@brand_dark}; text-decoration: none;">View Check Details</a>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
 
-          <p>You can view more details and the complete check history by clicking the button below:</p>
-
-          <div class="view-check-container">
-            <a href="#{url}" class="button">View Check Details</a>
-          </div>
-
-          <div class="footer">
-            <p>This is an automated message from QueryCanary. If you have any questions, please contact us at #{@support_email}.</p>
-            <p>© #{current_year()} QueryCanary. All rights reserved.</p>
-          </div>
-        </div>
-      </div>
+                    <!-- Footer -->
+                    <tr>
+                      <td style="padding-top: 20px; text-align: center; font-size: 13px; color: #6b7280;">
+                        <p>This is an automated message from QueryCanary. If you have any questions, please contact us at #{@support_email}.</p>
+                        <p>© #{current_year()} QueryCanary. All rights reserved.</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
     </body>
     </html>
     """
@@ -298,47 +171,102 @@ defmodule QueryCanary.Checks.CheckNotifier do
     """
   end
 
-  # Helper to render alert details based on the alert type (HTML version)
-  defp render_alert_details(%{alert_type: :diff, analysis_details: details})
+  # Helper to render alert details as HTML tables (email-friendly approach)
+  defp render_alert_details_table(%{alert_type: :diff, analysis_details: details})
        when is_map(details) do
     """
-    <div class="comparison-grid">
-      <div class="comparison-item">
-        <div class="comparison-label">Previous Value:</div>
-        <div class="comparison-value">#{format_value(details.previous_value)}</div>
-      </div>
-      <div class="comparison-item">
-        <div class="comparison-label">Current Value:</div>
-        <div class="comparison-value">#{format_value(details.current_value)}</div>
-      </div>
-    </div>
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 15px;">
+      <tr>
+        <td width="49%" style="padding: 10px; background-color: #f3f4f6; border-radius: 6px;">
+          <table border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td style="font-size: 12px; font-weight: 600; margin-bottom: 5px; color: #4b5563;">
+                Previous Value:
+              </td>
+            </tr>
+            <tr>
+              <td style="font-family: monospace; font-size: 14px; word-break: break-all;">
+                #{format_value(details.previous_value)}
+              </td>
+            </tr>
+          </table>
+        </td>
+        <td width="2%"></td>
+        <td width="49%" style="padding: 10px; background-color: #f3f4f6; border-radius: 6px;">
+          <table border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td style="font-size: 12px; font-weight: 600; margin-bottom: 5px; color: #4b5563;">
+                Current Value:
+              </td>
+            </tr>
+            <tr>
+              <td style="font-family: monospace; font-size: 14px; word-break: break-all;">
+                #{format_value(details.current_value)}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
     """
   end
 
-  defp render_alert_details(%{alert_type: :anomaly, analysis_details: details})
+  defp render_alert_details_table(%{alert_type: :anomaly, analysis_details: details})
        when is_map(details) do
     """
-    <div class="anomaly-stats">
-      <div class="stat-item">
-        <div class="stat-label">Current Value</div>
-        <div class="stat-value">#{format_number(details.current_value)}</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-label">Expected Range</div>
-        <div class="stat-value">
-          #{format_number(details.mean - details.std_dev)} -
-          #{format_number(details.mean + details.std_dev)}
-        </div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-label">Z-Score</div>
-        <div class="stat-value">#{format_number(details.z_score)}</div>
-      </div>
-    </div>
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 15px;">
+      <tr>
+        <td width="32%" style="padding: 10px; background-color: #f3f4f6; border-radius: 6px; text-align: center;">
+          <table border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td style="font-size: 12px; font-weight: 600; color: #4b5563; text-align: center;">
+                Current Value
+              </td>
+            </tr>
+            <tr>
+              <td style="font-size: 16px; font-weight: 600; margin-top: 5px; text-align: center;">
+                #{format_number(details.current_value)}
+              </td>
+            </tr>
+          </table>
+        </td>
+        <td width="2%"></td>
+        <td width="32%" style="padding: 10px; background-color: #f3f4f6; border-radius: 6px; text-align: center;">
+          <table border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td style="font-size: 12px; font-weight: 600; color: #4b5563; text-align: center;">
+                Expected Range
+              </td>
+            </tr>
+            <tr>
+              <td style="font-size: 16px; font-weight: 600; margin-top: 5px; text-align: center;">
+                #{format_number(details.mean - details.std_dev)} -
+                #{format_number(details.mean + details.std_dev)}
+              </td>
+            </tr>
+          </table>
+        </td>
+        <td width="2%"></td>
+        <td width="32%" style="padding: 10px; background-color: #f3f4f6; border-radius: 6px; text-align: center;">
+          <table border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td style="font-size: 12px; font-weight: 600; color: #4b5563; text-align: center;">
+                Z-Score
+              </td>
+            </tr>
+            <tr>
+              <td style="font-size: 16px; font-weight: 600; margin-top: 5px; text-align: center;">
+                #{format_number(details.z_score)}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
     """
   end
 
-  defp render_alert_details(_) do
+  defp render_alert_details_table(_) do
     ""
   end
 
@@ -367,9 +295,13 @@ defmodule QueryCanary.Checks.CheckNotifier do
   # defp user_greeting(%User{name: name}) when is_binary(name) and name != "", do: name
   defp user_greeting(%User{email: email}), do: email
 
-  defp alert_type_class(:anomaly), do: "alert-anomaly"
-  defp alert_type_class(:diff), do: "alert-diff"
-  defp alert_type_class(_), do: ""
+  defp alert_type_border_color(:anomaly), do: "#eab308"
+  defp alert_type_border_color(:diff), do: "#3b82f6"
+  defp alert_type_border_color(_), do: "#ef4444"
+
+  defp alert_type_bg_color(:anomaly), do: "#fef9c3"
+  defp alert_type_bg_color(:diff), do: "#dbeafe"
+  defp alert_type_bg_color(_), do: "#fee2e2"
 
   defp alert_type_title(:anomaly), do: "Anomaly Detected"
   defp alert_type_title(:diff), do: "Significant Change Detected"
@@ -393,12 +325,5 @@ defmodule QueryCanary.Checks.CheckNotifier do
 
   defp current_year do
     DateTime.utc_now().year
-  end
-
-  # Calculate a darker version of a color for hover states
-  defp darken(hex_color) do
-    # Simple implementation - could be more sophisticated
-    # This just makes the color about 10% darker
-    "#e6b300"
   end
 end
