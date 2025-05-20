@@ -9,7 +9,7 @@ defmodule QueryCanaryWeb.HomeLive do
        title: "SQL-Powered Data Monitoring",
        description:
          "Define automated SQL checks against your production database. Get alerts when the data looks wrong.",
-       image_url: url(~p"/assets/images/QueryCanary.svg")
+       image_url: url(~p"/images/querycanary-social.png")
      })}
   end
 
