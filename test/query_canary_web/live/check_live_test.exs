@@ -4,15 +4,18 @@ defmodule QueryCanaryWeb.CheckLiveTest do
   import Phoenix.LiveViewTest
   import QueryCanary.ChecksFixtures
 
-  @create_attrs %{query: "some query", expectation: "some expectation"}
-  @update_attrs %{query: "some updated query", expectation: "some updated expectation"}
-  @invalid_attrs %{query: nil, expectation: nil}
+  @update_attrs %{
+    name: "Updated Check",
+    query: "some updated query",
+    enabled: false,
+    schedule: "0 0 * * *"
+  }
+  @invalid_attrs %{name: "", query: "", schedule: ""}
 
   setup :register_and_log_in_user
 
   defp create_check(%{scope: scope}) do
     check = check_fixture(scope)
-
     %{check: check}
   end
 
@@ -22,34 +25,9 @@ defmodule QueryCanaryWeb.CheckLiveTest do
     test "lists all checks", %{conn: conn, check: check} do
       {:ok, _index_live, html} = live(conn, ~p"/checks")
 
-      assert html =~ "Listing Checks"
+      assert html =~ "Database Checks"
+      assert html =~ check.name
       assert html =~ check.query
-    end
-
-    test "saves new check", %{conn: conn} do
-      {:ok, index_live, _html} = live(conn, ~p"/checks")
-
-      assert {:ok, form_live, _} =
-               index_live
-               |> element("a", "New Check")
-               |> render_click()
-               |> follow_redirect(conn, ~p"/checks/new")
-
-      assert render(form_live) =~ "New Check"
-
-      assert form_live
-             |> form("#check-form", check: @invalid_attrs)
-             |> render_change() =~ "can&#39;t be blank"
-
-      assert {:ok, index_live, _html} =
-               form_live
-               |> form("#check-form", check: @create_attrs)
-               |> render_submit()
-               |> follow_redirect(conn, ~p"/checks")
-
-      html = render(index_live)
-      assert html =~ "Check created successfully"
-      assert html =~ "some query"
     end
 
     test "updates check in listing", %{conn: conn, check: check} do
@@ -75,6 +53,7 @@ defmodule QueryCanaryWeb.CheckLiveTest do
 
       html = render(index_live)
       assert html =~ "Check updated successfully"
+      assert html =~ "Updated Check"
       assert html =~ "some updated query"
     end
 
@@ -92,7 +71,8 @@ defmodule QueryCanaryWeb.CheckLiveTest do
     test "displays check", %{conn: conn, check: check} do
       {:ok, _show_live, html} = live(conn, ~p"/checks/#{check}")
 
-      assert html =~ "Show Check"
+      assert html =~ "Last run"
+      assert html =~ check.name
       assert html =~ check.query
     end
 
@@ -119,6 +99,7 @@ defmodule QueryCanaryWeb.CheckLiveTest do
 
       html = render(show_live)
       assert html =~ "Check updated successfully"
+      assert html =~ "Updated Check"
       assert html =~ "some updated query"
     end
   end

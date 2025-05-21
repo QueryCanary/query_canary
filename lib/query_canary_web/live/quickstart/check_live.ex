@@ -162,6 +162,10 @@ defmodule QueryCanaryWeb.Quickstart.CheckLive do
           {:ok, result} ->
             {:ok, check} = Checks.update_check(current_scope, check, %{enabled: true})
 
+            Task.async(fn ->
+              Checks.run_check(check)
+            end)
+
             {:noreply,
              socket
              |> assign(:check, check)

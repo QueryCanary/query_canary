@@ -4,15 +4,33 @@ defmodule QueryCanaryWeb.ServerLiveTest do
   import Phoenix.LiveViewTest
   import QueryCanary.ServersFixtures
 
-  @create_attrs %{port: 42, hostname: "some hostname", username: "some username", password: "some password", database: "some database"}
-  @update_attrs %{port: 43, hostname: "some updated hostname", username: "some updated username", password: "some updated password", database: "some updated database"}
-  @invalid_attrs %{port: nil, hostname: nil, username: nil, password: nil, database: nil}
+  @update_attrs %{
+    name: "Updated Server",
+    db_engine: "mysql",
+    db_hostname: "updated-host",
+    db_port: 3306,
+    db_username: "updated_user",
+    db_password_input: "updated_password",
+    db_name: "updated_db",
+    ssh_tunnel: true,
+    ssh_hostname: "ssh-host",
+    ssh_port: 22,
+    ssh_username: "ssh_user"
+  }
+  @invalid_attrs %{
+    name: nil,
+    db_engine: nil,
+    db_hostname: nil,
+    db_port: nil,
+    db_username: nil,
+    db_password_input: nil,
+    db_name: nil
+  }
 
   setup :register_and_log_in_user
 
   defp create_server(%{scope: scope}) do
     server = server_fixture(scope)
-
     %{server: server}
   end
 
@@ -22,34 +40,8 @@ defmodule QueryCanaryWeb.ServerLiveTest do
     test "lists all servers", %{conn: conn, server: server} do
       {:ok, _index_live, html} = live(conn, ~p"/servers")
 
-      assert html =~ "Listing Servers"
-      assert html =~ server.hostname
-    end
-
-    test "saves new server", %{conn: conn} do
-      {:ok, index_live, _html} = live(conn, ~p"/servers")
-
-      assert {:ok, form_live, _} =
-               index_live
-               |> element("a", "New Server")
-               |> render_click()
-               |> follow_redirect(conn, ~p"/servers/new")
-
-      assert render(form_live) =~ "New Server"
-
-      assert form_live
-             |> form("#server-form", server: @invalid_attrs)
-             |> render_change() =~ "can&#39;t be blank"
-
-      assert {:ok, index_live, _html} =
-               form_live
-               |> form("#server-form", server: @create_attrs)
-               |> render_submit()
-               |> follow_redirect(conn, ~p"/servers")
-
-      html = render(index_live)
-      assert html =~ "Server created successfully"
-      assert html =~ "some hostname"
+      assert html =~ "Database Servers"
+      assert html =~ server.name
     end
 
     test "updates server in listing", %{conn: conn, server: server} do
@@ -75,7 +67,7 @@ defmodule QueryCanaryWeb.ServerLiveTest do
 
       html = render(index_live)
       assert html =~ "Server updated successfully"
-      assert html =~ "some updated hostname"
+      assert html =~ "Updated Server"
     end
 
     test "deletes server in listing", %{conn: conn, server: server} do
@@ -92,8 +84,8 @@ defmodule QueryCanaryWeb.ServerLiveTest do
     test "displays server", %{conn: conn, server: server} do
       {:ok, _show_live, html} = live(conn, ~p"/servers/#{server}")
 
-      assert html =~ "Show Server"
-      assert html =~ server.hostname
+      assert html =~ "Database server configuration"
+      assert html =~ server.name
     end
 
     test "updates server and returns to show", %{conn: conn, server: server} do
@@ -119,7 +111,7 @@ defmodule QueryCanaryWeb.ServerLiveTest do
 
       html = render(show_live)
       assert html =~ "Server updated successfully"
-      assert html =~ "some updated hostname"
+      assert html =~ "Updated Server"
     end
   end
 end

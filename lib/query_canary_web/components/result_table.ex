@@ -1,4 +1,5 @@
 defmodule QueryCanaryWeb.ResultTable do
+  @moduledoc false
   use Phoenix.Component
 
   attr :columns, :list

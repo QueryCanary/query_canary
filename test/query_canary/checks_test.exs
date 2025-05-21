@@ -2,15 +2,16 @@ defmodule QueryCanary.ChecksTest do
   use QueryCanary.DataCase
 
   alias QueryCanary.Checks
+  alias QueryCanary.Checks.Check
+  alias QueryCanary.Checks.CheckResult
+
+  import QueryCanary.AccountsFixtures, only: [user_scope_fixture: 0]
+  import QueryCanary.ChecksFixtures
+  import QueryCanary.ServersFixtures
+
+  @invalid_attrs %{query: nil, expectation: nil}
 
   describe "checks" do
-    alias QueryCanary.Checks.Check
-
-    import QueryCanary.AccountsFixtures, only: [user_scope_fixture: 0]
-    import QueryCanary.ChecksFixtures
-
-    @invalid_attrs %{query: nil, expectation: nil}
-
     test "list_checks/1 returns all scoped checks" do
       scope = user_scope_fixture()
       other_scope = user_scope_fixture()
@@ -88,6 +89,44 @@ defmodule QueryCanary.ChecksTest do
       scope = user_scope_fixture()
       check = check_fixture(scope)
       assert %Ecto.Changeset{} = Checks.change_check(scope, check)
+    end
+
+    test "run_check/1 executes a check and saves the result" do
+      scope = user_scope_fixture()
+      server = server_fixture(scope)
+      check = check_fixture(scope, %{server_id: server.id, query: "SELECT 1"})
+
+      assert {:ok, %CheckResult{} = result} = Checks.run_check(check)
+      assert result.success == true
+      assert result.result == [[1]]
+      assert result.check_id == check.id
+    end
+
+    test "list_checks_with_status/1 returns checks with status information" do
+      scope = user_scope_fixture()
+      check = check_fixture(scope)
+
+      # Simulate a check result
+      {:ok, _result} = Checks.run_check(check)
+
+      checks_with_status = Checks.list_checks_with_status(scope)
+      assert length(checks_with_status) == 1
+
+      check_with_status = hd(checks_with_status)
+      assert check_with_status.last_result != nil
+      assert check_with_status.last_run_at != nil
+    end
+
+    test "maybe_send_check_notification/2 sends notification for alerts" do
+      scope = user_scope_fixture()
+      server = server_fixture(scope)
+      check = check_fixture(scope, %{server_id: server.id, query: "SELECT 1"})
+
+      # Simulate a check result with an alert
+      {:ok, result} = Checks.run_check(check)
+      result = %{result | is_alert: true}
+
+      assert {:ok, :notification_sent} = Checks.maybe_send_check_notification(check, result)
     end
   end
 end

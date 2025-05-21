@@ -146,8 +146,8 @@ defmodule QueryCanaryWeb.CheckLive.Index do
     cond do
       seconds_diff < 60 -> "Ran just now"
       seconds_diff < 3600 -> "Ran #{div(seconds_diff, 60)}m ago"
-      seconds_diff < 86400 -> "Ran #{div(seconds_diff, 3600)}h ago"
-      true -> "Ran #{div(seconds_diff, 86400)}d ago"
+      seconds_diff < 86_400 -> "Ran #{div(seconds_diff, 3600)}h ago"
+      true -> "Ran #{div(seconds_diff, 86_400)}d ago"
     end
   end
 

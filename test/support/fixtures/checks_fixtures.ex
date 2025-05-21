@@ -4,14 +4,23 @@ defmodule QueryCanary.ChecksFixtures do
   entities via the `QueryCanary.Checks` context.
   """
 
+  alias QueryCanary.ServersFixtures
+
   @doc """
   Generate a check.
   """
   def check_fixture(scope, attrs \\ %{}) do
+    # Create a server fixture if `server_id` is not provided
+    server = Map.get(attrs, :server_id) || ServersFixtures.server_fixture(scope)
+
     attrs =
       Enum.into(attrs, %{
-        expectation: "some expectation",
-        query: "some query"
+        name: "Test Check",
+        schedule: "* * * * *",
+        enabled: true,
+        query: "SELECT * FROM test_table",
+        expectation: %{"key" => "value"},
+        server_id: server.id
       })
 
     {:ok, check} = QueryCanary.Checks.create_check(scope, attrs)

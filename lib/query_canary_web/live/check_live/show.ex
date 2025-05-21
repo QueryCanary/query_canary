@@ -108,12 +108,12 @@ defmodule QueryCanaryWeb.CheckLive.Show do
     recent_results = Checks.get_recent_check_results(check, 10)
 
     latest_result =
-      if length(recent_results) == 0,
+      if Enum.empty?(recent_results),
         do: nil,
         else: hd(recent_results)
 
     last_run =
-      if length(recent_results) == 0,
+      if Enum.empty?(recent_results),
         do: "No previous run",
         else:
           hd(recent_results) |> Map.get(:inserted_at) |> Calendar.strftime("%Y-%m-%d %H:%M:%S")

@@ -422,7 +422,7 @@ defmodule QueryCanary.CheckResultAnalyzer do
     historical_values = Enum.slice(values, 1..-1//1)
 
     # Need at least some historical values to compare against
-    if length(historical_values) == 0 do
+    if Enum.empty?(historical_values) do
       {:ok, :not_enough_values}
     else
       # Calculate baseline statistics from historical values only

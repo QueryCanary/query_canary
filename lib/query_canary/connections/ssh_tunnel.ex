@@ -105,6 +105,7 @@ defmodule SSHTunnelKeyProvider do
     :ok
   end
 
+  # credo:disable-for-next-line
   def is_host_key(_key, _host, _algorithm, _connect_opts) do
     true
   end

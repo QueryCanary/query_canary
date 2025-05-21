@@ -1,4 +1,5 @@
 defmodule QueryCanaryWeb.UserAuth do
+  @moduledoc false
   use QueryCanaryWeb, :verified_routes
 
   import Plug.Conn
