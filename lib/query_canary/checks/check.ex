@@ -31,7 +31,7 @@ defmodule QueryCanary.Checks.Check do
       if raw_exp in ["", nil] do
         []
       else
-        case CronExpression.Parser.parse(raw_exp) do
+        case Crontab.CronExpression.Parser.parse(raw_exp) do
           {:ok, _} -> []
           {:error, message} -> [{field, message}]
         end

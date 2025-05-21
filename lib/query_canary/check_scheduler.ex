@@ -22,7 +22,7 @@ defmodule QueryCanary.CheckScheduler do
     enabled_checks = QueryCanary.Checks.list_enabled_checks_for_everyone()
 
     Enum.each(enabled_checks, fn check ->
-      case CronExpression.Parser.parse(check.schedule) do
+      case Crontab.CronExpression.Parser.parse(check.schedule) do
         {:ok, expr} ->
           if Crontab.DateChecker.matches_date?(expr, now) do
             Logger.info("Scheduling check #{check.name} at #{now}")

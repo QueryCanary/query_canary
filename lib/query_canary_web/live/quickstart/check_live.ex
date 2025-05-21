@@ -194,7 +194,7 @@ defmodule QueryCanaryWeb.Quickstart.CheckLive do
 
     try do
       next_schedule =
-        case CronExpression.Parser.parse(schedule || "") do
+        case Crontab.CronExpression.Parser.parse(schedule || "") do
           {:ok, exp} -> Enum.take(Crontab.Scheduler.get_next_run_dates(exp), 3)
           _ -> socket.assigns.next_schedule
         end

@@ -127,7 +127,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
           hd(recent_results) |> Map.get(:inserted_at) |> Calendar.strftime("%Y-%m-%d %H:%M:%S")
 
     next_run =
-      CronExpression.Parser.parse!(check.schedule)
+      Crontab.CronExpression.Parser.parse!(check.schedule)
       |> Crontab.Scheduler.get_next_run_date!()
       |> Calendar.strftime("%Y-%m-%d %H:%M:%S")
 
