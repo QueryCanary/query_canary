@@ -44,7 +44,10 @@ defmodule QueryCanary.Checks do
 
   """
   def list_checks(%Scope{} = scope) do
-    Repo.all(from check in Check, where: check.user_id == ^scope.user.id) |> Repo.preload(:server)
+    Repo.all(
+      from check in Check, where: check.user_id == ^scope.user.id, order_by: check.server_id
+    )
+    |> Repo.preload(:server)
   end
 
   @doc """
