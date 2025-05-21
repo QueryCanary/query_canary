@@ -33,7 +33,7 @@ const CheckChart = {
           pointRadius: 4,
           pointHoverRadius: 6,
           pointBackgroundColor: (context) => {
-            console.log(context);
+            
             // Highlight the problematic points
             if (success[context.dataIndex] === 0) {
               return '#fbbe23';
@@ -73,7 +73,7 @@ const CheckChart = {
       }
       
       // Add threshold lines for anomaly detection
-      console.log(alertType)
+      
       if (alertType === 'anomaly' && alertThreshold && alertThreshold.upper !== null && alertThreshold.lower !== null) {
         datasets.push({
           label: "Upper Threshold",

@@ -6,7 +6,6 @@ defmodule QueryCanaryWeb.LegalLive do
     ~H"""
     <section class="max-w-3xl mx-auto p-6 space-y-6 prose">
       <h2 class="text-2xl font-bold">Terms of Service</h2>
-
       <p>Effective: May 2025</p>
 
       <p>
@@ -59,6 +58,11 @@ defmodule QueryCanaryWeb.LegalLive do
       <p>
         We do our best to keep QueryCanary running reliably, but we are not responsible for any business loss, missed alerts, or data errors caused by check results, outages, or bugs.
       </p>
+
+      <h3>9. Contact</h3>
+      <p>
+        Questions? Email us at <a href="mailto:support@querycanary.com">support@querycanary.com</a>
+      </p>
     </section>
     """
   end
@@ -97,10 +101,16 @@ defmodule QueryCanaryWeb.LegalLive do
         <li>We do not discriminate based on data-related requests</li>
       </ul>
 
-      <h3>5. Security</h3>
+      <h3>5. Cookies</h3>
       <p>
-        We encrypt credentials and sensitive fields. We recommend using read-only database users and IP/network controls to further protect your infrastructure.
+        Only functional cookies are used on QueryCanary.
       </p>
+      <ul>
+        <li><code>_query_canary_key</code> - Functional session information</li>
+        <li>
+          <code>_query_canary_web_user_remember_me</code> - Optionally used to remember your login
+        </li>
+      </ul>
 
       <h3>6. Contact</h3>
       <p>
