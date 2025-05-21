@@ -62,7 +62,6 @@ defmodule QueryCanaryWeb.Router do
 
       live "/checks", CheckLive.Index, :index
       live "/checks/new", CheckLive.New
-      live "/checks/:id", CheckLive.Show, :show
       live "/checks/:id/edit", CheckLive.Form, :edit
 
       live "/quickstart", Quickstart.DatabaseLive
@@ -87,6 +86,8 @@ defmodule QueryCanaryWeb.Router do
       live "/legal/privacy-policy", LegalLive, :privacy
       live "/legal/terms-of-service", LegalLive, :terms
       live "/legal/security", LegalLive, :security
+
+      live "/checks/:id", CheckLive.Show, :show
     end
 
     post "/users/log-in", UserSessionController, :create

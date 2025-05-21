@@ -1,5 +1,4 @@
 defmodule QueryCanary.Checks.Check do
-  alias Crontab.CronExpression
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -9,6 +8,7 @@ defmodule QueryCanary.Checks.Check do
     field :enabled, :boolean, default: false
     field :query, :string
     field :expectation, :map
+    field :public, :boolean, default: false
 
     belongs_to :server, QueryCanary.Servers.Server
     belongs_to :user, QueryCanary.Accounts.User
@@ -19,7 +19,7 @@ defmodule QueryCanary.Checks.Check do
   @doc false
   def changeset(check, attrs, user_scope) do
     check
-    |> cast(attrs, [:name, :schedule, :enabled, :query, :server_id])
+    |> cast(attrs, [:name, :schedule, :enabled, :query, :server_id, :public])
     |> validate_required([:name, :schedule, :enabled, :query, :server_id])
     |> validate_cron_expression(:schedule)
     |> foreign_key_constraint(:server_id)

@@ -7,6 +7,8 @@ defmodule QueryCanaryWeb.CheckLive.Show do
 
   import QueryCanaryWeb.Components.CheckAnalysis
 
+  on_mount QueryCanaryWeb.CheckAuth
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -20,10 +22,14 @@ defmodule QueryCanaryWeb.CheckLive.Show do
           Last run: {@last_run} • Next run: {@next_run} • Schedule: {@check.schedule}
         </:subtitle>
         <:actions>
-          <.button navigate={~p"/checks"}>
+          <.button :if={@can_edit?} navigate={~p"/checks"}>
             <.icon name="hero-arrow-left" />
           </.button>
-          <.button variant="primary" navigate={~p"/checks/#{@check}/edit?return_to=show"}>
+          <.button
+            :if={@can_edit?}
+            variant="primary"
+            navigate={~p"/checks/#{@check}/edit?return_to=show"}
+          >
             <.icon name="hero-pencil-square" /> Edit check
           </.button>
         </:actions>
@@ -103,8 +109,10 @@ defmodule QueryCanaryWeb.CheckLive.Show do
   end
 
   @impl true
-  def mount(%{"id" => id}, _session, socket) do
-    check = Checks.get_check!(socket.assigns.current_scope, id)
+  def mount(%{"id" => _id}, _session, socket) do
+    # Check comes from the on_mount
+    check = socket.assigns.check
+    # check = Checks.get_check!(socket.assigns.current_scope, id)
     recent_results = Checks.get_recent_check_results(check, 10)
 
     latest_result =
@@ -127,6 +135,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
      socket
      |> assign(:page_title, "Check Details")
      |> assign(:check, check)
+     |> assign(:can_edit?, can_perform?(:edit, socket.assigns.current_scope, check))
      |> assign(:latest_analysis, latest_result)
      |> assign(:results, recent_results)
      |> assign(:last_run, last_run)
@@ -139,6 +148,16 @@ defmodule QueryCanaryWeb.CheckLive.Show do
   defp alert_class(:anomaly), do: "badge badge-warning"
   defp alert_class(:diff), do: "badge badge-warning"
   defp alert_class(_), do: "badge badge-ghost"
+
+  defp can_perform?(:edit, nil, _), do: false
+
+  defp can_perform?(
+         :edit,
+         %QueryCanary.Accounts.Scope{} = scope,
+         %QueryCanary.Checks.Check{} = check
+       ) do
+    check.user_id == scope.user.id
+  end
 
   # defp analysis(%{analysis: {:ok, nil}} = assigns) do
   #   ~H"""

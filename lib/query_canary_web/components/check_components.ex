@@ -93,6 +93,7 @@ defmodule QueryCanaryWeb.Components.CheckAnalysis do
     case type do
       :anomaly -> "Anomaly Detected"
       :diff -> "Significant Change Detected"
+      :none -> "No issues found"
       _ -> to_string(type)
     end
   end

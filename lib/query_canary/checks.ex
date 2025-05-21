@@ -74,6 +74,11 @@ defmodule QueryCanary.Checks do
     |> Repo.preload(:server)
   end
 
+  def get_public_check!(id) do
+    Repo.get_by!(Check, id: id, public: true)
+    |> Repo.preload(:server)
+  end
+
   def get_check_for_system!(id) do
     Repo.get_by!(Check, id: id)
     |> Repo.preload(:server)

@@ -16,6 +16,7 @@ defmodule QueryCanaryWeb.CheckLive.Form do
       <.form for={@form} id="check-form" phx-change="validate" phx-submit="save">
         <.input field={@form[:name]} type="text" label="Name" />
         <.input field={@form[:enabled]} type="checkbox" label="Enabled" />
+        <.input field={@form[:public]} type="checkbox" label="Publicly Viewable?" />
         <.input field={@form[:schedule]} type="text" label="Cron Schedule" />
         <.live_component
           module={QueryCanaryWeb.Components.SQLEditor}
