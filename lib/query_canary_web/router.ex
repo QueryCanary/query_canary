@@ -83,6 +83,9 @@ defmodule QueryCanaryWeb.Router do
       live "/users/register", UserLive.Registration, :new
       live "/users/log-in", UserLive.Login, :new
       live "/users/log-in/:token", UserLive.Confirmation, :new
+
+      live "/legal/privacy-policy", LegalLive, :privacy
+      live "/legal/terms-of-service", LegalLive, :terms
     end
 
     post "/users/log-in", UserSessionController, :create
