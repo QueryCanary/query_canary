@@ -8,7 +8,7 @@ defmodule QueryCanaryWeb.HomeLive do
      |> assign(:custom_meta, %{
        title: "SQL-Powered Data Monitoring",
        description:
-         "Define automated SQL checks against your production database. Get alerts when the data looks wrong.",
+         "Define automated SQL checks against your production database and get proactive alerts when the data starts to look wrong.",
        image_url: url(~p"/images/querycanary-social.png")
      })}
   end
@@ -21,7 +21,8 @@ defmodule QueryCanaryWeb.HomeLive do
           <div class="max-w-xl">
             <h1 class="text-4xl font-bold">SQL-Powered Data Monitoring</h1>
             <p class="py-4 text-lg">
-              Define automated SQL checks against your production database. Get alerts when the data looks wrong.
+              Define automated SQL checks against your production databases and
+              get proactive alerts when the data starts to look wrong.
             </p>
             <.link navigate={~p"/quickstart"} class="btn btn-primary">Start Monitoring Now</.link>
           </div>

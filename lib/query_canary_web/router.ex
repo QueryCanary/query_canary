@@ -86,6 +86,7 @@ defmodule QueryCanaryWeb.Router do
 
       live "/legal/privacy-policy", LegalLive, :privacy
       live "/legal/terms-of-service", LegalLive, :terms
+      live "/legal/security", LegalLive, :security
     end
 
     post "/users/log-in", UserSessionController, :create

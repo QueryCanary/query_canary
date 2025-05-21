@@ -110,6 +110,86 @@ defmodule QueryCanaryWeb.LegalLive do
     """
   end
 
+  def render(%{live_action: :security} = assigns) do
+    ~H"""
+    <section class="max-w-3xl mx-auto p-6 space-y-6 prose">
+      <h2 class="text-2xl font-bold">Security</h2>
+      <p>Effective: May 2025</p>
+
+      <p>
+        QueryCanary was built with the assumption that we're connecting to your most sensitive systems: your production databases.
+        Here's how we take that responsibility seriously.
+      </p>
+
+      <h3>1. Credential Handling</h3>
+      <ul>
+        <li>
+          All database and SSH credentials are encrypted at rest using strong symmetric encryption (AES-256).
+        </li>
+        <li>
+          We never store plaintext credentials. Decryption keys are stored separately and only used at runtime.
+        </li>
+        <li>Credentials can be rotated or deleted at any time via the dashboard.</li>
+      </ul>
+
+      <h3>2. Infrastructure</h3>
+      <ul>
+        <li>
+          Our application is hosted on <strong>Fly.io</strong>, which provides per-app isolation and encrypted networking.
+        </li>
+        <li>
+          All communication between QueryCanary and your databases is attempted over secure channels (SSH tunnels or SSL).
+        </li>
+      </ul>
+
+      <h3>3. Data Access</h3>
+      <ul>
+        <li>We store only the results of the checks you define (e.g. “rows with null price: 12”).</li>
+        <li>We never copy, persist, or index the information not returned by your SQL queries.</li>
+        <li>
+          Access to infrastructure and database connections is tightly restricted to the owner of the service.
+        </li>
+      </ul>
+
+      <h3>4. Customer Responsibility</h3>
+      <ul>
+        <li>You should use read-only users when providing access to QueryCanary.</li>
+        <li>
+          You should provide scoped down permission sets for QueryCanary, with ideally only access to the specific data you want to query.
+        </li>
+        <li>
+          We recommend restricting access to non-sensitive schemas and using network controls (VPN, firewalls, bastion hosts).
+        </li>
+        <li>You can delete or rotate any credential at any time with immediate effect.</li>
+      </ul>
+
+      <h3>5. Incident Response</h3>
+      <ul>
+        <li>
+          In the event of a security incident, we will notify affected customers promptly with an assessment and recommended actions.
+        </li>
+        <li>
+          We maintain internal monitoring, alerting, and audit logs to detect unauthorized access or behavior.
+        </li>
+      </ul>
+
+      <h3>6. Third-Party Services</h3>
+      <p>
+        We rely on trusted infrastructure providers with their own strong security practices, including:
+      </p>
+      <ul>
+        <li>Fly.io — App hosting and isolated containers</li>
+        <li>SendGrid — Email alert delivery</li>
+        <li>Stripe — Payment processing</li>
+      </ul>
+
+      <h3>7. Questions?</h3>
+      <p>Need a copy of our architecture, access controls, or responsible disclosure policy?</p>
+      <p>Email us at <a href="mailto:support@querycanary.com">support@querycanary.com</a>.</p>
+    </section>
+    """
+  end
+
   @impl true
   def mount(_params, _session, socket) do
     {:ok, socket |> assign(:page_title, page_title(socket.assigns.live_action))}
@@ -117,4 +197,5 @@ defmodule QueryCanaryWeb.LegalLive do
 
   defp page_title(:terms), do: "Terms of Service"
   defp page_title(:privacy), do: "Privacy Policy"
+  defp page_title(:security), do: "Security"
 end
