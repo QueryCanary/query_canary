@@ -10,7 +10,7 @@ defmodule QueryCanaryWeb.WwwRedirect do
 
       conn
       |> Plug.Conn.put_resp_header("location", new_url)
-      |> Plug.Conn.send_resp(301, "Moved Permanently. Redirecting to https://querycanary.com/")
+      |> Plug.Conn.send_resp(301, "Moved Permanently. Redirecting to #{new_url}")
       |> Plug.Conn.halt()
     else
       conn
