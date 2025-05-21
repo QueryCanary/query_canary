@@ -42,6 +42,7 @@ defmodule QueryCanaryWeb.HomeLive do
     <span class="text-info">WHERE</span> <span class="text-warning">DATE</span>(<span class="text-secondary">date_joined</span>) =
     <span class="text-warning">CURRENT_DATE</span> - <span class="text-warning">INTERVAL</span> <span class="text-success">'1 day'</span>;</pre>
               <p>Track daily events, missing data, or invalid records using your own SQL queries.</p>
+              <.button navigate={~p"/checks/7"} variant="info">View Example Check</.button>
             </div>
           </div>
 

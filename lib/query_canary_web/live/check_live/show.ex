@@ -133,7 +133,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
 
     {:ok,
      socket
-     |> assign(:page_title, "Check Details")
+     |> assign(:page_title, check.name)
      |> assign(:check, check)
      |> assign(:can_edit?, can_perform?(:edit, socket.assigns.current_scope, check))
      |> assign(:latest_analysis, latest_result)
