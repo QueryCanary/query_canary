@@ -6,12 +6,15 @@ defmodule QueryCanaryWeb.CheckAuth do
 
   def on_mount(:default, %{"id" => check_id}, _session, socket) do
     try do
-      if socket.assigns.current_scope do
-        {:cont, assign(socket, :check, Checks.get_check!(socket.assigns.current_scope, check_id))}
+      check = Checks.get_check!(check_id)
+
+      if Checks.can_perform?(:view, socket.assigns.current_scope, check) do
+        {:cont, assign(socket, :check, check)}
       else
-        {:cont,
+        {:halt,
          socket
-         |> assign(:check, Checks.get_public_check!(check_id))}
+         |> put_flash(:error, "You don't have permission to access this check!")
+         |> redirect(to: "/")}
       end
     rescue
       Ecto.NoResultsError ->

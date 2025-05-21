@@ -34,6 +34,31 @@ defmodule QueryCanary.Checks do
     Phoenix.PubSub.broadcast(QueryCanary.PubSub, "user:#{key}:checks", message)
   end
 
+  # Public, we can view no matter what
+  def can_perform?(:view, _, %QueryCanary.Checks.Check{public: true}), do: true
+  # If not public, only if we're the scoped user
+  def can_perform?(
+        :view,
+        %QueryCanary.Accounts.Scope{} = scope,
+        %QueryCanary.Checks.Check{} = check
+      ) do
+    check.user_id == scope.user.id
+  end
+
+  # No one can edit
+  def can_perform?(:edit, nil, _), do: false
+
+  # Unless you are the scoped user
+  def can_perform?(
+        :edit,
+        %QueryCanary.Accounts.Scope{} = scope,
+        %QueryCanary.Checks.Check{} = check
+      ) do
+    check.user_id == scope.user.id
+  end
+
+  def can_perform?(_, _, _), do: false
+
   @doc """
   Returns the list of checks.
 
@@ -64,6 +89,11 @@ defmodule QueryCanary.Checks do
       ** (Ecto.NoResultsError)
 
   """
+  def get_check!(id) do
+    Repo.get_by!(Check, id: id)
+    |> Repo.preload(:server)
+  end
+
   def get_check!(%Scope{} = scope, id) do
     Repo.get_by!(Check, id: id, user_id: scope.user.id)
     |> Repo.preload(:server)

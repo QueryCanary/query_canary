@@ -135,7 +135,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
      socket
      |> assign(:page_title, check.name)
      |> assign(:check, check)
-     |> assign(:can_edit?, can_perform?(:edit, socket.assigns.current_scope, check))
+     |> assign(:can_edit?, Checks.can_perform?(:edit, socket.assigns.current_scope, check))
      |> assign(:latest_analysis, latest_result)
      |> assign(:results, recent_results)
      |> assign(:last_run, last_run)
@@ -148,16 +148,6 @@ defmodule QueryCanaryWeb.CheckLive.Show do
   defp alert_class(:anomaly), do: "badge badge-warning"
   defp alert_class(:diff), do: "badge badge-warning"
   defp alert_class(_), do: "badge badge-ghost"
-
-  defp can_perform?(:edit, nil, _), do: false
-
-  defp can_perform?(
-         :edit,
-         %QueryCanary.Accounts.Scope{} = scope,
-         %QueryCanary.Checks.Check{} = check
-       ) do
-    check.user_id == scope.user.id
-  end
 
   # defp analysis(%{analysis: {:ok, nil}} = assigns) do
   #   ~H"""
