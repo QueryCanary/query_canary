@@ -80,6 +80,7 @@
           • <.link navigate={~p"/legal/privacy-policy"}>Privacy Policy</.link>
           • <.link navigate={~p"/legal/security"}>Security</.link>
         </p>
+        <p>{Application.get_env(:query_canary, :env)}</p>
       </aside>
     </footer>
   </body>

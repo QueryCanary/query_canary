@@ -22,7 +22,8 @@ config :query_canary, :scopes,
 
 config :query_canary,
   ecto_repos: [QueryCanary.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  env: config_env()
 
 # Configures the endpoint
 config :query_canary, QueryCanaryWeb.Endpoint,
