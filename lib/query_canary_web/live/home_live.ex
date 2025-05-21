@@ -303,7 +303,7 @@ defmodule QueryCanaryWeb.HomeLive do
 
           <div class="card border-2 border-primary shadow-md relative transition-all hover:shadow-lg">
             <div class="absolute -top-4 left-0 right-0 mx-auto w-fit px-4 py-1 bg-primary text-primary-content text-sm font-medium rounded-full">
-              Most Popular
+              Coming Soon!
             </div>
             <div class="card-body items-center text-center">
               <h3 class="card-title text-2xl text-primary">Paid</h3>
@@ -452,7 +452,7 @@ defmodule QueryCanaryWeb.HomeLive do
               data: data,
               borderColor: 'rgb(59, 130, 246)',
               backgroundColor: 'rgba(59, 130, 246, 0.2)',
-              fill: true,
+              fill: false,
               tension: 0.4,
             },
             {
