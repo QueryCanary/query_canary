@@ -3,7 +3,6 @@ defmodule QueryCanaryWeb.Quickstart.CheckLive do
 
   import Crontab.CronExpression
 
-  alias Crontab.CronExpression
   alias QueryCanary.Servers
   alias QueryCanary.Checks
   alias QueryCanary.Checks.Check

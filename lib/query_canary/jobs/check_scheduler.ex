@@ -3,7 +3,6 @@ defmodule QueryCanary.Jobs.CheckScheduler do
 
   require Logger
 
-  alias Crontab.CronExpression
   alias QueryCanary.Jobs.CheckRunner
 
   @impl Oban.Worker

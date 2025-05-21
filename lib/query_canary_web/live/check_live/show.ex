@@ -1,7 +1,6 @@
 defmodule QueryCanaryWeb.CheckLive.Show do
   use QueryCanaryWeb, :live_view
 
-  alias Crontab.CronExpression
   alias QueryCanary.Checks
   alias QueryCanary.Checks.CheckResult
 

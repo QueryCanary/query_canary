@@ -5,6 +5,7 @@ defmodule QueryCanaryWeb.Router do
 
   pipeline :browser do
     plug :accepts, ["html"]
+    plug QueryCanaryWeb.WwwRedirect
     plug :fetch_session
     plug :fetch_live_flash
     plug :put_root_layout, html: {QueryCanaryWeb.Layouts, :root}

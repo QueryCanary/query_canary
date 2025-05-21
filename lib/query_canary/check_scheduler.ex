@@ -1,7 +1,6 @@
 defmodule QueryCanary.CheckScheduler do
   use GenServer
 
-  alias Crontab.CronExpression
   alias QueryCanary.Jobs.CheckRunner
 
   require Logger
