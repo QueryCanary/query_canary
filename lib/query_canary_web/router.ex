@@ -70,6 +70,12 @@ defmodule QueryCanaryWeb.Router do
       # live "/quickstart", QuickstartLive, :new
 
       live "/billing", BillingLive
+
+      live "/teams", TeamLive.Index, :index
+      live "/teams/new", TeamLive.Form, :new
+      live "/teams/:id", TeamLive.Show, :show
+      live "/teams/:id/edit", TeamLive.Form, :edit
+      live "/teams/:id/accept", TeamLive.Show, :accept
     end
 
     post "/users/update-password", UserSessionController, :update_password

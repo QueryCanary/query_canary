@@ -21,6 +21,9 @@ defmodule QueryCanaryWeb.ServerLive.Index do
         rows={@streams.servers}
         row_click={fn {_id, server} -> JS.navigate(~p"/servers/#{server}") end}
       >
+        <:col :let={{_id, server}} label="Owner">
+          {if(server.user_id, do: "Personal", else: "Team")}
+        </:col>
         <:col :let={{_id, server}} label="Name">{server.name}</:col>
         <:col :let={{_id, server}} label="Hostname">{server.db_hostname}</:col>
         <:action :let={{_id, server}}>

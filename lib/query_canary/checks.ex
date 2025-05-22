@@ -4,11 +4,12 @@ defmodule QueryCanary.Checks do
   """
 
   import Ecto.Query, warn: false
+  alias QueryCanary.Servers.Server
   alias QueryCanary.CheckResultAnalyzer
   alias QueryCanary.Repo
 
   alias QueryCanary.Checks.{Check, CheckResult}
-  alias QueryCanary.Accounts.Scope
+  alias QueryCanary.Accounts.{User, Scope, TeamUser}
   alias QueryCanary.Connections.ConnectionManager
   alias QueryCanary.Checks.CheckNotifier
 
@@ -42,7 +43,9 @@ defmodule QueryCanary.Checks do
         %QueryCanary.Accounts.Scope{} = scope,
         %QueryCanary.Checks.Check{} = check
       ) do
-    check.user_id == scope.user.id
+    server_ids = QueryCanary.Servers.list_servers(scope) |> Enum.map(fn s -> s.id end)
+
+    check.server_id in server_ids
   end
 
   # No one can edit
@@ -54,7 +57,9 @@ defmodule QueryCanary.Checks do
         %QueryCanary.Accounts.Scope{} = scope,
         %QueryCanary.Checks.Check{} = check
       ) do
-    check.user_id == scope.user.id
+    server_ids = QueryCanary.Servers.list_servers(scope) |> Enum.map(fn s -> s.id end)
+
+    check.server_id in server_ids
   end
 
   def can_perform?(_, _, _), do: false
@@ -69,28 +74,10 @@ defmodule QueryCanary.Checks do
 
   """
   def list_checks(%Scope{} = scope) do
-    Repo.all(
-      from check in Check, where: check.user_id == ^scope.user.id, order_by: check.server_id
-    )
-    |> Repo.preload(:server)
-  end
-
-  @doc """
-  Gets a single check.
-
-  Raises `Ecto.NoResultsError` if the Check does not exist.
-
-  ## Examples
-
-      iex> get_check!(123)
-      %Check{}
-
-      iex> get_check!(456)
-      ** (Ecto.NoResultsError)
-
-  """
-  def get_check!(id) do
-    Repo.get_by!(Check, id: id)
+    Check
+    |> accessible_by_user(scope.user.id)
+    |> order_by([c], c.server_id)
+    |> Repo.all()
     |> Repo.preload(:server)
   end
 
@@ -104,13 +91,13 @@ defmodule QueryCanary.Checks do
     |> Repo.preload(:server)
   end
 
-  def get_public_check!(id) do
-    Repo.get_by!(Check, id: id, public: true)
+  def get_check_for_system!(id) do
+    Repo.get_by!(Check, id: id)
     |> Repo.preload(:server)
   end
 
-  def get_check_for_system!(id) do
-    Repo.get_by!(Check, id: id)
+  def get_possibly_public_check(id) do
+    Repo.get_by(Check, id: id)
     |> Repo.preload(:server)
   end
 
@@ -422,5 +409,12 @@ defmodule QueryCanary.Checks do
     else
       {:ok, :no_alert}
     end
+  end
+
+  defp accessible_by_user(query, user_id) do
+    query
+    |> join(:left, [c], s in Server, on: c.server_id == s.id)
+    |> join(:left, [c, s], tu in TeamUser, on: tu.team_id == s.team_id)
+    |> where([c, s, tu], tu.user_id == ^user_id or s.user_id == ^user_id)
   end
 end

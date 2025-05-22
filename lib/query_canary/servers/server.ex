@@ -25,13 +25,14 @@ defmodule QueryCanary.Servers.Server do
     field :schema, :map, default: %{}
 
     belongs_to :user, QueryCanary.Accounts.User
+    belongs_to :team, QueryCanary.Accounts.Team
 
     timestamps(type: :utc_datetime)
   end
 
   @doc false
-  def changeset(connection, attrs, user_scope) do
-    connection
+  def changeset(server, attrs, user_scope) do
+    server
     |> cast(attrs, [
       :name,
       :db_engine,
@@ -47,7 +48,8 @@ defmodule QueryCanary.Servers.Server do
       :ssh_public_key,
       :ssh_private_key,
       :ssh_key_type,
-      :ssh_key_generated_at
+      :ssh_key_generated_at,
+      :team_id
     ])
     |> validate_required([
       :name,
@@ -59,9 +61,9 @@ defmodule QueryCanary.Servers.Server do
     ])
     |> validate_password_field(:db_password_input, :db_password)
     |> validate_ssh_tunnel_fields()
+    |> validate_ownership(user_scope)
     |> transfer_password_fields()
     |> encrypt_sensitive_fields()
-    |> put_change(:user_id, user_scope.user.id)
   end
 
   def schema_changeset(server, attrs) do
@@ -96,6 +98,32 @@ defmodule QueryCanary.Servers.Server do
       ])
     else
       changeset
+    end
+  end
+
+  import Ecto.Query
+
+  defp validate_ownership(changeset, user_scope) do
+    user_id = user_scope.user.id
+    team_id = get_field(changeset, :team_id)
+
+    if is_nil(team_id) do
+      # Owned by the user
+      changeset
+      |> put_change(:team_id, nil)
+      |> put_change(:user_id, user_id)
+    else
+      # Owned by the team
+      query =
+        from tu in QueryCanary.Accounts.TeamUser,
+          where: tu.team_id == ^team_id and tu.user_id == ^user_id
+
+      if QueryCanary.Repo.exists?(query) do
+        changeset
+        |> put_change(:user_id, nil)
+      else
+        add_error(changeset, :team_id, "does not belong to the current user.")
+      end
     end
   end
 

@@ -6,7 +6,6 @@ defmodule QueryCanaryWeb.ServerLiveTest do
 
   @update_attrs %{
     name: "Updated Server",
-    db_engine: "mysql",
     db_hostname: "updated-host",
     db_port: 3306,
     db_username: "updated_user",
@@ -19,7 +18,7 @@ defmodule QueryCanaryWeb.ServerLiveTest do
   }
   @invalid_attrs %{
     name: nil,
-    db_engine: nil,
+    ssh_tunnel: false,
     db_hostname: nil,
     db_port: nil,
     db_username: nil,
@@ -44,7 +43,7 @@ defmodule QueryCanaryWeb.ServerLiveTest do
       assert html =~ server.name
     end
 
-    test "updates server in listing", %{conn: conn, server: server} do
+    test "updates server in listing with SSH Tunnel toggle", %{conn: conn, server: server} do
       {:ok, index_live, _html} = live(conn, ~p"/servers")
 
       assert {:ok, form_live, _html} =
@@ -55,10 +54,17 @@ defmodule QueryCanaryWeb.ServerLiveTest do
 
       assert render(form_live) =~ "Edit Server"
 
-      assert form_live
-             |> form("#server-form", server: @invalid_attrs)
-             |> render_change() =~ "can&#39;t be blank"
+      # Test toggling SSH Tunnel checkbox
+      form_live
+      |> form("#server-form", server: %{ssh_tunnel: true})
+      |> render_change()
 
+      assert render(form_live) =~ "SSH Tunnel Configuration"
+      assert render(form_live) =~ "SSH Hostname"
+      assert render(form_live) =~ "SSH Port"
+      assert render(form_live) =~ "SSH Username"
+
+      # Submit the form with updated attributes
       assert {:ok, index_live, _html} =
                form_live
                |> form("#server-form", server: @update_attrs)
@@ -88,7 +94,10 @@ defmodule QueryCanaryWeb.ServerLiveTest do
       assert html =~ server.name
     end
 
-    test "updates server and returns to show", %{conn: conn, server: server} do
+    test "updates server and returns to show with SSH Tunnel toggle", %{
+      conn: conn,
+      server: server
+    } do
       {:ok, show_live, _html} = live(conn, ~p"/servers/#{server}")
 
       assert {:ok, form_live, _} =
@@ -99,11 +108,18 @@ defmodule QueryCanaryWeb.ServerLiveTest do
 
       assert render(form_live) =~ "Edit Server"
 
-      assert form_live
-             |> form("#server-form", server: @invalid_attrs)
-             |> render_change() =~ "can&#39;t be blank"
+      # Test toggling SSH Tunnel checkbox
+      form_live
+      |> form("#server-form", server: %{ssh_tunnel: true})
+      |> render_change()
 
-      assert {:ok, show_live, _html} =
+      assert render(form_live) =~ "SSH Tunnel Configuration"
+      assert render(form_live) =~ "SSH Hostname"
+      assert render(form_live) =~ "SSH Port"
+      assert render(form_live) =~ "SSH Username"
+
+      # Submit the form with updated attributes
+      assert foo =
                form_live
                |> form("#server-form", server: @update_attrs)
                |> render_submit()

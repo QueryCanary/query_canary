@@ -15,6 +15,9 @@ defmodule QueryCanary.Accounts.User do
     field :billing_status, :string
     field :billing_started_at, :utc_datetime
 
+    has_many :team_users, QueryCanary.Accounts.TeamUser
+    has_many :teams, through: [:team_users, :team]
+
     timestamps(type: :utc_datetime)
   end
 

@@ -387,4 +387,90 @@ defmodule QueryCanary.AccountsTest do
       refute inspect(%User{password: "123456"}) =~ "password: \"123456\""
     end
   end
+
+  describe "teams" do
+    alias QueryCanary.Accounts.Team
+
+    import QueryCanary.AccountsFixtures, only: [user_scope_fixture: 0]
+    import QueryCanary.AccountsFixtures
+
+    @invalid_attrs %{name: nil}
+
+    test "list_teams/1 returns all scoped teams" do
+      scope = user_scope_fixture()
+      other_scope = user_scope_fixture()
+      team = team_fixture(scope)
+      other_team = team_fixture(other_scope)
+      assert Accounts.list_teams(scope) == [team]
+      assert Accounts.list_teams(other_scope) == [other_team]
+    end
+
+    test "get_team!/2 returns the team with given id" do
+      scope = user_scope_fixture()
+      team = team_fixture(scope)
+      other_scope = user_scope_fixture()
+      assert Accounts.get_team!(scope, team.id) == team
+      assert_raise Ecto.NoResultsError, fn -> Accounts.get_team!(other_scope, team.id) end
+    end
+
+    test "create_team/2 with valid data creates a team" do
+      valid_attrs = %{name: "some name"}
+      scope = user_scope_fixture()
+
+      assert {:ok, %Team{} = team} = Accounts.create_team(scope, valid_attrs)
+      assert team.name == "some name"
+      assert team.user_id == scope.user.id
+    end
+
+    test "create_team/2 with invalid data returns error changeset" do
+      scope = user_scope_fixture()
+      assert {:error, %Ecto.Changeset{}} = Accounts.create_team(scope, @invalid_attrs)
+    end
+
+    test "update_team/3 with valid data updates the team" do
+      scope = user_scope_fixture()
+      team = team_fixture(scope)
+      update_attrs = %{name: "some updated name"}
+
+      assert {:ok, %Team{} = team} = Accounts.update_team(scope, team, update_attrs)
+      assert team.name == "some updated name"
+    end
+
+    test "update_team/3 with invalid scope raises" do
+      scope = user_scope_fixture()
+      other_scope = user_scope_fixture()
+      team = team_fixture(scope)
+
+      assert_raise MatchError, fn ->
+        Accounts.update_team(other_scope, team, %{})
+      end
+    end
+
+    test "update_team/3 with invalid data returns error changeset" do
+      scope = user_scope_fixture()
+      team = team_fixture(scope)
+      assert {:error, %Ecto.Changeset{}} = Accounts.update_team(scope, team, @invalid_attrs)
+      assert team == Accounts.get_team!(scope, team.id)
+    end
+
+    test "delete_team/2 deletes the team" do
+      scope = user_scope_fixture()
+      team = team_fixture(scope)
+      assert {:ok, %Team{}} = Accounts.delete_team(scope, team)
+      assert_raise Ecto.NoResultsError, fn -> Accounts.get_team!(scope, team.id) end
+    end
+
+    test "delete_team/2 with invalid scope raises" do
+      scope = user_scope_fixture()
+      other_scope = user_scope_fixture()
+      team = team_fixture(scope)
+      assert_raise MatchError, fn -> Accounts.delete_team(other_scope, team) end
+    end
+
+    test "change_team/2 returns a team changeset" do
+      scope = user_scope_fixture()
+      team = team_fixture(scope)
+      assert %Ecto.Changeset{} = Accounts.change_team(scope, team)
+    end
+  end
 end

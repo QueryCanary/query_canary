@@ -6,7 +6,7 @@ defmodule QueryCanary.Accounts do
   import Ecto.Query, warn: false
   alias QueryCanary.Repo
 
-  alias QueryCanary.Accounts.{User, UserToken, UserNotifier}
+  alias QueryCanary.Accounts.{User, UserToken, UserNotifier, Team, TeamUser, Scope}
 
   ## Database getters
 
@@ -281,6 +281,20 @@ defmodule QueryCanary.Accounts do
     UserNotifier.deliver_login_instructions(user, magic_link_url_fun.(encoded_token))
   end
 
+  def deliver_invite_instructions(%User{} = user, %Team{} = team, magic_link_url_fun)
+      when is_function(magic_link_url_fun, 1) do
+    UserNotifier.deliver_invite_instructions(user, team, magic_link_url_fun.(team.id))
+  end
+
+  def deliver_invite_register_instructions(%User{} = user, %Team{} = team, magic_link_url_fun)
+      when is_function(magic_link_url_fun, 1) do
+    UserNotifier.deliver_invite_register_instructions(
+      user,
+      team,
+      magic_link_url_fun.(team.id)
+    )
+  end
+
   @doc """
   Deletes the signed token with the given context.
   """
@@ -304,5 +318,283 @@ defmodule QueryCanary.Accounts do
            |> Repo.transaction() do
       {:ok, user, expired_tokens}
     end
+  end
+
+  ## Teams Logic
+
+  @doc """
+  Returns the list of teams the user is associated with.
+
+  ## Examples
+
+      iex> list_teams(scope)
+      [%Team{}, ...]
+
+  """
+  def list_teams(%Scope{} = scope) do
+    Repo.all(
+      from t in Team,
+        join: tu in TeamUser,
+        on: tu.team_id == t.id,
+        where: tu.user_id == ^scope.user.id,
+        preload: [:team_users]
+    )
+  end
+
+  @doc """
+  Gets a single team the user is associated with.
+
+  Raises `Ecto.NoResultsError` if the Team does not exist or the user is not associated with it.
+
+  ## Examples
+
+      iex> get_team!(scope, 123)
+      %Team{}
+
+      iex> get_team!(scope, 456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_team!(%Scope{} = scope, id) do
+    Repo.one!(
+      from t in Team,
+        join: tu in TeamUser,
+        on: tu.team_id == t.id,
+        where: tu.user_id == ^scope.user.id and t.id == ^id,
+        preload: [:team_users]
+    )
+  end
+
+  @doc """
+  Creates a team and associates the user as an admin.
+
+  ## Examples
+
+      iex> create_team(scope, %{field: value})
+      {:ok, %Team{}}
+
+      iex> create_team(scope, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_team(%Scope{} = scope, attrs) do
+    Repo.transaction(fn ->
+      with {:ok, team} <-
+             %Team{}
+             |> Team.changeset(attrs, scope)
+             |> Repo.insert(),
+           {:ok, _team_user} <-
+             %TeamUser{}
+             |> TeamUser.changeset(%{team_id: team.id, user_id: scope.user.id, role: :admin})
+             |> Repo.insert() do
+        broadcast(scope, {:created, team})
+        {:ok, team}
+      else
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
+  end
+
+  @doc """
+  Updates a team if the user is associated with it.
+
+  ## Examples
+
+      iex> update_team(scope, team, %{field: new_value})
+      {:ok, %Team{}}
+
+      iex> update_team(scope, team, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_team(%Scope{} = scope, %Team{} = team, attrs) do
+    true = user_has_access_to_team?(scope.user.id, team.id)
+
+    with {:ok, team} <-
+           team
+           |> Team.changeset(attrs, scope)
+           |> Repo.update() do
+      broadcast(scope, {:updated, team})
+      {:ok, team}
+    end
+  end
+
+  @doc """
+  Deletes a team if the user is associated with it.
+
+  ## Examples
+
+      iex> delete_team(scope, team)
+      {:ok, %Team{}}
+
+      iex> delete_team(scope, team)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_team(%Scope{} = scope, %Team{} = team) do
+    true = user_has_access_to_team?(scope.user.id, team.id, :admin)
+
+    with {:ok, team} <- Repo.delete(team) do
+      broadcast(scope, {:deleted, team})
+      {:ok, team}
+    end
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking team changes.
+
+  ## Examples
+
+      iex> change_team(scope, team)
+      %Ecto.Changeset{data: %Team{}}
+
+  """
+  def change_team(%Scope{} = scope, %Team{} = team, attrs \\ %{}) do
+    true = user_has_access_to_team?(scope.user.id, team.id, :admin)
+
+    Team.changeset(team, attrs, scope)
+  end
+
+  ## Helper Functions
+  def user_has_access_to_team?(user_id, team_id, role \\ nil)
+
+  def user_has_access_to_team?(user_id, nil, _) do
+    true
+  end
+
+  def user_has_access_to_team?(user_id, nil, _role) do
+    false
+  end
+
+  def user_has_access_to_team?(user_id, team_id, nil) do
+    Repo.exists?(
+      from tu in TeamUser,
+        where: tu.user_id == ^user_id and tu.team_id == ^team_id
+    )
+  end
+
+  def user_has_access_to_team?(user_id, team_id, role) do
+    Repo.exists?(
+      from tu in TeamUser,
+        where: tu.user_id == ^user_id and tu.team_id == ^team_id and tu.role == ^role
+    )
+  end
+
+  @doc """
+  Subscribes to scoped notifications about any team changes.
+
+  The broadcasted messages match the pattern:
+
+    * {:created, %Team{}}
+    * {:updated, %Team{}}
+    * {:deleted, %Team{}}
+
+  """
+  def subscribe_teams(%Scope{} = scope) do
+    key = scope.user.id
+
+    Phoenix.PubSub.subscribe(QueryCanary.PubSub, "user:#{key}:teams")
+  end
+
+  defp broadcast(%Scope{} = scope, message) do
+    key = scope.user.id
+
+    Phoenix.PubSub.broadcast(QueryCanary.PubSub, "user:#{key}:teams", message)
+  end
+
+  @doc """
+  Invites a user to a team by email.
+
+  If the user does not exist, they will be created and associated with the team.
+
+  ## Examples
+
+      iex> invite_user_to_team(team, "user@example.com")
+      {:ok, %User{}}
+
+      iex> invite_user_to_team(team, "invalid-email")
+      {:error, "Invalid email"}
+
+  """
+  def invite_user_to_team(%Scope{} = scope, %Team{} = team, email) when is_binary(email) do
+    Repo.transaction(fn ->
+      case get_user_by_email(email) do
+        nil ->
+          # Create a new user if they don't exist
+          {:ok, user} = register_user(%{email: email})
+          associate_user_with_team(team, user)
+          user
+
+        %User{} = user ->
+          # Associate the existing user with the team
+          associate_user_with_team(team, user)
+          user
+      end
+    end)
+  end
+
+  @doc """
+  Lists all users associated with a team.
+
+  ## Examples
+
+      iex> list_team_users(team)
+      [%User{}, ...]
+
+  """
+  def list_team_users(%Scope{} = scope, %Team{} = team) do
+    Repo.all(
+      from u in User,
+        join: tu in TeamUser,
+        on: tu.user_id == u.id,
+        where: tu.team_id == ^team.id,
+        select: {u, tu.role}
+    )
+  end
+
+  @doc """
+  Removes a user from a team.
+
+  ## Examples
+
+      iex> remove_user_from_team(team, user_id)
+      {:ok, %TeamUser{}}
+
+      iex> remove_user_from_team(team, invalid_user_id)
+      {:error, "User not found in team"}
+
+  """
+  def remove_user_from_team(%Scope{} = scope, %Team{} = team, user_id) do
+    true = user_has_access_to_team?(scope.user.id, team.id, :admin)
+
+    case Repo.get_by(TeamUser, team_id: team.id, user_id: user_id) do
+      nil ->
+        {:error, "User not found in team"}
+
+      %TeamUser{} = team_user ->
+        Repo.delete(team_user)
+    end
+  end
+
+  def accept_team_invite(%Scope{} = scope, %Team{} = team) do
+    Repo.get_by(TeamUser, team_id: team.id, user_id: scope.user.id)
+    |> TeamUser.changeset(%{role: :member})
+    |> Repo.update()
+  end
+
+  def accept_pending_team_invites(%User{} = user) do
+    from(tu in TeamUser,
+      where: tu.user_id == ^user.id and tu.role == :invited,
+      update: [set: [role: :member]]
+    )
+    |> QueryCanary.Repo.update_all([])
+  end
+
+  ## Helper Functions
+
+  defp associate_user_with_team(%Team{} = team, %User{} = user) do
+    %TeamUser{}
+    |> TeamUser.changeset(%{team_id: team.id, user_id: user.id, role: :invited})
+    |> Repo.insert()
   end
 end

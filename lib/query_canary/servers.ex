@@ -7,7 +7,7 @@ defmodule QueryCanary.Servers do
   alias QueryCanary.Repo
 
   alias QueryCanary.Servers.Server
-  alias QueryCanary.Accounts.Scope
+  alias QueryCanary.Accounts.{Scope, TeamUser}
 
   @doc """
   Subscribes to scoped notifications about any server changes.
@@ -32,7 +32,9 @@ defmodule QueryCanary.Servers do
   end
 
   @doc """
-  Returns the list of servers.
+  Returns the list of servers accessible to the user.
+
+  Includes servers owned by the user and servers owned by teams the user is a member of.
 
   ## Examples
 
@@ -41,33 +43,40 @@ defmodule QueryCanary.Servers do
 
   """
   def list_servers(%Scope{} = scope) do
-    Repo.all(
-      from server in Server,
-        where: server.user_id == ^scope.user.id,
-        order_by: server.inserted_at
-    )
+    Server
+    |> accessible_by_user(scope.user.id)
+    |> order_by([s], s.inserted_at)
+    |> Repo.all()
   end
 
   @doc """
-  Gets a single server.
+  Gets a single server accessible to the user.
 
-  Raises `Ecto.NoResultsError` if the Server does not exist.
+  Includes servers owned by the user and servers owned by teams the user is a member of.
+
+  Raises `Ecto.NoResultsError` if the Server does not exist or is not accessible.
 
   ## Examples
 
-      iex> get_server!(123)
+      iex> get_server!(scope, 123)
       %Server{}
 
-      iex> get_server!(456)
+      iex> get_server!(scope, 456)
       ** (Ecto.NoResultsError)
 
   """
   def get_server!(%Scope{} = scope, id) do
-    Repo.get_by!(Server, id: id, user_id: scope.user.id)
+    Server
+    |> where([s], s.id == ^id)
+    |> accessible_by_user(scope.user.id)
+    |> Repo.one!()
   end
 
   def get_server(%Scope{} = scope, id) do
-    Repo.get_by(Server, id: id, user_id: scope.user.id)
+    Server
+    |> where([s], s.id == ^id)
+    |> accessible_by_user(scope.user.id)
+    |> Repo.one()
   end
 
   @doc """
@@ -105,7 +114,7 @@ defmodule QueryCanary.Servers do
 
   """
   def update_server(%Scope{} = scope, %Server{} = server, attrs) do
-    true = server.user_id == scope.user.id
+    ensure_access!(server, scope.user.id)
 
     with {:ok, server = %Server{}} <-
            server
@@ -117,22 +126,21 @@ defmodule QueryCanary.Servers do
   end
 
   @doc """
-  Deletes a server.
+  Deletes a server if the user has access to it.
 
   ## Examples
 
-      iex> delete_server(server)
+      iex> delete_server(scope, server)
       {:ok, %Server{}}
 
-      iex> delete_server(server)
+      iex> delete_server(scope, server)
       {:error, %Ecto.Changeset{}}
 
   """
   def delete_server(%Scope{} = scope, %Server{} = server) do
-    true = server.user_id == scope.user.id
+    ensure_access!(server, scope.user.id)
 
-    with {:ok, server = %Server{}} <-
-           Repo.delete(server) do
+    with {:ok, server = %Server{}} <- Repo.delete(server) do
       broadcast(scope, {:deleted, server})
       {:ok, server}
     end
@@ -143,16 +151,28 @@ defmodule QueryCanary.Servers do
 
   ## Examples
 
-      iex> change_server(server)
+      iex> change_server(scope, server)
       %Ecto.Changeset{data: %Server{}}
 
   """
   def change_server(%Scope{} = scope, %Server{} = server, attrs \\ %{}) do
-    true = server.user_id == scope.user.id
+    ensure_access!(server, scope.user.id)
 
     Server.changeset(server, attrs, scope)
   end
 
+  @doc """
+  Updates the introspection schema for a server.
+
+  ## Examples
+
+      iex> update_introspection(server)
+      {:ok, %Server{}}
+
+      iex> update_introspection(server)
+      {:error, reason}
+
+  """
   def update_introspection(%Server{} = server) do
     with {:ok, schema} <- QueryCanary.Connections.SQLSchemaProvider.get_codemirror_schema(server),
          changeset <- Server.schema_changeset(server, %{schema: schema}),
@@ -161,6 +181,23 @@ defmodule QueryCanary.Servers do
     else
       error ->
         error
+    end
+  end
+
+  ## Helper Functions
+  def accessible_by_user(query, user_id) do
+    query
+    |> join(:left, [s], tu in TeamUser, on: tu.team_id == s.team_id)
+    |> where([s, tu], tu.user_id == ^user_id or s.user_id == ^user_id)
+  end
+
+  defp ensure_access!(%Server{} = server, user_id) do
+    unless server.user_id == user_id or
+             Repo.exists?(
+               from tu in TeamUser,
+                 where: tu.team_id == ^server.team_id and tu.user_id == ^user_id
+             ) do
+      raise Ecto.NoResultsError, "Server not accessible to the user"
     end
   end
 end

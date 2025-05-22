@@ -20,7 +20,7 @@ defmodule QueryCanaryWeb.UserLive.SettingsTest do
       assert {:error, redirect} = live(conn, ~p"/users/settings")
 
       assert {:redirect, %{to: path, flash: flash}} = redirect
-      assert path == ~p"/users/log-in"
+      assert path == ~p"/users/register"
       assert %{"error" => "You must log in to access this page."} = flash
     end
 
@@ -204,7 +204,7 @@ defmodule QueryCanaryWeb.UserLive.SettingsTest do
       conn = build_conn()
       {:error, redirect} = live(conn, ~p"/users/settings/confirm-email/#{token}")
       assert {:redirect, %{to: path, flash: flash}} = redirect
-      assert path == ~p"/users/log-in"
+      assert path == ~p"/users/register"
       assert %{"error" => message} = flash
       assert message == "You must log in to access this page."
     end

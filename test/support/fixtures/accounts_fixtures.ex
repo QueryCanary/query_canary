@@ -85,4 +85,17 @@ defmodule QueryCanary.AccountsFixtures do
       set: [inserted_at: dt, authenticated_at: dt]
     )
   end
+
+  @doc """
+  Generate a team.
+  """
+  def team_fixture(scope, attrs \\ %{}) do
+    attrs =
+      Enum.into(attrs, %{
+        name: "some name"
+      })
+
+    {:ok, team} = QueryCanary.Accounts.create_team(scope, attrs)
+    team
+  end
 end

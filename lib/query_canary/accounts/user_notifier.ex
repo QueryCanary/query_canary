@@ -81,4 +81,40 @@ defmodule QueryCanary.Accounts.UserNotifier do
     ==============================
     """)
   end
+
+  def deliver_invite_instructions(user, team, url) do
+    deliver(user.email, "Join #{team.name} on QueryCanary", """
+
+    ==============================
+
+    Hi #{user.email},
+
+    You've been invited to join #{team.name} on QueryCanary, to accept the invite, click the link below:
+
+    #{url}
+
+    If you didn't request this email, please ignore this.
+
+    ==============================
+    """)
+  end
+
+  def deliver_invite_register_instructions(user, team, url) do
+    deliver(user.email, "Join #{team.name} on QueryCanary", """
+
+    ==============================
+
+    Hi #{user.email},
+
+    You were invite to join #{team.name} on QueryCanary. QueryCanary is a data monitoring tool that let's you define SQL checks against your database and get alerted when things don't look quite right.
+
+    You can create an account & join the team by visiting the URL below:
+
+    #{url}
+
+    If you are not interested in joining, please ignore this email.
+
+    ==============================
+    """)
+  end
 end

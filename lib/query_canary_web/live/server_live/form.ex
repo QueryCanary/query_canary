@@ -3,6 +3,7 @@ defmodule QueryCanaryWeb.ServerLive.Form do
 
   alias QueryCanary.Servers
   alias QueryCanary.Servers.Server
+  alias QueryCanary.Accounts
 
   @impl true
   def render(assigns) do
@@ -53,10 +54,17 @@ defmodule QueryCanaryWeb.ServerLive.Form do
           <h3 class="font-semibold mb-2">SSH Tunnel Configuration</h3>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <.input field={@form[:ssh_hostname]} type="text" label="SSH Hostname" />
-
             <.input field={@form[:ssh_port]} type="number" label="SSH Port" value={22} />
             <.input field={@form[:ssh_username]} type="text" label="SSH Username" />
           </div>
+        </div>
+        <div class="md:col-span-3 mb-2">
+          <.input
+            field={@form[:team_id]}
+            type="select"
+            options={[{"Personal", nil}] ++ Enum.map(@teams, &{&1.name, &1.id})}
+            label="Team"
+          />
         </div>
         <footer class="md:col-span-2">
           <.button phx-disable-with="Connecting..." variant="primary" class="w-full">
@@ -70,8 +78,11 @@ defmodule QueryCanaryWeb.ServerLive.Form do
 
   @impl true
   def mount(params, _session, socket) do
+    teams = Accounts.list_teams(socket.assigns.current_scope)
+
     {:ok,
      socket
+     |> assign(:teams, teams)
      |> assign(:return_to, return_to(params["return_to"]))
      |> apply_action(socket.assigns.live_action, params)}
   end

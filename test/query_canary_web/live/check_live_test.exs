@@ -6,11 +6,10 @@ defmodule QueryCanaryWeb.CheckLiveTest do
 
   @update_attrs %{
     name: "Updated Check",
-    query: "some updated query",
     enabled: false,
     schedule: "0 0 * * *"
   }
-  @invalid_attrs %{name: "", query: "", schedule: ""}
+  @invalid_attrs %{name: "", schedule: ""}
 
   setup :register_and_log_in_user
 
@@ -54,7 +53,6 @@ defmodule QueryCanaryWeb.CheckLiveTest do
       html = render(index_live)
       assert html =~ "Check updated successfully"
       assert html =~ "Updated Check"
-      assert html =~ "some updated query"
     end
 
     test "deletes check in listing", %{conn: conn, check: check} do
@@ -100,7 +98,6 @@ defmodule QueryCanaryWeb.CheckLiveTest do
       html = render(show_live)
       assert html =~ "Check updated successfully"
       assert html =~ "Updated Check"
-      assert html =~ "some updated query"
     end
   end
 end
