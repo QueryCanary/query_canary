@@ -26,11 +26,13 @@ import topbar from "../vendor/topbar"
 import CodeMirror from "./hooks/code_mirror";
 import SQLEditor from "./hooks/sql_editor";
 import CheckChart from "./hooks/check_chart";
+import HomeChart from "./hooks/home_chart";
 
 let Hooks = {}
 Hooks.CodeMirror = CodeMirror;
 Hooks.SQLEditor = SQLEditor;
 Hooks.CheckChart = CheckChart;
+Hooks.HomeChart = HomeChart;
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {

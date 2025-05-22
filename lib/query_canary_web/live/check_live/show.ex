@@ -34,8 +34,6 @@ defmodule QueryCanaryWeb.CheckLive.Show do
         </:actions>
       </.header>
 
-      <%!-- <.analysis analysis={@analysis} threshold={@threshold} /> --%>
-      <!-- SQL Query Viewer -->
       <div class="card bg-base-200">
         <div class="card-body">
           <h2 class="card-title text-lg">SQL Query</h2>
@@ -51,7 +49,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
 
           <%= if length(@results) > 0 do %>
             <canvas
-              id="resultChart"
+              id="results-chart"
               class="w-full h-64"
               phx-hook="CheckChart"
               data-labels={Jason.encode!(@chart_data.labels)}
@@ -111,7 +109,6 @@ defmodule QueryCanaryWeb.CheckLive.Show do
   def mount(%{"id" => _id}, _session, socket) do
     # Check comes from the on_mount
     check = socket.assigns.check
-    # check = Checks.get_check!(socket.assigns.current_scope, id)
     recent_results = Checks.get_recent_check_results(check, 10)
 
     latest_result =
@@ -322,10 +319,12 @@ defmodule QueryCanaryWeb.CheckLive.Show do
     chronological_results = Enum.reverse(results)
     latest_result = hd(results)
 
+    periodicity = guess_nearest_periodicity(results)
+
     labels =
       Enum.map(chronological_results, fn result ->
         # TODO: Be smarter, only show format based on specificity of cron schedule
-        Calendar.strftime(result.inserted_at, "%Y-%m-%d")
+        Calendar.strftime(result.inserted_at, periodicity)
       end)
 
     values =
@@ -367,6 +366,19 @@ defmodule QueryCanaryWeb.CheckLive.Show do
       alert_type: latest_result.alert_type
     }
   end
+
+  defp guess_nearest_periodicity([first, second | _results]) do
+    diff = DateTime.diff(first.inserted_at, second.inserted_at)
+
+    cond do
+      diff <= 60 -> "%Y-%m-%d %H:%M"
+      diff <= 3600 -> "%Y-%m-%d %H"
+      diff <= 86400 -> "%Y-%m-%d"
+      true -> "%Y-%m-%d %H:%M:%S"
+    end
+  end
+
+  defp guess_nearest_periodicity(_), do: "%Y-%m-%d %H:%M:%S"
 
   # Calculate basic statistics
   defp calculate_stats(results) do

@@ -1,3 +1,24 @@
+import {
+  Chart,
+  LineController,
+  LineElement,
+  PointElement,
+  LinearScale,
+  CategoryScale,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+
+Chart.register(
+  LineController,
+  LineElement,
+  PointElement,
+  LinearScale,
+  CategoryScale,
+  Tooltip,
+  Legend
+);
+
 const CheckChart = {
     mounted() {
       this.renderChart();

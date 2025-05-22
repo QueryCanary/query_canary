@@ -141,7 +141,7 @@ defmodule QueryCanaryWeb.HomeLive do
           <div class="card bg-base-100 shadow-md">
             <div class="card-body">
               <h2 class="card-title">Visualize Results</h2>
-              <canvas id="checkChart" class="w-full h-64"></canvas>
+              <canvas id="home-chart" phx-hook="HomeChart" class="w-full h-64"></canvas>
               <p class="mt-2">Spot anomalies and understand trends over time.</p>
             </div>
           </div>
@@ -438,53 +438,6 @@ defmodule QueryCanaryWeb.HomeLive do
         </div>
       </section>
     </div>
-
-    <script>
-      const ctx = document.getElementById('checkChart').getContext('2d');
-      let good = "#00d390";
-      let warning = "#fcb700";
-      let data = [124, 130, 98, 102, 180, 90, 45];
-      new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-          datasets: [
-            {
-              label: 'User Registrations',
-              data: data,
-              borderColor: 'rgb(59, 130, 246)',
-              backgroundColor: 'rgba(59, 130, 246, 0.2)',
-              fill: false,
-              tension: 0.4,
-            },
-            {
-              label: "% Change from Avg",
-              data: [-9, -3, -26, -22, 33, -29, -60],
-              type: "bar",
-              backgroundColor: [good, good, good, good, good, good, warning],
-              yAxisID: 'y1',
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            y: {
-              beginAtZero: true
-            },
-
-              y1: {
-                type: 'linear',
-                position: 'right',
-                min: -100,
-                max: 100,
-                grid: { drawOnChartArea: false },
-                title: { display: true, text: 'Moving Average' },
-              }
-          }
-        }
-      });
-    </script>
     """
   end
 end
