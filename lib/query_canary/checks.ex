@@ -262,7 +262,7 @@ defmodule QueryCanary.Checks do
     case create_check_result(result) do
       {:ok, check_result} ->
         # Run analysis on the new result
-        recent_results = get_recent_check_results(check, 20)
+        recent_results = get_recent_check_results(check, 48)
 
         analysis = CheckResultAnalyzer.analyze_results(recent_results)
         {alert_type, is_alert, details, summary} = format_analysis_result(analysis)

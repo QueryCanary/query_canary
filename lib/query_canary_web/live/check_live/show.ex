@@ -109,7 +109,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
   def mount(%{"id" => _id}, _session, socket) do
     # Check comes from the on_mount
     check = socket.assigns.check
-    recent_results = Checks.get_recent_check_results(check, 10)
+    recent_results = Checks.get_recent_check_results(check, 48)
 
     latest_result =
       if Enum.empty?(recent_results),

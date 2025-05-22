@@ -203,7 +203,7 @@ defmodule QueryCanaryWeb.HomeLive do
         <div class="grid md:grid-cols-2 gap-8 items-stretch mt-10">
           <div class="card border border-base-300 shadow-md transition-all hover:shadow-lg">
             <div class="card-body items-center text-center">
-              <h3 class="card-title text-2xl">Free</h3>
+              <h3 class="card-title text-2xl">Personal</h3>
               <p class="text-sm opacity-70 mb-4">For testing and side projects</p>
               <p class="text-4xl font-bold mb-4">$0</p>
 
@@ -308,7 +308,7 @@ defmodule QueryCanaryWeb.HomeLive do
               Coming Soon!
             </div>
             <div class="card-body items-center text-center">
-              <h3 class="card-title text-2xl text-primary">Paid</h3>
+              <h3 class="card-title text-2xl text-primary">Team</h3>
               <p class="text-sm opacity-70 mb-4">Everything you need for production</p>
               <p class="text-4xl font-bold mb-4">$15<span class="text-base font-normal">/mo</span></p>
 
