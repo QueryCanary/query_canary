@@ -2,7 +2,7 @@ defmodule QueryCanaryWeb.WwwRedirect do
   def init(opts), do: opts
 
   def call(%Plug.Conn{host: <<"www.", rest::binary>>} = conn, _opts) do
-    if Application.get_env(:query_canary, :env) do
+    if Application.get_env(:query_canary, :env) == :prod do
       new_url =
         conn
         |> Map.put(:host, rest)

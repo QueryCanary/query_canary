@@ -159,8 +159,7 @@ const CheckChart = {
               y: {
                 type: 'linear',
                 position: 'left',
-                title: { display: true, text: 'Value' },
-                beginAtZero: true
+                title: { display: true, text: 'Value' }
               },
               // y1: {
               //   type: 'linear',
