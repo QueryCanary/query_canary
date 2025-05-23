@@ -38,8 +38,6 @@ defmodule QueryCanary.MixProject do
       {:esbuild, "~> 0.9", runtime: Mix.env() == :dev},
       {:tailwind, "~> 0.3", runtime: Mix.env() == :dev},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
-      # Testing
-      {:floki, ">= 0.30.0", only: :test},
       # Web
       {:bcrypt_elixir, "~> 3.0"},
       {:phoenix, "~> 1.8.0-rc.3", override: true},
@@ -71,7 +69,9 @@ defmodule QueryCanary.MixProject do
       {:crontab, "~> 1.1"},
       {:oban, "~> 2.19"},
       # Billing
-      {:stripity_stripe, "~> 3.2"}
+      {:stripity_stripe, "~> 3.2"},
+      # Emails
+      {:floki, "~> 0.37.1"}
     ]
   end
 

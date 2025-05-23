@@ -78,7 +78,7 @@ defmodule QueryCanary.Checks do
     |> accessible_by_user(scope.user.id)
     |> order_by([c], c.server_id)
     |> Repo.all()
-    |> Repo.preload(:server)
+    |> Repo.preload(server: [:team])
   end
 
   def get_check!(%Scope{} = scope, id) do

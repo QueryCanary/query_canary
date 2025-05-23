@@ -39,67 +39,77 @@ defmodule QueryCanaryWeb.CheckLive.Index do
         </div>
       </div>
 
-      <.table
-        id="checks"
-        rows={@streams.checks}
-        row_click={fn {_id, check} -> JS.navigate(~p"/checks/#{check}") end}
-      >
-        <:col :let={{_id, check}} label="Name">
-          <div class="">
-            <div class="badge badge-soft badge-info">
-              <.icon name="hero-circle-stack" /> {check.server.name}
+      <div :for={{team, checks} <- @grouped_checks} class="mb-8">
+        <h2 class="text-xl font-semibold mb-4">
+          <%= if team do %>
+            <.icon name="hero-users" /> {team.name}
+          <% else %>
+            <.icon name="hero-user-circle" /> Personal Checks
+          <% end %>
+        </h2>
+
+        <.table
+          id={"checks-#{team && team.id || "personal"}"}
+          rows={checks}
+          row_click={fn check -> JS.navigate(~p"/checks/#{check}") end}
+        >
+          <:col :let={check} label="Name">
+            <div class="">
+              <div class="badge badge-soft badge-info">
+                <.icon name="hero-circle-stack" /> {check.server.name}
+              </div>
+              <span class="font-semibold">{check.name || "Unnamed Check"}</span>
             </div>
-            <span class="font-semibold">{check.name || "Unnamed Check"}</span>
-          </div>
-          <div class="text-sm opacity-60 truncate max-w-xs font-mono">{check.query}</div>
-        </:col>
-        <:col :let={{_id, check}} label="Status">
-          <%= if check.last_result do %>
-            <%= if check.last_result.success do %>
-              <span class="badge badge-success">Success</span>
+            <div class="text-sm opacity-60 truncate max-w-xs font-mono">{check.query}</div>
+          </:col>
+          <:col :let={check} label="Status">
+            <%= if check.last_result do %>
+              <%= if check.last_result.success do %>
+                <span class="badge badge-success">Success</span>
+              <% else %>
+                <span class="badge badge-error">Failed</span>
+              <% end %>
+              <div class="text-xs opacity-70">
+                {format_time_ago(check.last_run_at)}
+              </div>
             <% else %>
-              <span class="badge badge-error">Failed</span>
+              <span class="badge badge-outline">Pending</span>
             <% end %>
-            <div class="text-xs opacity-70">
-              {format_time_ago(check.last_run_at)}
+          </:col>
+          <:col :let={check} label="Alert Status">
+            <%= if check.last_result && check.last_result.is_alert do %>
+              <span class={alert_class(check.last_result.alert_type)}>
+                {String.capitalize(to_string(check.last_result.alert_type))}
+              </span>
+            <% else %>
+              <span class="badge badge-ghost">None</span>
+            <% end %>
+          </:col>
+          <:action :let={check}>
+            <div class="dropdown dropdown-end">
+              <label tabindex="0" class="btn btn-ghost btn-xs">
+                <.icon name="hero-ellipsis-vertical" class="h-4 w-4" />
+              </label>
+              <ul
+                tabindex="0"
+                class="dropdown-content z-10 menu p-2 shadow bg-base-100 rounded-box w-52"
+              >
+                <li><.link navigate={~p"/checks/#{check}"}>View Details</.link></li>
+                <li><.link navigate={~p"/checks/#{check}/edit"}>Edit</.link></li>
+                <li>
+                  <a
+                    class="text-error"
+                    phx-click={JS.push("delete", value: %{id: check.id})}
+                    data-confirm="Are you sure?"
+                  >
+                    Delete
+                  </a>
+                </li>
+              </ul>
             </div>
-          <% else %>
-            <span class="badge badge-outline">Pending</span>
-          <% end %>
-        </:col>
-        <:col :let={{_id, check}} label="Alert Status">
-          <%= if check.last_result && check.last_result.is_alert do %>
-            <span class={alert_class(check.last_result.alert_type)}>
-              {String.capitalize(to_string(check.last_result.alert_type))}
-            </span>
-          <% else %>
-            <span class="badge badge-ghost">None</span>
-          <% end %>
-        </:col>
-        <:action :let={{_id, check}}>
-          <div class="dropdown dropdown-end">
-            <label tabindex="0" class="btn btn-ghost btn-xs">
-              <.icon name="hero-ellipsis-vertical" class="h-4 w-4" />
-            </label>
-            <ul
-              tabindex="0"
-              class="dropdown-content z-10 menu p-2 shadow bg-base-100 rounded-box w-52"
-            >
-              <li><.link navigate={~p"/checks/#{check}"}>View Details</.link></li>
-              <li><.link navigate={~p"/checks/#{check}/edit"}>Edit</.link></li>
-              <li>
-                <a
-                  class="text-error"
-                  phx-click={JS.push("delete", value: %{id: check.id})}
-                  data-confirm="Are you sure?"
-                >
-                  Delete
-                </a>
-              </li>
-            </ul>
-          </div>
-        </:action>
-      </.table>
+          </:action>
+        </.table>
+      </div>
     </Layouts.app>
     """
   end
@@ -112,6 +122,9 @@ defmodule QueryCanaryWeb.CheckLive.Index do
 
     checks = Checks.list_checks_with_status(socket.assigns.current_scope)
 
+    # Group checks by team
+    grouped_checks = Enum.group_by(checks, & &1.server.team)
+
     # Calculate overall success rate and alert count
     {success_rate, alert_count} = calculate_dashboard_metrics(checks)
 
@@ -122,7 +135,7 @@ defmodule QueryCanaryWeb.CheckLive.Index do
      |> assign(:overall_success_rate, success_rate)
      |> assign(:alert_count, alert_count)
      |> assign(:total_checks, length(checks))
-     |> stream(:checks, checks)}
+     |> assign(:grouped_checks, grouped_checks)}
   end
 
   @impl true
@@ -175,7 +188,6 @@ defmodule QueryCanaryWeb.CheckLive.Index do
     # Count alerts
     alert_count =
       Enum.count(checks, fn check ->
-        # check.alert_status && check.alert_status != "none"
         check.last_result && check.last_result.is_alert
       end)
 

@@ -283,17 +283,19 @@ defmodule QueryCanary.Accounts do
 
   def deliver_invite_instructions(%User{} = user, %Team{} = team, magic_link_url_fun)
       when is_function(magic_link_url_fun, 1) do
-    {encoded_token, user_token} = UserToken.build_email_token(user, "login")
-    Repo.insert!(user_token)
-    UserNotifier.deliver_invite_instructions(user, team, magic_link_url_fun.(encoded_token))
+    UserNotifier.deliver_invite_instructions(user, team, magic_link_url_fun.(team.id))
   end
 
   def deliver_invite_register_instructions(%User{} = user, %Team{} = team, magic_link_url_fun)
       when is_function(magic_link_url_fun, 1) do
+    {encoded_token, user_token} = UserToken.build_email_token(user, "login")
+
+    Repo.insert!(user_token)
+
     UserNotifier.deliver_invite_register_instructions(
       user,
       team,
-      magic_link_url_fun.(team.id)
+      magic_link_url_fun.(encoded_token)
     )
   end
 
