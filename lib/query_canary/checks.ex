@@ -397,15 +397,34 @@ defmodule QueryCanary.Checks do
   def maybe_send_check_notification(%Check{} = check, %CheckResult{} = check_result) do
     if check_result.is_alert do
       # Only send notifications for actual alerts
-      check = Repo.preload(check, :user)
+      check = Repo.preload(check, server: [:team])
+
       url = QueryCanaryWeb.Endpoint.url() <> "/checks/#{check.id}"
 
-      CheckNotifier.deliver_check_alert_notification(
-        check.user,
-        check,
-        check_result,
-        url
-      )
+      if check.server.team_id do
+        # Check belongs to a team, notify all team members
+        team_members =
+          Repo.all(
+            from tu in TeamUser,
+              join: u in User,
+              on: tu.user_id == u.id,
+              where: tu.team_id == ^check.server.team_id and tu.role != :invited,
+              select: u
+          )
+
+        Enum.each(team_members, fn user ->
+          CheckNotifier.deliver_check_alert_notification(user, check, check_result, url)
+        end)
+
+        {:ok, :notification_sent}
+      else
+        # Check does not belong to a team, notify the individual user
+        user = Repo.get!(User, check.user_id)
+
+        CheckNotifier.deliver_check_alert_notification(user, check, check_result, url)
+
+        {:ok, :notification_sent}
+      end
     else
       {:ok, :no_alert}
     end
