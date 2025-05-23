@@ -185,11 +185,11 @@ defmodule QueryCanary.Checks do
   end
 
   def list_checks_by_server(%Scope{} = scope, server_id) do
-    Repo.all(
-      from c in Check,
-        where: c.user_id == ^scope.user.id and c.server_id == ^server_id,
-        order_by: [desc: c.updated_at]
-    )
+    Check
+    |> accessible_by_user(scope.user.id)
+    |> where([c, s, tu], s.id == ^server_id)
+    |> order_by([c, s, tu], c.updated_at)
+    |> Repo.all()
   end
 
   def list_enabled_checks_for_everyone do
