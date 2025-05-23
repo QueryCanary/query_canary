@@ -120,8 +120,8 @@ defmodule QueryCanaryWeb.ServerLive.Show do
           <table class="table table-zebra w-full mt-3">
             <thead>
               <tr>
+                <th>Check</th>
                 <th>Query</th>
-                <th>Last Run</th>
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -129,10 +129,10 @@ defmodule QueryCanaryWeb.ServerLive.Show do
             <tbody>
               <%= for check <- @checks do %>
                 <tr>
+                  <td class="font-mono text-xs">{check.name}</td>
                   <td class="font-mono text-xs">{truncate(check.query, 50)}</td>
-                  <td>{check.updated_at}</td>
                   <td>
-                    <span class="badge badge-success">Active</span>
+                    <span :if={check.enabled} class="badge badge-success">Active</span>
                   </td>
                   <td class="text-right">
                     <.link navigate={~p"/checks/#{check}"} class="btn btn-xs">
