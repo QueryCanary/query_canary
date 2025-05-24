@@ -295,7 +295,7 @@ defmodule QueryCanaryWeb.TeamLive.Show do
       mode: "subscription",
       line_items: [
         %{
-          price: "price_1RPlcJPFoGavtXofodxe4qBa",
+          price: get_price_id(),
           quantity: 1
         }
       ],
@@ -304,6 +304,8 @@ defmodule QueryCanaryWeb.TeamLive.Show do
       customer_email: user.email
     })
   end
+
+  defp get_price_id, do: Application.get_env(:query_canary, :stripe_price_id)
 
   defp format_datetime(nil), do: "N/A"
 

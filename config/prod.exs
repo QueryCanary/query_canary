@@ -17,5 +17,7 @@ config :swoosh, local: false
 # Do not print debug messages in production
 config :logger, level: :info
 
+config :query_canary, stripe_price_id: "price_1RSFS5AtwMRqn9l1coAxXaLB"
+
 # Runtime production configuration, including reading
 # of environment variables, is done on config/runtime.exs.

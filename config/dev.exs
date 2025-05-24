@@ -86,6 +86,9 @@ config :phoenix_live_view,
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
 
+# Sandbox
+config :query_canary, stripe_price_id: "price_1RPlcJPFoGavtXofodxe4qBa"
+
 if File.exists?("config/local.exs") do
   import_config "local.exs"
 end
