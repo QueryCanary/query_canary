@@ -70,15 +70,24 @@
 
     <footer class="footer footer-horizontal footer-center bg-base-300 text-base-content rounded p-10 mt-10">
       <nav class="grid grid-flow-col gap-4">
+        <.link
+          class="link link-hover"
+          href="https://docs.querycanary.com/docs/overview/"
+          target="_blank"
+        >
+          Documentation
+        </.link>
+        <.link class="link link-hover" href="mailto:support@querycanary.com">Support</.link>
+        <.link class="link link-hover" href="https://discord.gg/Y6UMkgWXue" target="_blank">
+          Discord
+        </.link>
+      </nav>
+      <nav class="grid grid-flow-col gap-4">
         <.link class="link link-hover" navigate={~p"/legal/terms-of-service"}>
           Terms of Service
         </.link>
         <.link class="link link-hover" navigate={~p"/legal/privacy-policy"}>Privacy Policy</.link>
         <.link class="link link-hover" navigate={~p"/legal/security"}>Security</.link>
-        <.link class="link link-hover" href="mailto:support@querycanary.com">Support</.link>
-        <.link class="link link-hover" href="https://discord.gg/Y6UMkgWXue" target="_blank">
-          Discord
-        </.link>
       </nav>
       <aside>
         <p>
