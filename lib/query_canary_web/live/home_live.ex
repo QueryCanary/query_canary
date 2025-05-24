@@ -209,89 +209,19 @@ defmodule QueryCanaryWeb.HomeLive do
 
               <ul class="space-y-3 text-sm w-full">
                 <li class="flex items-center">
-                  <svg
-                    class="w-5 h-5 mr-2 text-success"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M5 13l4 4L19 7"
-                    >
-                    </path>
-                  </svg>
-                  10 checks
+                  <.green_check /> 10 checks
                 </li>
                 <li class="flex items-center">
-                  <svg
-                    class="w-5 h-5 mr-2 text-success"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M5 13l4 4L19 7"
-                    >
-                    </path>
-                  </svg>
-                  1 database connection
+                  <.green_check /> 1 database connection
                 </li>
                 <li class="flex items-center">
-                  <svg
-                    class="w-5 h-5 mr-2 text-success"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M5 13l4 4L19 7"
-                    >
-                    </path>
-                  </svg>
-                  Daily frequency
+                  <.green_check /> Daily frequency
                 </li>
                 <li class="flex items-center">
-                  <svg
-                    class="w-5 h-5 mr-2 text-success"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M5 13l4 4L19 7"
-                    >
-                    </path>
-                  </svg>
-                  Email alerts
+                  <.green_check /> Email alerts
                 </li>
                 <li class="flex items-center">
-                  <svg
-                    class="w-5 h-5 mr-2 text-success"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M5 13l4 4L19 7"
-                    >
-                    </path>
-                  </svg>
-                  30-day rolling history
+                  <.green_check /> 30-day rolling history
                 </li>
               </ul>
 
@@ -304,9 +234,9 @@ defmodule QueryCanaryWeb.HomeLive do
           </div>
 
           <div class="card border-2 border-primary shadow-md relative transition-all hover:shadow-lg">
-            <div class="absolute -top-4 left-0 right-0 mx-auto w-fit px-4 py-1 bg-primary text-primary-content text-sm font-medium rounded-full">
+            <%!-- <div class="absolute -top-4 left-0 right-0 mx-auto w-fit px-4 py-1 bg-primary text-primary-content text-sm font-medium rounded-full">
               Coming Soon!
-            </div>
+            </div> --%>
             <div class="card-body items-center text-center">
               <h3 class="card-title text-2xl text-primary">Team</h3>
               <p class="text-sm opacity-70 mb-4">Everything you need for production</p>
@@ -314,111 +244,33 @@ defmodule QueryCanaryWeb.HomeLive do
 
               <ul class="space-y-3 text-sm w-full">
                 <li class="flex items-center">
-                  <svg
-                    class="w-5 h-5 mr-2 text-success"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M5 13l4 4L19 7"
-                    >
-                    </path>
-                  </svg>
+                  <.green_check />
                   <span class="font-medium">100 checks</span>
                 </li>
                 <li class="flex items-center">
-                  <svg
-                    class="w-5 h-5 mr-2 text-success"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M5 13l4 4L19 7"
-                    >
-                    </path>
-                  </svg>
+                  <.green_check />
                   <span class="font-medium">10 database connections</span>
                 </li>
                 <li class="flex items-center">
-                  <svg
-                    class="w-5 h-5 mr-2 text-success"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M5 13l4 4L19 7"
-                    >
-                    </path>
-                  </svg>
+                  <.green_check />
                   <span class="font-medium">Every minute scheduling</span>
                 </li>
                 <li class="flex items-center">
-                  <svg
-                    class="w-5 h-5 mr-2 text-success"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M5 13l4 4L19 7"
-                    >
-                    </path>
-                  </svg>
+                  <.green_check />
                   <span class="font-medium">Email + Slack alerts</span>
                 </li>
                 <li class="flex items-center">
-                  <svg
-                    class="w-5 h-5 mr-2 text-success"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M5 13l4 4L19 7"
-                    >
-                    </path>
-                  </svg>
+                  <.green_check />
                   <span class="font-medium">365-day rolling history</span>
                 </li>
                 <li class="flex items-center">
-                  <svg
-                    class="w-5 h-5 mr-2 text-success"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M5 13l4 4L19 7"
-                    >
-                    </path>
-                  </svg>
+                  <.green_check />
                   <span class="font-medium">Team members</span>
                 </li>
               </ul>
 
               <div class="card-actions mt-6">
-                <.link navigate={~p"/quickstart"} class="btn btn-primary">Upgrade Now</.link>
+                <.link navigate={~p"/teams"} class="btn btn-primary">Upgrade Now</.link>
               </div>
             </div>
           </div>
@@ -438,6 +290,14 @@ defmodule QueryCanaryWeb.HomeLive do
         </div>
       </section>
     </div>
+    """
+  end
+
+  defp green_check(assigns) do
+    ~H"""
+    <svg class="w-5 h-5 mr-2 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+    </svg>
     """
   end
 end

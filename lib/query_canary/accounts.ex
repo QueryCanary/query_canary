@@ -397,6 +397,13 @@ defmodule QueryCanary.Accounts do
         {:error, changeset} -> Repo.rollback(changeset)
       end
     end)
+    |> then(fn x ->
+      # unwrap
+      case x do
+        {:ok, resp} -> resp
+        x -> x
+      end
+    end)
   end
 
   @doc """
@@ -417,6 +424,18 @@ defmodule QueryCanary.Accounts do
     with {:ok, team} <-
            team
            |> Team.changeset(attrs, scope)
+           |> Repo.update() do
+      broadcast(scope, {:updated, team})
+      {:ok, team}
+    end
+  end
+
+  def update_team_billing(%Scope{} = scope, %Team{} = team, attrs) do
+    true = user_has_access_to_team?(scope.user.id, team.id)
+
+    with {:ok, team} <-
+           team
+           |> Team.stripe_changeset(attrs)
            |> Repo.update() do
       broadcast(scope, {:updated, team})
       {:ok, team}
@@ -462,13 +481,13 @@ defmodule QueryCanary.Accounts do
   ## Helper Functions
   def user_has_access_to_team?(user_id, team_id, role \\ nil)
 
-  def user_has_access_to_team?(user_id, nil, _) do
-    true
-  end
+  # def user_has_access_to_team?(_user_id, nil, _) do
+  #   true
+  # end
 
-  def user_has_access_to_team?(user_id, nil, _role) do
-    false
-  end
+  # def user_has_access_to_team?(_user_id, nil, _role) do
+  #   false
+  # end
 
   def user_has_access_to_team?(user_id, team_id, nil) do
     Repo.exists?(
@@ -520,7 +539,7 @@ defmodule QueryCanary.Accounts do
       {:error, "Invalid email"}
 
   """
-  def invite_user_to_team(%Scope{} = scope, %Team{} = team, email) when is_binary(email) do
+  def invite_user_to_team(%Scope{} = _scope, %Team{} = team, email) when is_binary(email) do
     Repo.transaction(fn ->
       case get_user_by_email(email) do
         nil ->
@@ -546,7 +565,7 @@ defmodule QueryCanary.Accounts do
       [%User{}, ...]
 
   """
-  def list_team_users(%Scope{} = scope, %Team{} = team) do
+  def list_team_users(%Scope{} = _scope, %Team{} = team) do
     Repo.all(
       from u in User,
         join: tu in TeamUser,

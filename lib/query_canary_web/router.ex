@@ -67,9 +67,6 @@ defmodule QueryCanaryWeb.Router do
 
       live "/quickstart", Quickstart.DatabaseLive
       live "/quickstart/check", Quickstart.CheckLive
-      # live "/quickstart", QuickstartLive, :new
-
-      live "/billing", BillingLive
 
       live "/teams", TeamLive.Index, :index
       live "/teams/new", TeamLive.Form, :new

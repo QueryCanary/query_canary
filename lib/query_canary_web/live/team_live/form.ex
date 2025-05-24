@@ -85,12 +85,12 @@ defmodule QueryCanaryWeb.TeamLive.Form do
   defp save_team(socket, :new, team_params) do
     case Accounts.create_team(socket.assigns.current_scope, team_params) do
       {:ok, team} ->
+        dbg(team)
+
         {:noreply,
          socket
          |> put_flash(:info, "Team created successfully")
-         |> push_navigate(
-           to: return_path(socket.assigns.current_scope, socket.assigns.return_to, team)
-         )}
+         |> push_navigate(to: ~p"/teams/#{team}")}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
