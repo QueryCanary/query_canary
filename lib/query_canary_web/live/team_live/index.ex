@@ -22,6 +22,7 @@ defmodule QueryCanaryWeb.TeamLive.Index do
         row_click={fn {_id, team} -> JS.navigate(~p"/teams/#{team}") end}
       >
         <:col :let={{_id, team}} label="Name">{team.name}</:col>
+        <:col :let={{_id, team}} label="Plan">{team.plan}</:col>
         <:action :let={{_id, team}}>
           <div class="sr-only">
             <.link navigate={~p"/teams/#{team}"}>Show</.link>
@@ -64,6 +65,7 @@ defmodule QueryCanaryWeb.TeamLive.Index do
   @impl true
   def handle_info({type, %QueryCanary.Accounts.Team{}}, socket)
       when type in [:created, :updated, :deleted] do
-    {:noreply, stream(socket, :teams, Accounts.list_teams(socket.assigns.current_scope), reset: true)}
+    {:noreply,
+     stream(socket, :teams, Accounts.list_teams(socket.assigns.current_scope), reset: true)}
   end
 end
