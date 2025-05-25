@@ -192,12 +192,20 @@ defmodule QueryCanary.Servers do
   end
 
   defp ensure_access!(%Server{} = server, user_id) do
-    unless server.user_id == user_id or
-             Repo.exists?(
-               from tu in TeamUser,
-                 where: tu.team_id == ^server.team_id and tu.user_id == ^user_id
-             ) do
-      raise Ecto.NoResultsError, "Server not accessible to the user"
+    cond do
+      not is_nil(server.user_id) and server.user_id == user_id ->
+        true
+
+      not is_nil(server.team_id) and
+          QueryCanary.Accounts.user_has_access_to_team?(user_id, server.team_id) ->
+        true
+
+      true ->
+        raise AccessError, message: "Server not accessible to the user"
     end
   end
+end
+
+defmodule AccessError do
+  defexception message: "no permission to access"
 end

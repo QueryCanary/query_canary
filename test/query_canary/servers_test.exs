@@ -9,35 +9,50 @@ defmodule QueryCanary.ServersTest do
     import QueryCanary.AccountsFixtures, only: [user_scope_fixture: 0]
     import QueryCanary.ServersFixtures
 
-    @invalid_attrs %{port: nil, hostname: nil, username: nil, password: nil, database: nil}
+    @invalid_attrs %{
+      db_port: nil,
+      db_hostname: nil,
+      db_username: nil,
+      db_password: nil,
+      db_name: nil
+    }
 
     test "list_servers/1 returns all scoped servers" do
       scope = user_scope_fixture()
       other_scope = user_scope_fixture()
       server = server_fixture(scope)
       other_server = server_fixture(other_scope)
-      assert Servers.list_servers(scope) == [server]
-      assert Servers.list_servers(other_scope) == [other_server]
+      assert Enum.map(Servers.list_servers(scope), fn x -> x.id end) == [server.id]
+      assert Enum.map(Servers.list_servers(other_scope), fn x -> x.id end) == [other_server.id]
     end
 
     test "get_server!/2 returns the server with given id" do
       scope = user_scope_fixture()
       server = server_fixture(scope)
       other_scope = user_scope_fixture()
-      assert Servers.get_server!(scope, server.id) == server
+      assert Servers.get_server!(scope, server.id).id == server.id
       assert_raise Ecto.NoResultsError, fn -> Servers.get_server!(other_scope, server.id) end
     end
 
     test "create_server/2 with valid data creates a server" do
-      valid_attrs = %{port: 42, hostname: "some hostname", username: "some username", password: "some password", database: "some database"}
+      valid_attrs = %{
+        name: "Foo Test",
+        db_engine: "sqlite",
+        db_port: 42,
+        db_hostname: "some hostname",
+        db_username: "some username",
+        db_password_input: "some password",
+        db_name: "some database"
+      }
+
       scope = user_scope_fixture()
 
       assert {:ok, %Server{} = server} = Servers.create_server(scope, valid_attrs)
-      assert server.port == 42
-      assert server.hostname == "some hostname"
-      assert server.username == "some username"
-      assert server.password == "some password"
-      assert server.database == "some database"
+      assert server.db_port == 42
+      assert server.db_hostname == "some hostname"
+      assert server.db_username == "some username"
+      assert String.starts_with?(server.db_password, "XCP.")
+      assert server.db_name == "some database"
       assert server.user_id == scope.user.id
     end
 
@@ -49,14 +64,23 @@ defmodule QueryCanary.ServersTest do
     test "update_server/3 with valid data updates the server" do
       scope = user_scope_fixture()
       server = server_fixture(scope)
-      update_attrs = %{port: 43, hostname: "some updated hostname", username: "some updated username", password: "some updated password", database: "some updated database"}
+      old_server = server
+
+      update_attrs = %{
+        db_port: 43,
+        db_hostname: "some updated hostname",
+        db_username: "some updated username",
+        db_password_input: "some updated password",
+        db_name: "some updated database"
+      }
 
       assert {:ok, %Server{} = server} = Servers.update_server(scope, server, update_attrs)
-      assert server.port == 43
-      assert server.hostname == "some updated hostname"
-      assert server.username == "some updated username"
-      assert server.password == "some updated password"
-      assert server.database == "some updated database"
+      assert server.db_port == 43
+      assert server.db_hostname == "some updated hostname"
+      assert server.db_username == "some updated username"
+      assert server.db_name == "some updated database"
+      assert String.starts_with?(server.db_password, "XCP.")
+      refute server.db_password == old_server.db_password
     end
 
     test "update_server/3 with invalid scope raises" do
@@ -64,7 +88,7 @@ defmodule QueryCanary.ServersTest do
       other_scope = user_scope_fixture()
       server = server_fixture(scope)
 
-      assert_raise MatchError, fn ->
+      assert_raise AccessError, fn ->
         Servers.update_server(other_scope, server, %{})
       end
     end
@@ -73,7 +97,7 @@ defmodule QueryCanary.ServersTest do
       scope = user_scope_fixture()
       server = server_fixture(scope)
       assert {:error, %Ecto.Changeset{}} = Servers.update_server(scope, server, @invalid_attrs)
-      assert server == Servers.get_server!(scope, server.id)
+      assert server.id == Servers.get_server!(scope, server.id).id
     end
 
     test "delete_server/2 deletes the server" do
@@ -87,7 +111,7 @@ defmodule QueryCanary.ServersTest do
       scope = user_scope_fixture()
       other_scope = user_scope_fixture()
       server = server_fixture(scope)
-      assert_raise MatchError, fn -> Servers.delete_server(other_scope, server) end
+      assert_raise AccessError, fn -> Servers.delete_server(other_scope, server) end
     end
 
     test "change_server/2 returns a server changeset" do

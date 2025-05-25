@@ -11,7 +11,7 @@ defmodule QueryCanary.ServersFixtures do
     attrs =
       Enum.into(attrs, %{
         name: "Test Server",
-        db_engine: "postgresql",
+        db_engine: "sqlite",
         db_hostname: "localhost",
         db_port: 5432,
         db_name: "test_db",

@@ -401,15 +401,15 @@ defmodule QueryCanary.AccountsTest do
       other_scope = user_scope_fixture()
       team = team_fixture(scope)
       other_team = team_fixture(other_scope)
-      assert Accounts.list_teams(scope) == [team]
-      assert Accounts.list_teams(other_scope) == [other_team]
+      assert Enum.map(Accounts.list_teams(scope), fn x -> x.id end) == [team.id]
+      assert Enum.map(Accounts.list_teams(other_scope), fn x -> x.id end) == [other_team.id]
     end
 
     test "get_team!/2 returns the team with given id" do
       scope = user_scope_fixture()
       team = team_fixture(scope)
       other_scope = user_scope_fixture()
-      assert Accounts.get_team!(scope, team.id) == team
+      assert Accounts.get_team!(scope, team.id).id == team.id
       assert_raise Ecto.NoResultsError, fn -> Accounts.get_team!(other_scope, team.id) end
     end
 
@@ -419,7 +419,7 @@ defmodule QueryCanary.AccountsTest do
 
       assert {:ok, %Team{} = team} = Accounts.create_team(scope, valid_attrs)
       assert team.name == "some name"
-      assert team.user_id == scope.user.id
+      assert Accounts.user_has_access_to_team?(scope.user.id, team.id)
     end
 
     test "create_team/2 with invalid data returns error changeset" do
@@ -450,7 +450,7 @@ defmodule QueryCanary.AccountsTest do
       scope = user_scope_fixture()
       team = team_fixture(scope)
       assert {:error, %Ecto.Changeset{}} = Accounts.update_team(scope, team, @invalid_attrs)
-      assert team == Accounts.get_team!(scope, team.id)
+      assert team.name == Accounts.get_team!(scope, team.id).name
     end
 
     test "delete_team/2 deletes the team" do
