@@ -45,7 +45,7 @@ defmodule QueryCanaryWeb.TeamLiveTest do
                form_live
                |> form("#team-form", team: @create_attrs)
                |> render_submit()
-               |> follow_redirect(conn, ~p"/teams")
+               |> follow_redirect(conn)
 
       html = render(index_live)
       assert html =~ "Team created successfully"

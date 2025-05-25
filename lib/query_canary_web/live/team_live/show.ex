@@ -145,7 +145,7 @@ defmodule QueryCanaryWeb.TeamLive.Show do
      socket
      |> assign(:page_title, "Show Team")
      |> assign(:team, team)
-     |> assign(:invite_form, to_form(%{email: ""}))
+     |> assign(:invite_form, to_form(%{}))
      |> assign(:users, Accounts.list_team_users(socket.assigns.current_scope, team))}
   end
 

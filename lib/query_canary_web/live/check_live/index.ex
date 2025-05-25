@@ -51,6 +51,7 @@ defmodule QueryCanaryWeb.CheckLive.Index do
         <.table
           id={"checks-#{team && team.id || "personal"}"}
           rows={checks}
+          row_id={fn check -> "checks-#{check.id}" end}
           row_click={fn check -> JS.navigate(~p"/checks/#{check}") end}
         >
           <:col :let={check} label="Name">
@@ -143,7 +144,13 @@ defmodule QueryCanaryWeb.CheckLive.Index do
     check = Checks.get_check!(socket.assigns.current_scope, id)
     {:ok, _} = Checks.delete_check(socket.assigns.current_scope, check)
 
-    {:noreply, stream_delete(socket, :checks, check)}
+    checks = Checks.list_checks_with_status(socket.assigns.current_scope)
+    grouped_checks = Enum.group_by(checks, & &1.server.team)
+
+    {:noreply,
+     socket
+     |> assign(:total_checks, length(checks))
+     |> assign(:grouped_checks, grouped_checks)}
   end
 
   def handle_event("set_view_mode", %{"mode" => mode}, socket) do

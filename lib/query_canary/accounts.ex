@@ -489,6 +489,10 @@ defmodule QueryCanary.Accounts do
   #   false
   # end
 
+  def user_has_access_to_team?(_user_id, nil, _role) do
+    true
+  end
+
   def user_has_access_to_team?(user_id, team_id, nil) do
     Repo.exists?(
       from tu in TeamUser,

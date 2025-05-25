@@ -30,7 +30,7 @@ defmodule QueryCanaryWeb.TeamLive.Form do
      socket
      |> assign(:return_to, return_to(params["return_to"]))
      |> assign(:invited_users, [])
-     |> assign(:invite_form, to_form(%{email: ""}))
+     |> assign(:invite_form, to_form(%{}))
      |> apply_action(socket.assigns.live_action, params)}
   end
 
@@ -85,8 +85,6 @@ defmodule QueryCanaryWeb.TeamLive.Form do
   defp save_team(socket, :new, team_params) do
     case Accounts.create_team(socket.assigns.current_scope, team_params) do
       {:ok, team} ->
-        dbg(team)
-
         {:noreply,
          socket
          |> put_flash(:info, "Team created successfully")
