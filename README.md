@@ -65,4 +65,4 @@ If you need help with the product, email us at [support@querycanary.com](mailto:
 If you need help with developing the software, please feel free to open [a GitHub Issue](https://github.com/QueryCanary/query_canary/issues/new).
 
 ## License
-Glimesh.tv is licensed under the [MIT License](LICENSE.md).
+QueryCanary is licensed under the [AGPL-3.0 license](LICENSE.md).
