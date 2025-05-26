@@ -6,6 +6,7 @@ defmodule QueryCanaryWeb.AboutLive do
     {:ok, socket |> assign(:page_title, "About")}
   end
 
+  @impl true
   def render(assigns) do
     ~H"""
     <section class="max-w-3xl mx-auto px-6 py-12 space-y-8 prose prose-neutral">
