@@ -44,20 +44,43 @@
   </head>
   <body>
     <div class="navbar">
-      <div class="container mx-auto max-w-6xl flex flex-col md:flex-row justify-between items-center">
+      <div class="container mx-auto max-w-6xl flex flex-col md:flex-row justify-between items-center mb-8">
         <a href="/" class="btn btn-ghost text-xl flex items-center">
-          <img src={~p"/images/QueryCanary.svg"} alt="QueryCanary Logo" class="size-8" />
+          <img src={~p"/images/querycanary-email.png"} alt="QueryCanary Logo" class="size-8" />
           QueryCanary
         </a>
-        <div class="flex gap md:gap-4">
+        <div class="flex gap md:gap-4 justify-between w-full md:w-auto">
           <%= if @current_scope do %>
             <.link navigate={~p"/checks"} class="btn btn-ghost">Checks</.link>
             <.link navigate={~p"/servers"} class="btn btn-ghost">Servers</.link>
             <.link navigate={~p"/teams"} class="btn btn-ghost">Teams</.link>
-            <.link navigate={~p"/users/settings"} class="btn btn-ghost">Settings</.link>
-            <.link href={~p"/users/log-out"} class="btn btn-ghost" method="delete">
-              Log out
+            <.link href="https://docs.querycanary.com/" class="btn btn-ghost">
+              Docs
             </.link>
+
+            <div class="dropdown dropdown-end">
+              <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
+                <div class="w-10 rounded-full">
+                  <img
+                    alt="Tailwind CSS Navbar component"
+                    src={"https://www.gravatar.com/avatar/#{Base.encode16(:crypto.hash(:md5, String.downcase(@current_scope.user.email)), case: :lower)}?s=200&d=wavatar"}
+                  />
+                </div>
+              </div>
+              <ul
+                tabindex="0"
+                class="menu dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow"
+              >
+                <li>
+                  <.link navigate={~p"/users/settings"}>Settings</.link>
+                </li>
+                <li>
+                  <.link href={~p"/users/log-out"} method="delete">
+                    Log out
+                  </.link>
+                </li>
+              </ul>
+            </div>
           <% else %>
             <.link navigate={~p"/users/log-in"} class="btn btn-ghost">Login</.link>
             <.link class="btn btn-primary" navigate="/quickstart">Get Started</.link>
@@ -68,41 +91,51 @@
 
     {@inner_content}
 
-    <footer class="footer footer-horizontal footer-center bg-base-300 text-base-content rounded p-10 mt-10">
-      <nav class="grid grid-flow-col gap-4">
-        <.link
-          class="link link-hover"
-          href="https://docs.querycanary.com/docs/overview/"
-          target="_blank"
-        >
-          Documentation
-        </.link>
-        <.link class="link link-hover" href="mailto:support@querycanary.com">Support</.link>
-        <.link class="link link-hover" href="https://discord.gg/Y6UMkgWXue" target="_blank">
-          Discord
-        </.link>
-        <.link
-          class="link link-hover"
-          href="https://github.com/QueryCanary/query_canary"
-          target="_blank"
-        >
-          GitHub
-        </.link>
-      </nav>
-      <nav class="grid grid-flow-col gap-4">
-        <.link class="link link-hover" navigate={~p"/legal/terms-of-service"}>
-          Terms of Service
-        </.link>
-        <.link class="link link-hover" navigate={~p"/legal/privacy-policy"}>Privacy Policy</.link>
-        <.link class="link link-hover" navigate={~p"/legal/security"}>Security</.link>
-      </nav>
-      <aside>
-        <p>
-          Copyright © {Date.utc_today().year} - All right reserved by
-          <a href="https://axxim.net/" target="_blank">Axxim, LLC</a>
-          - {Application.get_env(:query_canary, :env)}
-        </p>
-      </aside>
-    </footer>
+    <div class="bg-base-200 mt-8">
+      <footer class="footer sm:footer-horizontal bg-base-200 text-base-content p-10 container mx-auto max-w-6xl">
+        <aside>
+          <img src={~p"/images/querycanary-social.png"} alt="QueryCanary Logo" class="size-12" />
+          <p>
+            Copyright © {Date.utc_today().year}
+            <a href="https://axxim.net/" target="_blank" class="link link-hover">Axxim, LLC</a>
+            <br /> v{Application.get_env(:query_canary, :env)}
+          </p>
+        </aside>
+        <nav>
+          <h6 class="footer-title">Company</h6>
+          <.link
+            class="link link-hover"
+            href="https://docs.querycanary.com/docs/overview/"
+            target="_blank"
+          >
+            Documentation
+          </.link>
+          <.link class="link link-hover" href="mailto:support@querycanary.com">Support</.link>
+        </nav>
+        <nav>
+          <h6 class="footer-title">Social</h6>
+          <.link class="link link-hover" href="https://discord.gg/Y6UMkgWXue" target="_blank">
+            Discord
+          </.link>
+          <.link
+            class="link link-hover"
+            href="https://github.com/QueryCanary/query_canary"
+            target="_blank"
+          >
+            GitHub
+          </.link>
+        </nav>
+        <nav>
+          <h6 class="footer-title">Legal</h6>
+          <.link class="link link-hover" navigate={~p"/legal/terms-of-service"}>
+            Terms of Service
+          </.link>
+          <.link class="link link-hover" navigate={~p"/legal/privacy-policy"}>
+            Privacy Policy
+          </.link>
+          <.link class="link link-hover" navigate={~p"/legal/security"}>Security</.link>
+        </nav>
+      </footer>
+    </div>
   </body>
 </html>

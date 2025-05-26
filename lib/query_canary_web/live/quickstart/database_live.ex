@@ -155,7 +155,16 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
             :if={Phoenix.HTML.Form.input_value(@form, :ssh_tunnel) in [true, "true"]}
             class="md:col-span-3 p-4 bg-base-200 rounded-lg mb-2"
           >
-            <h3 class="font-semibold mb-2">SSH Tunnel Configuration</h3>
+            <h3 class="font-semibold mb-2">
+              SSH Tunnel Configuration
+              <.link
+                href="https://docs.querycanary.com/docs/ssh-tunnel/"
+                target="_blank"
+                class="link link-hover link-info text-sm"
+              >
+                Need Help?
+              </.link>
+            </h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <.input field={@form[:ssh_hostname]} type="text" label="SSH Hostname" />
               <.input field={@form[:ssh_port]} type="number" label="SSH Port" value={22} />

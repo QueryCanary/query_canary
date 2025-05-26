@@ -15,7 +15,7 @@ defmodule QueryCanaryWeb.HomeLive do
 
   def render(assigns) do
     ~H"""
-    <div class="container mx-auto max-w-4xl">
+    <div class="container mx-auto max-w-4xl space-y-4 md:space-y-16">
       <section class="hero py-12 bg-base-200 rounded-xl">
         <div class="hero-content text-center">
           <div class="max-w-xl">
@@ -29,7 +29,7 @@ defmodule QueryCanaryWeb.HomeLive do
         </div>
       </section>
 
-      <section id="features" class="container mx-auto py-20">
+      <section id="features" class="container mx-auto">
         <div class="grid md:grid-cols-2 gap-10">
           <div class="card bg-base-100 shadow-md">
             <div class="card-body">
@@ -196,7 +196,7 @@ defmodule QueryCanaryWeb.HomeLive do
           </div>
         </div>
       </section>
-      <section class="py-16 px-6 max-w-5xl mx-auto text-center space-y-8">
+      <section class="px-6 max-w-5xl mx-auto text-center space-y-8">
         <h2 class="text-4xl font-bold">Simple Pricing</h2>
         <p class="text-lg opacity-70">Straightforward plans with everything you need</p>
 
