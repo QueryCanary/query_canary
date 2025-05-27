@@ -4,9 +4,9 @@ defmodule QueryCanaryWeb.HomeLive do
   def mount(_params, _session, socket) do
     {:ok,
      socket
-     |> assign(:page_title, "SQL-Powered Data Monitoring")
+     |> assign(:page_title, "SQL Data Monitoring and Alerting")
      |> assign(:custom_meta, %{
-       title: "SQL-Powered Data Monitoring",
+       title: "QueryCanary: SQL Data Monitoring and Alerting",
        description:
          "Define automated SQL checks against your production database and get proactive alerts when the data starts to look wrong.",
        image_url: url(~p"/images/querycanary-social.png")
@@ -19,15 +19,20 @@ defmodule QueryCanaryWeb.HomeLive do
       <section class="hero py-12 bg-base-200 rounded-xl">
         <div class="hero-content text-center">
           <div class="max-w-xl">
-            <h1 class="text-4xl font-bold">SQL-Powered Data Monitoring</h1>
+            <h1 class="text-4xl font-bold">
+              Your data is silently breaking.
+            </h1>
             <p class="py-4 text-lg">
-              Define automated SQL checks against your production databases and
-              get proactive alerts when the data starts to look wrong.
+              You define SQL checks against your production database. We monitor the results, detect anomalies, and alert you when something breaks.
             </p>
             <.link navigate={~p"/quickstart"} class="btn btn-primary">Start Monitoring Now</.link>
           </div>
         </div>
       </section>
+
+      <p class="text-center italic text-2xl font-light">
+        Your servers have uptime monitors. Your data should too.
+      </p>
 
       <section id="features" class="container mx-auto">
         <div class="grid md:grid-cols-2 gap-10">
@@ -147,12 +152,9 @@ defmodule QueryCanaryWeb.HomeLive do
           </div>
 
           <div class="card bg-base-100 shadow-md">
-            <div class="card-body">
+            <div class="card-body flex justify-between">
               <h2 class="card-title">Instant Alerts</h2>
-              <p>
-                Get notified through multiple channels when checks detect anomalies in your data.
-              </p>
-              <div class="flex flex-col gap-2 mt-4">
+              <div class="flex flex-col gap-2">
                 <div class="alert alert-warning">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -192,11 +194,16 @@ defmodule QueryCanaryWeb.HomeLive do
                   </div>
                 </div>
               </div>
+              <div>
+                <p>
+                  Get notified through multiple channels when checks detect anomalies in your data.
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </section>
-      <section class="px-6 max-w-5xl mx-auto text-center space-y-8">
+      <section class="px-6 max-w-5xl mx-auto text-center space-y-2">
         <h2 class="text-4xl font-bold">Simple Pricing</h2>
         <p class="text-lg opacity-70">Straightforward plans with everything you need</p>
 
@@ -276,6 +283,11 @@ defmodule QueryCanaryWeb.HomeLive do
           </div>
         </div>
       </section>
+
+      <p class="text-center italic text-2xl font-light">
+        Catch broken data before it shows up on your customer reports.
+      </p>
+
       <section id="cta" class="hero bg-primary text-primary-content py-16 rounded-xl">
         <div class="hero-content text-center">
           <div class="max-w-xl">
