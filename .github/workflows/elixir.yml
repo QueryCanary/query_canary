@@ -26,6 +26,21 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: root_pass
+          MYSQL_DATABASE: test_db
+          MYSQL_USER: test_user
+          MYSQL_PASSWORD: test_pass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root --password=root_pass"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     runs-on: ubuntu-latest
     name: Test on OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
     strategy:
@@ -80,7 +95,9 @@ jobs:
 
       - name: Seed adapter test databases
         run: |
-          PGPASSWORD=test_pass psql -h localhost -U test_user -d test_db -f test/support/adapters/postgresql-seed.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c "CREATE DATABASE test_db;"
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f test/support/adapters/postgresql-seed.sql
+          mysql -h 127.0.0.1 -uroot -proot_pass -e "CREATE DATABASE IF NOT EXISTS test_db;"
           mysql -h 127.0.0.1 -P 3306 -u test_user -ptest_pass test_db < test/support/adapters/mysql-seed.sql
 
       - name: Run database adapter tests
