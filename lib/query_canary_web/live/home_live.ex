@@ -205,7 +205,7 @@ defmodule QueryCanaryWeb.HomeLive do
       </section>
       <section class="px-6 max-w-5xl mx-auto text-center space-y-2">
         <h2 class="text-4xl font-bold">Simple Pricing</h2>
-        <p class="text-lg opacity-70">Straightforward plans with everything you need</p>
+        <p class="text-lg opacity-70">Straightforward plans with everything you need.</p>
 
         <div class="grid md:grid-cols-2 gap-8 items-stretch mt-10">
           <div class="card border border-base-300 shadow-md transition-all hover:shadow-lg">
@@ -287,6 +287,104 @@ defmodule QueryCanaryWeb.HomeLive do
       <p class="text-center italic text-2xl font-light">
         Catch broken data before it shows up on your customer reports.
       </p>
+
+      <section class="px-6 max-w-5xl mx-auto space-y-4">
+        <div class="text-center">
+          <h2 class="text-4xl font-bold">What We Support</h2>
+          <p class="text-lg opacity-70">
+            QueryCanary works with your production databases — no installs, no SDKs, just secure, read-only SQL.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="text-xl font-light mb-4 text-center">Database Engines</h3>
+          <div class="grid md:grid-cols-4 gap-4">
+            <div class="card bg-base-200 border border-base-300 shadow-sm">
+              <div class="card-body items-center">
+                <img src={~p"/images/postgresql-original.svg"} alt="MySQL" class="w-8 h-8 mb-2" />
+                <h4 class="font-semibold text-lg">PostgreSQL</h4>
+                <div class="badge badge-success mt-2">Supported</div>
+              </div>
+            </div>
+
+            <div class="card bg-base-200 border border-base-300 shadow-sm">
+              <div class="card-body items-center">
+                <img src={~p"/images/mysql-original.svg"} alt="MySQL" class="w-8 h-8 mb-2" />
+                <h4 class="font-semibold text-lg">MySQL</h4>
+                <div class="badge badge-success mt-2">Supported</div>
+              </div>
+            </div>
+
+            <div class="card bg-base-200 border border-base-300 opacity-60 shadow-none">
+              <div class="card-body items-center">
+                <img
+                  src={~p"/images/microsoftsqlserver-plain.svg"}
+                  alt="SQL Server"
+                  class="w-8 h-8 mb-2"
+                />
+                <h4 class="font-semibold text-lg">SQL Server</h4>
+                <div class="badge badge-outline mt-2">Coming Soon</div>
+              </div>
+            </div>
+            <div class="card bg-base-200 border border-base-300 opacity-60 shadow-none ">
+              <div class="card-body items-center">
+                <img src={~p"/images/mongodb-original.svg"} alt="MongoDB" class="w-8 h-8 mb-2" />
+                <h4 class="font-semibold text-lg">MongoDB</h4>
+                <div class="badge badge-outline mt-2">Coming Soon</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-xl font-light mb-4 text-center">Connection Methods</h3>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="card bg-base-200 border border-base-300 shadow-sm">
+              <div class="card-body">
+                <h4 class="font-semibold">Direct TCP</h4>
+                <p class="text-sm opacity-70">Connect with host, port, and credentials.</p>
+                <div class="badge badge-success mt-2">Supported</div>
+              </div>
+            </div>
+
+            <div class="card bg-base-200 border border-base-300 shadow-sm">
+              <div class="card-body">
+                <h4 class="font-semibold">SSH Tunnel</h4>
+                <p class="text-sm opacity-70">
+                  Securely connect via a bastion host using SSH keys.
+                </p>
+                <div class="badge badge-success mt-2">Supported</div>
+              </div>
+            </div>
+
+            <div class="card bg-base-200 border border-base-300 shadow-sm">
+              <div class="card-body">
+                <h4 class="font-semibold">TLS / SSL</h4>
+                <p class="text-sm opacity-70">
+                  Encrypted connection with `sslmode=require` or similar.
+                </p>
+                <div class="badge badge-success mt-2">Supported</div>
+              </div>
+            </div>
+
+            <div class="card bg-base-100 border border-dashed border-base-300 shadow-none text-gray-400">
+              <div class="card-body">
+                <h4 class="font-semibold">VPN / Private Agent</h4>
+                <p class="text-sm opacity-60">Self-hosted agent inside your network.</p>
+                <div class="badge badge-outline mt-2">Coming Soon</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+    <!-- CTA -->
+        <p class="text-center text-sm text-gray-500 mt-8">
+          Don’t see your setup? We’re actively expanding support.
+          <a href="mailto:support@querycanary.com" class="link link-primary">
+            Let us know what you need →
+          </a>
+        </p>
+      </section>
 
       <section id="cta" class="hero bg-primary text-primary-content py-16 rounded-xl">
         <div class="hero-content text-center">

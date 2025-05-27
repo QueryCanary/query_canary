@@ -27,7 +27,7 @@ defmodule QueryCanaryWeb.ServerLive.Form do
         <.input
           field={@form[:db_engine]}
           type="select"
-          options={[PostgreSQL: "postgresql"]}
+          options={[PostgreSQL: "postgresql", MySQL: "mysql"]}
           label="Engine"
         />
         <div class="md:col-span-2">
