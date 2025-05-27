@@ -5,6 +5,14 @@ defmodule QueryCanary.Connections.Adapters.MySQLTest do
 
   @moduletag :database_adapters
 
+  @moduledoc """
+  CREATE DATABASE IF NOT EXISTS test_db;
+  CREATE USER 'test_user'@'localhost' IDENTIFIED BY   'test_pass';
+  GRANT SELECT ON test_db.* TO 'test_user'@'localhost';
+  use test_db;
+  source test/support/adapters/mysql-seed.sql;
+  """
+
   setup_all do
     {:ok, conn} =
       MySQL.connect(%{
@@ -35,15 +43,16 @@ defmodule QueryCanary.Connections.Adapters.MySQLTest do
       assert schema ==
                %{
                  "numbers" => [
-                   %{label: "id", type: "keyword", detail: "integer", section: "numbers"},
-                   %{label: "value", type: "keyword", detail: "integer", section: "numbers"}
+                   %{label: "id", type: "keyword", detail: "int", section: "numbers"},
+                   %{label: "value", type: "keyword", detail: "int", section: "numbers"}
                  ]
                }
     end
 
     test "can run a query", %{conn: conn} do
       {:ok, result} = MySQL.query(conn, "SELECT sum(value) from numbers")
-      assert [%{sum: 674}] = result.rows
+
+      assert result.rows == [%{"sum(value)": Decimal.new("674")}]
     end
   end
 end

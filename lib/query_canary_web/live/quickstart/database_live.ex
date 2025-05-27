@@ -69,8 +69,6 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
           phx-submit="save"
           class="grid grid-cols-1 md:grid-cols-3 gap-4"
         >
-          <.input type="hidden" field={@form[:db_engine]} value="postgresql" />
-
           <div class="md:col-span-3">
             <div class="grid grid-cols-1 gap-4">
               <div class="form-control">
@@ -78,32 +76,52 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
                   <span class="label-text text-base font-semibold">Database Engine</span>
                 </label>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <label class="cursor-pointer flex flex-col items-center border rounded-lg p-4 border-base-300 bg-base-200">
+                  <label class={[
+                    "cursor-pointer flex flex-col items-center border rounded-lg p-4 border-base-300",
+                    if(Phoenix.HTML.Form.input_value(@form, :db_engine) == "postgresql",
+                      do: "bg-base-200 ring-2 ring-primary",
+                      else: "bg-base-100"
+                    )
+                  ]}>
+                    <input
+                      type="radio"
+                      id={Phoenix.HTML.Form.input_id(@form, :db_engine, "postgresql")}
+                      name={Phoenix.HTML.Form.input_name(@form, :db_engine)}
+                      value="postgresql"
+                      checked={Phoenix.HTML.Form.input_value(@form, :db_engine) == "postgresql"}
+                      class="hidden"
+                    />
                     <img
-                      src="https://raw.githubusercontent.com/devicons/devicon/master/icons/postgresql/postgresql-original.svg"
+                      src={~p"/images/postgresql-original.svg"}
                       alt="PostgreSQL"
                       class="w-8 h-8 mb-2"
                     />
                     <span>PostgreSQL</span>
                   </label>
 
-                  <label class="flex flex-col items-center border rounded-lg p-4 border-base-300 opacity-60 relative">
-                    <input type="radio" disabled class="hidden" />
-                    <img
-                      src="https://raw.githubusercontent.com/devicons/devicon/master/icons/mysql/mysql-original.svg"
-                      alt="MySQL"
-                      class="w-8 h-8 mb-2"
+                  <label class={[
+                    "cursor-pointer flex flex-col items-center border rounded-lg p-4 border-base-300",
+                    if(Phoenix.HTML.Form.input_value(@form, :db_engine) == "mysql",
+                      do: "bg-base-200 ring-2 ring-primary",
+                      else: "bg-base-100"
+                    )
+                  ]}>
+                    <input
+                      type="radio"
+                      id={Phoenix.HTML.Form.input_id(@form, :db_engine, "mysql")}
+                      name={Phoenix.HTML.Form.input_name(@form, :db_engine)}
+                      value="mysql"
+                      checked={Phoenix.HTML.Form.input_value(@form, :db_engine) == "mysql"}
+                      class="hidden"
                     />
+                    <img src={~p"/images/mysql-original.svg"} alt="MySQL" class="w-8 h-8 mb-2" />
                     <span>MySQL</span>
-                    <span class="badge badge-warning text-xs absolute top-1 right-1">
-                      Coming Soon
-                    </span>
                   </label>
 
                   <label class="flex flex-col items-center border rounded-lg p-4 border-base-300 opacity-60 relative">
                     <input type="radio" disabled class="hidden" />
                     <img
-                      src="https://raw.githubusercontent.com/devicons/devicon/master/icons/microsoftsqlserver/microsoftsqlserver-plain.svg"
+                      src={~p"/images/microsoftsqlserver-plain.svg"}
                       alt="SQL Server"
                       class="w-8 h-8 mb-2"
                     />
@@ -115,11 +133,7 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
 
                   <label class="flex flex-col items-center border rounded-lg p-4 border-base-300 opacity-60 relative">
                     <input type="radio" disabled class="hidden" />
-                    <img
-                      src="https://raw.githubusercontent.com/devicons/devicon/master/icons/mongodb/mongodb-original.svg"
-                      alt="MongoDB"
-                      class="w-8 h-8 mb-2"
-                    />
+                    <img src={~p"/images/mongodb-original.svg"} alt="MongoDB" class="w-8 h-8 mb-2" />
                     <span>MongoDB</span>
                     <span class="badge badge-warning text-xs absolute top-1 right-1">
                       Coming Soon
@@ -273,6 +287,7 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
         socket.assigns.server,
         server_params
       )
+      |> dbg()
 
     {:noreply, assign(socket, form: to_form(changeset, action: :validate))}
   end
@@ -303,12 +318,12 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
             "ssh_key_generated_at" => DateTime.utc_now() |> DateTime.to_string()
           })
 
-        Servers.create_server(socket.assigns.current_scope, server_params)
+        Servers.create_server(socket.assigns.current_scope, server_params) |> dbg()
       end
 
     case server do
       {:ok, server} ->
-        case QueryCanary.Connections.ConnectionTester.diagnose_connection(server) do
+        case QueryCanary.Connections.ConnectionTester.diagnose_connection(server) |> dbg() do
           {:ok, _query} ->
             Servers.update_introspection(server)
 
