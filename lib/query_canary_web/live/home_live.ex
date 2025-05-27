@@ -15,8 +15,8 @@ defmodule QueryCanaryWeb.HomeLive do
 
   def render(assigns) do
     ~H"""
-    <div class="container mx-auto max-w-4xl space-y-4 md:space-y-16">
-      <section class="hero py-12 bg-base-200 rounded-xl">
+    <div class="container mx-auto max-w-4xl space-y-16">
+      <section class="hero py-12 bg-base-200 md:rounded-xl">
         <div class="hero-content text-center">
           <div class="max-w-xl">
             <h1 class="text-4xl font-bold">
@@ -298,7 +298,7 @@ defmodule QueryCanaryWeb.HomeLive do
 
         <div>
           <h3 class="text-xl font-light mb-4 text-center">Database Engines</h3>
-          <div class="grid md:grid-cols-4 gap-4">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="card bg-base-200 border border-base-300 shadow-sm">
               <div class="card-body items-center">
                 <img src={~p"/images/postgresql-original.svg"} alt="MySQL" class="w-8 h-8 mb-2" />
@@ -386,7 +386,7 @@ defmodule QueryCanaryWeb.HomeLive do
         </p>
       </section>
 
-      <section id="cta" class="hero bg-primary text-primary-content py-16 rounded-xl">
+      <section class="hero bg-primary text-primary-content py-16 md:rounded-xl">
         <div class="hero-content text-center">
           <div class="max-w-xl">
             <h2 class="text-4xl font-bold mb-4">Start Monitoring in Minutes</h2>
