@@ -77,3 +77,11 @@ jobs:
       # Step: Execute the tests.
       - name: Run tests
         run: mix test
+
+      - name: Seed adapter test databases
+        run: |
+          PGPASSWORD=test_pass psql -h localhost -U test_user -d test_db -f test/support/adapters/postgresql-seed.sql
+          mysql -h 127.0.0.1 -P 3306 -u test_user -ptest_pass test_db < test/support/adapters/mysql-seed.sql
+
+      - name: Run database adapter tests
+        run: mix test --only database_adapters

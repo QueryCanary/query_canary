@@ -19,14 +19,16 @@ defmodule QueryCanary.Connections.Adapters.MySQL do
   """
   def connect(conn_details) do
     try do
-      opts = [
-        hostname: conn_details.hostname,
-        port: conn_details.port,
-        username: conn_details.username,
-        password: conn_details.password,
-        database: conn_details.database,
-        timeout: 10_000
-      ]
+      opts =
+        [
+          hostname: conn_details.hostname,
+          port: conn_details.port,
+          username: conn_details.username,
+          password: conn_details.password,
+          database: conn_details.database,
+          timeout: 10_000
+          # socket_options: conn_details.socket_options
+        ]
 
       case MyXQL.start_link(opts) do
         {:ok, pid} ->
@@ -113,8 +115,54 @@ defmodule QueryCanary.Connections.Adapters.MySQL do
     end
   end
 
-  def get_database_schema(_conn, _database_name) do
-    {:error, :not_implemented}
+  @doc """
+  Gets complete database schema information in a single query.
+
+  ## Parameters
+    * conn - Database connection
+    * database_name - The database name
+
+  ## Returns
+    * {:ok, schema} - Complete database schema information
+    * {:error, reason} - Operation failed
+  """
+  def get_database_schema(conn, database_name) do
+    # Query to get all tables and their columns in one go
+    query = """
+    SELECT
+      TABLE_NAME as table_name,
+      COLUMN_NAME as column_name,
+      DATA_TYPE as data_type
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = ?
+    ORDER BY TABLE_NAME, ORDINAL_POSITION;
+    """
+
+    case query(conn, query, [database_name]) do
+      {:ok, %{rows: rows}} ->
+        schema =
+          Enum.reduce(rows, %{}, fn %{
+                                      table_name: table_name,
+                                      column_name: column_name,
+                                      data_type: data_type
+                                    },
+                                    acc ->
+            entry = %{
+              detail: data_type,
+              label: column_name,
+              section: table_name,
+              type: "keyword"
+            }
+
+            Map.update(acc, table_name, [entry], fn existing -> [entry | existing] end)
+          end)
+          |> Map.new(fn {table, fields} -> {table, Enum.reverse(fields)} end)
+
+        {:ok, schema}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   # Formats query results into a more usable structure
@@ -133,6 +181,7 @@ defmodule QueryCanary.Connections.Adapters.MySQL do
     %{
       rows: rows,
       columns: columns,
+      original_columns: result.columns,
       num_rows: result.num_rows,
       last_insert_id: result.last_insert_id,
       raw: result

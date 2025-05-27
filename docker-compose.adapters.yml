@@ -1,0 +1,26 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: test_db
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./test/support/adapters/postgresql-seed.sql:/docker-entrypoint-initdb.d/seed.sql
+
+  mysql:
+    image: mysql:8
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pass
+      MYSQL_DATABASE: test_db
+      MYSQL_USER: test_user
+      MYSQL_PASSWORD: test_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./test/support/adapters/mysql-seed.sql:/docker-entrypoint-initdb.d/mysql-seed.sql
