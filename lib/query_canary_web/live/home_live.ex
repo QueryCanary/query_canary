@@ -373,7 +373,9 @@ defmodule QueryCanaryWeb.HomeLive do
     <!-- CTA -->
         <p class="text-center text-sm text-gray-500 mt-8">
           Don’t see your setup? We’re actively expanding support.
-          <a href="mailto:support@querycanary.com" class="link link-primary">Let us know what you need →</a>
+          <a href="mailto:support@querycanary.com" class="link link-primary">
+            Let us know what you need →
+          </a>
         </p>
       </section>
 
