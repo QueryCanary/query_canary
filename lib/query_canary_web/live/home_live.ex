@@ -299,21 +299,29 @@ defmodule QueryCanaryWeb.HomeLive do
         <div>
           <h3 class="text-xl font-light mb-4 text-center">Database Engines</h3>
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="card bg-base-200 border border-base-300 shadow-sm">
+            <a
+              href="https://docs.querycanary.com/docs/postgresql/"
+              target="_blank"
+              class="card bg-base-200 hover:bg-base-300 border border-base-300 hover:border-base-400 shadow-sm"
+            >
               <div class="card-body items-center">
                 <img src={~p"/images/postgresql-original.svg"} alt="MySQL" class="w-8 h-8 mb-2" />
                 <h4 class="font-semibold text-lg">PostgreSQL</h4>
                 <div class="badge badge-success mt-2">Supported</div>
               </div>
-            </div>
+            </a>
 
-            <div class="card bg-base-200 border border-base-300 shadow-sm">
+            <a
+              href="https://docs.querycanary.com/docs/mysql/"
+              target="_blank"
+              class="card bg-base-200 hover:bg-base-300 border border-base-300 hover:border-base-400 shadow-sm"
+            >
               <div class="card-body items-center">
                 <img src={~p"/images/mysql-original.svg"} alt="MySQL" class="w-8 h-8 mb-2" />
                 <h4 class="font-semibold text-lg">MySQL</h4>
                 <div class="badge badge-success mt-2">Supported</div>
               </div>
-            </div>
+            </a>
 
             <div class="card bg-base-200 border border-base-300 opacity-60 shadow-none">
               <div class="card-body items-center">
@@ -347,7 +355,11 @@ defmodule QueryCanaryWeb.HomeLive do
               </div>
             </div>
 
-            <div class="card bg-base-200 border border-base-300 shadow-sm">
+            <a
+              href="https://docs.querycanary.com/docs/ssh-tunnel/"
+              target="_blank"
+              class="card bg-base-200 hover:bg-base-300 border border-base-300 hover:border-base-400 shadow-sm"
+            >
               <div class="card-body">
                 <h4 class="font-semibold">SSH Tunnel</h4>
                 <p class="text-sm opacity-70">
@@ -355,7 +367,7 @@ defmodule QueryCanaryWeb.HomeLive do
                 </p>
                 <div class="badge badge-success mt-2">Supported</div>
               </div>
-            </div>
+            </a>
 
             <div class="card bg-base-200 border border-base-300 shadow-sm">
               <div class="card-body">
