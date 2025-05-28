@@ -17,51 +17,6 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
           Enter your database connection details below. It's strongly recommended to create a specific user for QueryCanary, with permissions limited to connect & select.
         </p>
 
-        <div class="collapse bg-base-100 border-base-300 border">
-          <input type="checkbox" />
-          <div class="collapse-title font-semibold">
-            How do I create a new secure database user for QueryCanary?
-          </div>
-          <div class="collapse-content text-sm space-y-4">
-            <p>
-              To allow QueryCanary to run integrity checks safely, we recommend creating a dedicated read-only Postgres user with limited permissions.
-            </p>
-
-            <div class="alert alert-info text-sm">
-              <span>
-                This user will only be able to connect, read data, and run SELECT queries. It cannot modify your database.
-              </span>
-            </div>
-
-            <div class="bg-base-200 rounded-lg p-4  max-h-96 overflow-y-auto text-sm font-mono break-words border border-base-300">
-              <pre>-- 1. Create a dedicated read-only user
-    CREATE USER querycanary_reader WITH PASSWORD 'your_secure_password';
-
-    -- 2. Allow it to connect to your database
-    GRANT CONNECT ON DATABASE your_database TO querycanary_reader;
-
-    -- 3. Grant usage on the schema you want to monitor (typically public)
-    GRANT USAGE ON SCHEMA public TO querycanary_reader;
-
-    -- 4. Grant read-only access to all existing tables
-    GRANT SELECT ON ALL TABLES IN SCHEMA public TO querycanary_reader;
-
-    -- 5. Ensure access to future tables too
-    ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT SELECT ON TABLES TO querycanary_reader;
-    </pre>
-            </div>
-
-            <div class="alert alert-error">
-              <span>
-                Replace <code>your_secure_password</code>
-                with a strong unique password, and <code>your_database</code>
-                if your DB isn't named "postgres". Repeat the schema-related lines if you use multiple schemas.
-              </span>
-            </div>
-          </div>
-        </div>
-
         <.form
           for={@form}
           id="server-form"
@@ -145,6 +100,25 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
           </div>
 
           <div class="md:col-span-3">
+            <.link
+              :if={Phoenix.HTML.Form.input_value(@form, :db_engine) == "postgresql"}
+              class="link link-hover text-lg link-info"
+              target="_blank"
+              href="https://docs.querycanary.com/docs/postgresql/"
+            >
+              PostgreSQL Setup Documentation <.icon name="hero-arrow-right" />
+            </.link>
+            <.link
+              :if={Phoenix.HTML.Form.input_value(@form, :db_engine) == "mysql"}
+              class="link link-hover text-lg link-info"
+              target="_blank"
+              href="https://docs.querycanary.com/docs/mysql/"
+            >
+              MySQL Setup Documentation <.icon name="hero-arrow-right" />
+            </.link>
+          </div>
+
+          <div class="md:col-span-3">
             <.input field={@form[:name]} type="text" label="Friendly Name" autofocus />
           </div>
           <div class="md:col-span-2">
@@ -176,7 +150,7 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
                 target="_blank"
                 class="link link-hover link-info text-sm"
               >
-                Need Help?
+                SSH Tunnel Setup Documentation <.icon name="hero-arrow-right" />
               </.link>
             </h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
