@@ -36,4 +36,5 @@ services:
     ports:
       - "8123:8123"
     volumes:
-      - ./test/support/adapters/clickhouse-seed.sql:/docker-entrypoint-initdb.d/clickhouse-seed.sql
+      - ./test/support/adapters/clickhouse-seed-init.sql:/docker-entrypoint-initdb.d/clickhouse-seed-a.sql
+      - ./test/support/adapters/clickhouse-seed-data.sql:/docker-entrypoint-initdb.d/clickhouse-seed-b.sql
