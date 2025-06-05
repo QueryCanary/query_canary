@@ -24,3 +24,16 @@ services:
       - "3306:3306"
     volumes:
       - ./test/support/adapters/mysql-seed.sql:/docker-entrypoint-initdb.d/mysql-seed.sql
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25
+    restart: always
+    environment:
+      CLICKHOUSE_DB: test_db
+      CLICKHOUSE_USER: test_user
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_PASSWORD: test_pass
+    ports:
+      - "8123:8123"
+    volumes:
+      - ./test/support/adapters/clickhouse-seed.sql:/docker-entrypoint-initdb.d/clickhouse-seed.sql

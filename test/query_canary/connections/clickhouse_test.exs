@@ -8,9 +8,9 @@ defmodule QueryCanary.Connections.Adapters.ClickHouseTest do
   @conn_details %{
     hostname: "localhost",
     port: 8123,
-    username: "default",
-    password: "",
-    database: "default"
+    username: "test_user",
+    password: "test_pass",
+    database: "test_db"
   }
 
   describe "ClickHouse Adapter" do

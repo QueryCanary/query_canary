@@ -41,6 +41,21 @@ jobs:
           --health-timeout=5s
           --health-retries=5
 
+      clickhouse:
+        image: clickhouse/clickhouse-server:25
+        env:
+          CLICKHOUSE_DB: test_db
+          CLICKHOUSE_USER: test_user
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+          CLICKHOUSE_PASSWORD: test_pass
+        ports:
+          - 8123:8123
+        options: >-
+          --health-cmd="clickhouse-client --query 'SELECT 1'"
+          --health-interval=5s
+          --health-timeout=2s
+          --health-retries=10
+
     runs-on: ubuntu-latest
     name: Test on OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
     strategy:
