@@ -11,7 +11,7 @@ defmodule QueryCanaryWeb.BlogLive.Show do
      |> assign(:page_title, post.title)
      |> assign(:custom_meta, %{
        title: post.title,
-       description: Blog.preview(post.body),
+       description: post.description || Blog.preview(post.body),
        image_url: url(~p"/images/querycanary-social.png")
      })}
   end

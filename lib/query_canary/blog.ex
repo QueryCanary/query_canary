@@ -41,14 +41,15 @@ defmodule QueryCanary.Blog do
                  {meta, body}
 
                _ ->
-                 {%{"title" => nil}, File.read!(path)}
+                 {%{"title" => nil, "description" => nil}, File.read!(path)}
              end
 
            %Post{
              title: meta["title"] || slug,
              slug: slug,
              date: date,
-             body: body
+             body: body,
+             description: meta["description"]
            }
          end)
 
@@ -56,7 +57,7 @@ defmodule QueryCanary.Blog do
   Returns all blog posts, sorted by date descending.
   """
   def list_posts do
-    Enum.sort_by(@posts, & &1.date, {:desc, Date})
+    Enum.sort_by(@posts, & &1.date, {:desc, Date}) |> dbg()
   end
 
   @doc """

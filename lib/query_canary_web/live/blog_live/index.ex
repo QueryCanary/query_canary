@@ -23,7 +23,7 @@ defmodule QueryCanaryWeb.BlogLive.Index do
             {post.date}
           </span>
           <p class="prose prose-neutral">
-            {Blog.preview(post.body)}
+            {post.description || Blog.preview(post.body)}
           </p>
         </li>
       </ul>
