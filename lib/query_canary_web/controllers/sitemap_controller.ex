@@ -21,7 +21,7 @@ defmodule QueryCanaryWeb.SitemapController do
     |> send_resp(200, xml)
   end
 
-  defp render_sitemap_xml(urls, conn) do
+  defp render_sitemap_xml(urls, _conn) do
     base = "https://querycanary.com"
 
     urls_xml =
