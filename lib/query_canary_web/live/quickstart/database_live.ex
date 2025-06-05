@@ -280,7 +280,6 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
         socket.assigns.server,
         server_params
       )
-      |> dbg()
 
     {:noreply, assign(socket, form: to_form(changeset, action: :validate))}
   end
@@ -311,12 +310,12 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
             "ssh_key_generated_at" => DateTime.utc_now() |> DateTime.to_string()
           })
 
-        Servers.create_server(socket.assigns.current_scope, server_params) |> dbg()
+        Servers.create_server(socket.assigns.current_scope, server_params)
       end
 
     case server do
       {:ok, server} ->
-        case QueryCanary.Connections.ConnectionTester.diagnose_connection(server) |> dbg() do
+        case QueryCanary.Connections.ConnectionTester.diagnose_connection(server) do
           {:ok, _query} ->
             Servers.update_introspection(server)
 

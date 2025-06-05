@@ -23,9 +23,7 @@ defmodule QueryCanary.Connections.Adapters.ClickHouse do
       database: conn_details.database
     ]
 
-    dbg(opts)
-
-    case Ch.start_link(opts) |> dbg() do
+    case Ch.start_link(opts) do
       {:ok, pid} -> {:ok, pid}
       {:error, reason} -> {:error, reason}
     end
@@ -44,7 +42,7 @@ defmodule QueryCanary.Connections.Adapters.ClickHouse do
     * {:error, reason} - Query failed
   """
   def query(conn, query, params \\ []) do
-    case Ch.query(conn, query, params) |> dbg() do
+    case Ch.query(conn, query, params) do
       {:ok, %Ch.Result{columns: columns, rows: rows}} ->
         row_maps = Enum.map(rows, fn row -> Enum.zip(columns, row) |> Map.new() end)
         {:ok, %{rows: row_maps, columns: columns, num_rows: length(row_maps), raw: rows}}

@@ -57,7 +57,7 @@ defmodule QueryCanary.Blog do
   Returns all blog posts, sorted by date descending.
   """
   def list_posts do
-    Enum.sort_by(@posts, & &1.date, {:desc, Date}) |> dbg()
+    Enum.sort_by(@posts, & &1.date, {:desc, Date})
   end
 
   @doc """
