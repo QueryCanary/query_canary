@@ -188,6 +188,7 @@ defmodule QueryCanaryWeb.LegalLive do
         We rely on trusted infrastructure providers with their own strong security practices, including:
       </p>
       <ul>
+        <li>Plausible.io - Privacy friendly website analytics</li>
         <li>Fly.io — App hosting and isolated containers</li>
         <li>SendGrid — Email alert delivery</li>
         <li>Stripe — Payment processing</li>
