@@ -323,6 +323,18 @@ defmodule QueryCanaryWeb.HomeLive do
               </div>
             </a>
 
+            <a
+              href="https://docs.querycanary.com/docs/clickhouse/"
+              target="_blank"
+              class="card bg-base-200 hover:bg-base-300 border border-base-300 hover:border-base-400 shadow-sm"
+            >
+              <div class="card-body items-center">
+                <img src={~p"/images/clickhouse.svg"} alt="ClickHouse" class="w-8 h-8 mb-2" />
+                <h4 class="font-semibold text-lg">ClickHouse</h4>
+                <div class="badge badge-success mt-2">Supported</div>
+              </div>
+            </a>
+
             <div class="card bg-base-200 border border-base-300 opacity-60 shadow-none">
               <div class="card-body items-center">
                 <img

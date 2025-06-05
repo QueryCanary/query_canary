@@ -169,6 +169,9 @@ defmodule QueryCanary.Connections.ConnectionManager do
   defp get_adapter(%Server{db_engine: "mysql"}),
     do: QueryCanary.Connections.Adapters.MySQL
 
+  defp get_adapter(%Server{db_engine: "clickhouse"}),
+    do: QueryCanary.Connections.Adapters.ClickHouse
+
   defp get_adapter(%Server{db_engine: engine}),
     do: raise("Unsupported database engine: #{engine}")
 

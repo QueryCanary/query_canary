@@ -25,6 +25,7 @@ defmodule QueryCanaryWeb.ServerLive.Index do
           {if(server.user_id, do: "Personal", else: "Team")}
         </:col>
         <:col :let={{_id, server}} label="Name">{server.name}</:col>
+        <:col :let={{_id, server}} label="Engine">{server.db_engine}</:col>
         <:col :let={{_id, server}} label="Hostname">{server.db_hostname}</:col>
         <:action :let={{_id, server}}>
           <div class="sr-only">

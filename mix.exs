@@ -65,6 +65,7 @@ defmodule QueryCanary.MixProject do
       {:postgrex, ">= 0.0.0"},
       {:myxql, "~> 0.7.1"},
       {:exqlite, "~> 0.30.1"},
+      {:ch, "~> 0.3.2"},
       # Scheduling
       {:crontab, "~> 1.1"},
       {:oban, "~> 2.19"},

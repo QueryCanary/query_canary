@@ -33,7 +33,7 @@ defmodule QueryCanaryWeb.AboutLive do
       </p>
 
       <p>
-        QueryCanary supports scheduled SQL checks, anomaly detection, SSH-tunneled Postgres / MySQL connections, email alerts,  teams, and a simple dashboard. It’s still early, but I’m actively building, shipping,
+        QueryCanary supports scheduled SQL checks, anomaly detection, SSH-tunneled Postgres / MySQL / ClickHouse connections, email alerts,  teams, and a simple dashboard. It’s still early, but I’m actively building, shipping,
         and listening.
       </p>
 
