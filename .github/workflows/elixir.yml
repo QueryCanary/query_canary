@@ -42,7 +42,7 @@ jobs:
           --health-retries=5
 
       clickhouse:
-        image: clickhouse/clickhouse-server:25
+        image: clickhouse/clickhouse-server:25.5
         env:
           CLICKHOUSE_DB: test_db
           CLICKHOUSE_USER: test_user

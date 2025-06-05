@@ -26,7 +26,7 @@ services:
       - ./test/support/adapters/mysql-seed.sql:/docker-entrypoint-initdb.d/mysql-seed.sql
 
   clickhouse:
-    image: clickhouse/clickhouse-server:25
+    image: clickhouse/clickhouse-server:25.5
     restart: always
     environment:
       CLICKHOUSE_DB: test_db
