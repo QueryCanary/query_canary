@@ -71,7 +71,9 @@ defmodule QueryCanary.MixProject do
       # Billing
       {:stripity_stripe, "~> 3.2"},
       # Emails
-      {:floki, "~> 0.37.1"}
+      {:floki, "~> 0.37.1"},
+      # Blog
+      {:earmark, "~> 1.4"}
     ]
   end
 

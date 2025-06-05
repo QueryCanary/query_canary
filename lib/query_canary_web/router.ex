@@ -24,6 +24,13 @@ defmodule QueryCanaryWeb.Router do
     live "/", HomeLive
   end
 
+  scope "/blog", QueryCanaryWeb.BlogLive do
+    pipe_through :browser
+
+    live "/", Index, :index
+    live "/:slug", Show, :show
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", QueryCanaryWeb do
   #   pipe_through :api
