@@ -21,6 +21,8 @@ defmodule QueryCanaryWeb.Router do
   scope "/", QueryCanaryWeb do
     pipe_through :browser
 
+    get "/sitemap.xml", SitemapController, :sitemap
+
     live "/", HomeLive
   end
 
