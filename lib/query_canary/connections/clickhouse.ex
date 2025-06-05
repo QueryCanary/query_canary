@@ -69,7 +69,7 @@ defmodule QueryCanary.Connections.Adapters.ClickHouse do
   Gets schema information for a specific table.
   """
   def get_table_schema(conn, table_name) do
-    case query(conn, "DESCRIBE TABLE {$0:String}", [table_name]) do
+    case query(conn, "DESCRIBE TABLE #{table_name}") do
       {:ok, %{rows: rows}} -> {:ok, rows}
       {:error, reason} -> {:error, reason}
     end
