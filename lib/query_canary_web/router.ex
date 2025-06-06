@@ -22,15 +22,6 @@ defmodule QueryCanaryWeb.Router do
     pipe_through :browser
 
     get "/sitemap.xml", SitemapController, :sitemap
-
-    live "/", HomeLive
-  end
-
-  scope "/blog", QueryCanaryWeb.BlogLive do
-    pipe_through :browser
-
-    live "/", Index, :index
-    live "/:slug", Show, :show
   end
 
   # Other scopes may use custom stacks.
@@ -92,6 +83,8 @@ defmodule QueryCanaryWeb.Router do
 
     live_session :current_user,
       on_mount: [{QueryCanaryWeb.UserAuth, :mount_current_scope}] do
+      live "/", HomeLive
+
       live "/users/register", UserLive.Registration, :new
       live "/users/log-in", UserLive.Login, :new
       live "/users/log-in/:token", UserLive.Confirmation, :new
@@ -105,6 +98,9 @@ defmodule QueryCanaryWeb.Router do
 
       get "/docs", RedirectController, :docs
       live "/docs/*slug", DocsLive
+
+      live "/blog/", BlogLive.Index, :index
+      live "/blog/:slug", BlogLive.Show, :show
     end
 
     post "/users/log-in", UserSessionController, :create
