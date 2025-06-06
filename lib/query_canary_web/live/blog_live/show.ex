@@ -32,7 +32,7 @@ defmodule QueryCanaryWeb.BlogLive.Show do
         </div>
 
         <div class="prose prose-neutral">
-          {raw(Earmark.as_html!(@post.body))}
+          {raw(Earmark.as_html!(@post.body, code_class_prefix: "language-"))}
         </div>
       </article>
     </section>
