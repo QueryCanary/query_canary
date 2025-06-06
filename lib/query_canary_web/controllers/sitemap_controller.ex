@@ -1,6 +1,7 @@
 defmodule QueryCanaryWeb.SitemapController do
   use QueryCanaryWeb, :controller
   alias QueryCanary.Blog
+  alias QueryCanary.Docs
 
   @static_paths [
     "/",
@@ -13,7 +14,11 @@ defmodule QueryCanaryWeb.SitemapController do
   def sitemap(conn, _params) do
     blog_posts = Blog.list_posts()
     blog_urls = Enum.map(blog_posts, fn post -> "/blog/" <> post.slug end)
-    urls = @static_paths ++ blog_urls
+
+    documentation = Docs.list_docs()
+    doc_urls = Enum.map(documentation, fn doc -> "/docs/" <> doc.slug end)
+
+    urls = @static_paths ++ blog_urls ++ doc_urls
     xml = render_sitemap_xml(urls, conn)
 
     conn
