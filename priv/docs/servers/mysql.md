@@ -1,6 +1,5 @@
 ---
 title: Using MySQL with QueryCanary
-slug: mysql
 ---
 QueryCanary fully supports MySQL for production data monitoring. This guide walks you through connecting your database, writing SQL checks, and troubleshooting common issues.
 

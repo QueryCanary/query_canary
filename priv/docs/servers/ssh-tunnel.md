@@ -1,6 +1,5 @@
 ---
 title: SSH Tunnel
-slug: ssh-tunnel
 ---
 
 SSH tunnels provide a secure way to connect to your database by routing traffic through an intermediary SSH server. This ensures that sensitive data is encrypted and protected during transit.
