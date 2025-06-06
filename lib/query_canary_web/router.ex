@@ -102,6 +102,9 @@ defmodule QueryCanaryWeb.Router do
       live "/about", AboutLive
 
       live "/checks/:id", CheckLive.Show, :show
+
+      get "/docs", RedirectController, :docs
+      live "/docs/*slug", DocsLive
     end
 
     post "/users/log-in", UserSessionController, :create

@@ -299,8 +299,8 @@ defmodule QueryCanaryWeb.HomeLive do
         <div>
           <h3 class="text-xl font-light mb-4 text-center">Database Engines</h3>
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <a
-              href="https://docs.querycanary.com/docs/postgresql/"
+            <.link
+              navigate={~p"/docs/servers/postgresql"}
               target="_blank"
               class="card bg-base-200 hover:bg-base-300 border border-base-300 hover:border-base-400 shadow-sm"
             >
@@ -309,10 +309,10 @@ defmodule QueryCanaryWeb.HomeLive do
                 <h4 class="font-semibold text-lg">PostgreSQL</h4>
                 <div class="badge badge-success mt-2">Supported</div>
               </div>
-            </a>
+            </.link>
 
-            <a
-              href="https://docs.querycanary.com/docs/mysql/"
+            <.link
+              navigate={~p"/docs/servers/mysql"}
               target="_blank"
               class="card bg-base-200 hover:bg-base-300 border border-base-300 hover:border-base-400 shadow-sm"
             >
@@ -321,10 +321,10 @@ defmodule QueryCanaryWeb.HomeLive do
                 <h4 class="font-semibold text-lg">MySQL</h4>
                 <div class="badge badge-success mt-2">Supported</div>
               </div>
-            </a>
+            </.link>
 
-            <a
-              href="https://docs.querycanary.com/docs/clickhouse/"
+            <.link
+              navigate={~p"/docs/servers/clickhouse"}
               target="_blank"
               class="card bg-base-200 hover:bg-base-300 border border-base-300 hover:border-base-400 shadow-sm"
             >
@@ -333,7 +333,7 @@ defmodule QueryCanaryWeb.HomeLive do
                 <h4 class="font-semibold text-lg">ClickHouse</h4>
                 <div class="badge badge-success mt-2">Supported</div>
               </div>
-            </a>
+            </.link>
 
             <div class="card bg-base-200 border border-base-300 opacity-60 shadow-none">
               <div class="card-body items-center">
@@ -367,8 +367,8 @@ defmodule QueryCanaryWeb.HomeLive do
               </div>
             </div>
 
-            <a
-              href="https://docs.querycanary.com/docs/ssh-tunnel/"
+            <.link
+              navigate={~p"/docs/servers/ssh-tunnel"}
               target="_blank"
               class="card bg-base-200 hover:bg-base-300 border border-base-300 hover:border-base-400 shadow-sm"
             >
@@ -379,7 +379,7 @@ defmodule QueryCanaryWeb.HomeLive do
                 </p>
                 <div class="badge badge-success mt-2">Supported</div>
               </div>
-            </a>
+            </.link>
 
             <div class="card bg-base-200 border border-base-300 shadow-sm">
               <div class="card-body">
