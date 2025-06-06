@@ -3,7 +3,7 @@ defmodule QueryCanaryWeb.DocsLive do
   alias QueryCanary.Docs
 
   def mount(%{"slug" => slug}, _session, socket) do
-    doc = Docs.get_doc_by_slug!(slug)
+    doc = Docs.get_document_by_slug!(slug)
 
     {:ok,
      socket
@@ -18,7 +18,22 @@ defmodule QueryCanaryWeb.DocsLive do
 
   def render(assigns) do
     ~H"""
-    <section class="max-w-3xl mx-auto px-6 py-12 space-y-8">
+    <section class="max-w-5xl mx-auto py-12 flex gap-4 flex-col md:flex-row px-4">
+      <div>
+        <ul class="menu bg-base-200 rounded-box w-full md:w-56">
+          <li class="menu-title">Documentation</li>
+          <li><.link navigate={~p"/docs/overview"}>Overview</.link></li>
+          <li>
+            <a>Servers</a>
+            <ul>
+              <li><.link navigate={~p"/docs/servers/postgresql"}>PostgreSQL</.link></li>
+              <li><.link navigate={~p"/docs/servers/mysql"}>MySQL</.link></li>
+              <li><.link navigate={~p"/docs/servers/clickhouse"}>ClickHouse</.link></li>
+              <li><.link navigate={~p"/docs/servers/ssh-tunnel"}>SSH Tunnel</.link></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
       <article class="space-y-8">
         <div>
           <h1 class="text-3xl font-bold">{@doc.title}</h1>

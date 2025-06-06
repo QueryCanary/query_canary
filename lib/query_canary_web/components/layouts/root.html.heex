@@ -56,7 +56,7 @@
             <.link navigate={~p"/checks"} class="btn btn-ghost">Checks</.link>
             <.link navigate={~p"/servers"} class="btn btn-ghost">Servers</.link>
             <.link navigate={~p"/teams"} class="btn btn-ghost">Teams</.link>
-            <.link href="https://docs.querycanary.com/" class="btn btn-ghost">
+            <.link navigate={~p"/docs/overview"} class="btn btn-ghost">
               Docs
             </.link>
 
@@ -107,11 +107,7 @@
           <h6 class="footer-title">Company</h6>
           <.link class="link link-hover" navigate={~p"/about"}>About</.link>
           <.link class="link link-hover" navigate={~p"/blog"}>Blog</.link>
-          <.link
-            class="link link-hover"
-            href="https://docs.querycanary.com/docs/overview/"
-            target="_blank"
-          >
+          <.link class="link link-hover" navigate={~p"/docs/overview"}>
             Documentation
           </.link>
           <.link class="link link-hover" href="mailto:support@querycanary.com">Support</.link>

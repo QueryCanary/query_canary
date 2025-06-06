@@ -81,5 +81,7 @@ SELECT COUNT(*) FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE u.id I
 ## Troubleshooting
 
 If you can't connect to the database, make sure the hostname and port are reachable, the user has SELECT permissions, and no VPN or firewall blocks our IP.  
+
 If the SSH tunnel fails, ensure your bastion host is reachable, the provided public key is added to authorized keys on the bastion, and the bastion user can access the database internally.  
+
 If a query fails or returns empty, test your query locally with the MySQL CLI or your app first. Avoid using LIMIT, ORDER BY, or formatting functions — QueryCanary only needs values. Use COUNT, SUM, AVG, or conditional expressions to track value changes.

@@ -103,6 +103,7 @@ defmodule QueryCanaryWeb.Router do
 
       live "/checks/:id", CheckLive.Show, :show
 
+      get "/docs", RedirectController, :docs
       live "/docs/*slug", DocsLive
     end
 

@@ -2,7 +2,7 @@ defmodule QueryCanary.Docs do
   @moduledoc """
   The Docs context. Loads posts from markdown files in /docs at compile time.
   """
-  alias QueryCanary.Docs.Doc
+  alias QueryCanary.Docs.Document
 
   @docs_dir Path.join(:code.priv_dir(:query_canary), "/docs")
 
@@ -17,13 +17,6 @@ defmodule QueryCanary.Docs do
           filename = Path.relative_to(path, @docs_dir)
 
           slug = String.trim_trailing(filename, ".md")
-
-          {output, 0} = System.cmd("git", ["log", "-1", "--format=%cI", path]) |> dbg()
-          modified_at = String.trim(output)
-          dbg(modified_at)
-          # foo
-
-          {:ok, date} = {:ok, Date.utc_today()}
 
           {meta, body} =
             case Regex.run(~r/\A---\n(.+?)\n---\n(.*)/ms, File.read!(path)) do
@@ -46,26 +39,25 @@ defmodule QueryCanary.Docs do
                 {%{"title" => nil, "description" => nil}, File.read!(path)}
             end
 
-          %Doc{
+          %Document{
             title: meta["title"] || slug,
             slug: slug,
-            date: date,
             body: body,
             description: meta["description"]
           }
         end)
 
   @doc """
-  Returns all docs posts, sorted by date descending.
+  Returns all documentation.
   """
   def list_docs do
-    Enum.sort_by(@docs, & &1.date, {:desc, Date})
+    @docs
   end
 
   @doc """
-  Gets a post by slug.
+  Gets a document by slug.
   """
-  def get_doc_by_slug!(slug) do
+  def get_document_by_slug!(slug) do
     Enum.find(@docs, fn doc -> doc.slug == Enum.join(slug, "/") end) ||
       raise "Documentation not found"
   end

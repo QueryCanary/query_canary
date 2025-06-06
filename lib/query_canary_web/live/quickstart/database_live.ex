@@ -123,7 +123,7 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
               :if={Phoenix.HTML.Form.input_value(@form, :db_engine) == "postgresql"}
               class="link link-hover text-lg link-info"
               target="_blank"
-              href="https://docs.querycanary.com/docs/postgresql/"
+              navigate={~p"/docs/servers/postgresql"}
             >
               PostgreSQL Setup Documentation <.icon name="hero-arrow-right" />
             </.link>
@@ -131,9 +131,17 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
               :if={Phoenix.HTML.Form.input_value(@form, :db_engine) == "mysql"}
               class="link link-hover text-lg link-info"
               target="_blank"
-              href="https://docs.querycanary.com/docs/mysql/"
+              navigate={~p"/docs/servers/mysql"}
             >
               MySQL Setup Documentation <.icon name="hero-arrow-right" />
+            </.link>
+            <.link
+              :if={Phoenix.HTML.Form.input_value(@form, :db_engine) == "clickhouse"}
+              class="link link-hover text-lg link-info"
+              target="_blank"
+              navigate={~p"/docs/servers/clickhouse"}
+            >
+              ClickHouse Setup Documentation <.icon name="hero-arrow-right" />
             </.link>
           </div>
 
@@ -165,7 +173,7 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
             <h3 class="font-semibold mb-2">
               SSH Tunnel Configuration
               <.link
-                href="https://docs.querycanary.com/docs/ssh-tunnel/"
+                navigate={~p"/docs/servers/ssh-tunnel"}
                 target="_blank"
                 class="link link-hover link-info text-sm"
               >
