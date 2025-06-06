@@ -37,7 +37,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
       <div class="card bg-base-200">
         <div class="card-body">
           <h2 class="card-title text-lg">SQL Query</h2>
-          <pre class="bg-base-300 text-sm p-4 rounded-lg overflow-x-auto font-mono">{@check.query}</pre>
+          <pre class="bg-base-300 text-sm p-4 rounded-lg overflow-x-auto font-mono"><code class="language-sql">{@check.query}</code></pre>
         </div>
       </div>
 

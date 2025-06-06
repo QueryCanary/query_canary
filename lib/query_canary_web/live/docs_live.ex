@@ -41,7 +41,7 @@ defmodule QueryCanaryWeb.DocsLive do
         </div>
 
         <div class="prose prose-neutral">
-          {raw(Earmark.as_html!(@doc.body))}
+          {raw(Earmark.as_html!(@doc.body, code_class_prefix: "language-"))}
         </div>
       </article>
     </section>
