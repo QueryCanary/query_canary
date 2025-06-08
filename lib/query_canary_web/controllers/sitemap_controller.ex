@@ -7,8 +7,7 @@ defmodule QueryCanaryWeb.SitemapController do
     "/",
     "/about",
     "/blog",
-    "/quickstart",
-    "/contact"
+    "/quickstart"
   ]
 
   def sitemap(conn, _params) do
