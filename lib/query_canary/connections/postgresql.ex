@@ -30,7 +30,7 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
       ]
 
       # Build advanced SSL options if present
-      ssl_mode = Map.get(conn_details, :ssl_mode, "require")
+      ssl_mode = Map.get(conn_details, :ssl_mode, "allow")
 
       ssl_opts =
         [
