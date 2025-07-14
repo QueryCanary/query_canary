@@ -12,6 +12,10 @@ defmodule QueryCanary.Servers.Server do
     field :db_username, :string
     field :db_password, :string, redact: true
     field :db_password_input, :string, virtual: true
+    field :db_ssl_mode, :string, default: "allow"
+    field :db_ssl_cert, :string, redact: true
+    field :db_ssl_key, :string, redact: true
+    field :db_ssl_ca_cert, :string, redact: true
 
     field :ssh_tunnel, :boolean
     field :ssh_hostname, :string
@@ -41,6 +45,10 @@ defmodule QueryCanary.Servers.Server do
       :db_name,
       :db_username,
       :db_password_input,
+      :db_ssl_mode,
+      :db_ssl_cert,
+      :db_ssl_key,
+      :db_ssl_ca_cert,
       :ssh_tunnel,
       :ssh_hostname,
       :ssh_username,

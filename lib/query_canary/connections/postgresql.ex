@@ -29,6 +29,29 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
         socket_options: Map.get(conn_details, :socket_options, [])
       ]
 
+      # Build advanced SSL options if present
+      ssl_mode = Map.get(conn_details, :ssl_mode, "require")
+
+      ssl_opts =
+        [
+          # Map ssl_mode to verify options
+          verify:
+            case ssl_mode do
+              "verify-full" -> :verify_peer
+              "verify-ca" -> :verify_peer
+              "require" -> :verify_none
+              "prefer" -> :verify_none
+              "allow" -> :verify_none
+              _ -> :verify_none
+            end
+        ]
+        |> maybe_add_ssl_cert(conn_details)
+        |> maybe_add_ssl_key(conn_details)
+        |> maybe_add_ssl_ca_cert(conn_details)
+        |> Enum.reject(&is_nil/1)
+
+      opts = opts ++ [ssl: true, ssl_opts: ssl_opts]
+
       case Postgrex.start_link(opts) do
         {:ok, pid} ->
           Process.put(:db_connection_pid, pid)
@@ -39,6 +62,43 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
       end
     rescue
       e -> {:error, "PostgreSQL connection error: #{inspect(e)}"}
+    end
+  end
+
+  defp maybe_add_ssl_cert(opts, conn_details) do
+    if cert = Map.get(conn_details, :ssl_cert) do
+      # Accept PEM string or file path
+      if String.starts_with?(cert, "-----BEGIN CERTIFICATE") do
+        Keyword.put(opts, :cert, cert)
+      else
+        Keyword.put(opts, :certfile, cert)
+      end
+    else
+      opts
+    end
+  end
+
+  defp maybe_add_ssl_key(opts, conn_details) do
+    if key = Map.get(conn_details, :ssl_key) do
+      if String.starts_with?(key, "-----BEGIN") do
+        Keyword.put(opts, :key, key)
+      else
+        Keyword.put(opts, :keyfile, key)
+      end
+    else
+      opts
+    end
+  end
+
+  defp maybe_add_ssl_ca_cert(opts, conn_details) do
+    if ca = Map.get(conn_details, :ssl_ca_cert) do
+      if String.starts_with?(ca, "-----BEGIN CERTIFICATE") do
+        Keyword.put(opts, :cacerts, [ca])
+      else
+        Keyword.put(opts, :cacertfile, ca)
+      end
+    else
+      opts
     end
   end
 

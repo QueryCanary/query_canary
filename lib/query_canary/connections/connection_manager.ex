@@ -126,7 +126,10 @@ defmodule QueryCanary.Connections.ConnectionManager do
            username: server.db_username,
            password: server.db_password,
            database: server.db_name,
-           ssl: true,
+           ssl_mode: server.db_ssl_mode,
+           ssl_cert: server.db_ssl_cert,
+           ssl_key: server.db_ssl_key,
+           ssl_ca_cert: server.db_ssl_ca_cert,
            socket_options: []
          }}
 

@@ -208,6 +208,18 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
             </div>
           </div>
 
+          <%!-- <div class="md:col-span-3 mb-2">
+            <div class="flex items-center">
+              <.input field={@form[:db_ssl]} type="checkbox" label="Use SSL?" />
+            </div>
+          </div>
+          <.input
+            field={@form[:db_ssl_opts]}
+            type="textarea"
+            label="SSL Options (JSON, optional)"
+            placeholder='{"verify": :verify_peer}'
+          /> --%>
+
           <footer class="md:col-span-3 space-y-6">
             <div :if={@connection_error} class="alert alert-error">
               <span>

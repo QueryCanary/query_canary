@@ -58,6 +58,52 @@ defmodule QueryCanaryWeb.ServerLive.Form do
             <.input field={@form[:ssh_username]} type="text" label="SSH Username" />
           </div>
         </div>
+        <div
+          :if={Phoenix.HTML.Form.input_value(@form, :db_ssl_mode) != "disable"}
+          class="md:col-span-3 p-4 bg-base-200 rounded-lg mb-2"
+        >
+          <h3 class="font-semibold mb-2">SSL Connection Configuration</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="md:col-span-3 mb-2">
+              <.input
+                field={@form[:db_ssl_mode]}
+                type="select"
+                label="SSL Mode"
+                options={
+                  [
+                    {"disable - Don't allow a SSL connection", "disable"},
+                    {"allow - Use SSL if the server requires it", "allow"}
+                    # {"prefer - Try SSL but allow falling back to non-SSL", "prefer"},
+                    # {"require - Force SSL, don't allow connection without", "require"},
+                    # {"verify-ca - Force SSL, and verify the server has a valid certificate", "verify-ca"},
+                    # {"verify-full - Force SSL, and verify the server has a specific SSL certificate", "verify-full"}
+                  ]
+                }
+              />
+            </div>
+            <%!-- <div class="md:col-span-3 mb-2">
+              <.input
+                field={@form[:db_ssl_cert]}
+                type="textarea"
+                label="Client Certificate (PEM or file path)"
+              />
+            </div>
+            <div class="md:col-span-3 mb-2">
+              <.input
+                field={@form[:db_ssl_key]}
+                type="textarea"
+                label="Client Key (PEM or file path)"
+              />
+            </div>
+            <div class="md:col-span-3 mb-2">
+              <.input
+                field={@form[:db_ssl_ca_cert]}
+                type="textarea"
+                label="CA Certificate (PEM or file path)"
+              />
+            </div> --%>
+          </div>
+        </div>
         <div class="md:col-span-3 mb-2">
           <.input
             field={@form[:team_id]}
@@ -66,6 +112,7 @@ defmodule QueryCanaryWeb.ServerLive.Form do
             label="Team"
           />
         </div>
+
         <footer class="md:col-span-2">
           <.button phx-disable-with="Connecting..." variant="primary" class="w-full">
             Save Server

@@ -41,6 +41,7 @@ defmodule QueryCanaryWeb.ServerLive.Show do
               <:item title="Port">{@server.db_port}</:item>
               <:item title="Database">{@server.db_name}</:item>
               <:item title="Username">{@server.db_username}</:item>
+              <:item title="SSL Mode">{@server.db_ssl_mode}</:item>
             </.list>
           </div>
         </div>
