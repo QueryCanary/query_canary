@@ -52,13 +52,18 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
 
       opts = opts ++ [ssl: true, ssl_opts: ssl_opts]
 
-      case Postgrex.start_link(opts) do
-        {:ok, pid} ->
-          Process.put(:db_connection_pid, pid)
-          {:ok, pid}
+      with {:ok, pid} <- Postgrex.start_link(opts),
+           {:ok, "foo"} <- query(pid, "SELECT 1;") do
+        {:ok, pid}
+      else
+        {:error, _message} when ssl_mode in ["allow", "prefer"] ->
+          # Retry without SSL
+          opts_no_ssl = Keyword.delete(opts, :ssl)
+          opts_no_ssl = Keyword.delete(opts_no_ssl, :ssl_opts)
+          Postgrex.start_link(opts_no_ssl)
 
-        {:error, reason} ->
-          {:error, "Failed to connect: #{inspect(reason)}"}
+        error ->
+          {:error, "Failed to connect: #{inspect(error)}"}
       end
     rescue
       e -> {:error, "PostgreSQL connection error: #{inspect(e)}"}
