@@ -53,7 +53,7 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
       opts = opts ++ [ssl: true, ssl_opts: ssl_opts]
 
       with {:ok, pid} <- Postgrex.start_link(opts),
-           {:ok, "foo"} <- query(pid, "SELECT 1;") do
+           {:ok, _res} <- query(pid, "SELECT 1;") do
         {:ok, pid}
       else
         {:error, _message} when ssl_mode in ["allow", "prefer"] ->
