@@ -50,16 +50,20 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
         |> maybe_add_ssl_ca_cert(conn_details)
         |> Enum.reject(&is_nil/1)
 
-      opts = opts ++ [ssl: true, ssl_opts: ssl_opts]
+      opts = opts ++ [ssl: ssl_opts]
 
       with {:ok, pid} <- Postgrex.start_link(opts),
            {:ok, _res} <- query(pid, "SELECT 1;") do
         {:ok, pid}
       else
         {:error, _message} when ssl_mode in ["allow", "prefer"] ->
+          Logger.info(
+            "PostgreSQL connection with SSL failed to #{conn_details.hostname}, retrying without SSL"
+          )
+
           # Retry without SSL
           opts_no_ssl = Keyword.delete(opts, :ssl)
-          opts_no_ssl = Keyword.delete(opts_no_ssl, :ssl_opts)
+          # opts_no_ssl = Keyword.delete(opts_no_ssl, :ssl_opts)
           Postgrex.start_link(opts_no_ssl)
 
         error ->
