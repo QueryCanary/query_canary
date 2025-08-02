@@ -79,10 +79,12 @@ config :query_canary, Oban,
   queues: [default: 10, checks: 10],
   repo: QueryCanary.Repo,
   plugins: [
+    {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
     {Oban.Plugins.Cron,
      crontab: [
        {"* * * * *", QueryCanary.Jobs.CheckScheduler}
-     ]}
+     ]},
+    Oban.Plugins.Lifeline
   ]
 
 # Import environment specific config. This must remain at the bottom
