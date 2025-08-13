@@ -26,7 +26,9 @@ defmodule QueryCanary.Connections.Adapters.MySQL do
           username: conn_details.username,
           password: conn_details.password,
           database: conn_details.database,
-          timeout: 10_000
+          pool_size: 1,
+          timeout: 5000,
+          connect_timeout: 5000
           # socket_options: conn_details.socket_options
         ]
 

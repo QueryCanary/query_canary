@@ -25,8 +25,10 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
         username: conn_details.username,
         password: conn_details.password,
         database: conn_details.database,
-        timeout: 10_000,
-        socket_options: Map.get(conn_details, :socket_options, [])
+        socket_options: Map.get(conn_details, :socket_options, []),
+        pool_size: 1,
+        timeout: 5000,
+        connect_timeout: 5000
       ]
 
       # Build advanced SSL options if present

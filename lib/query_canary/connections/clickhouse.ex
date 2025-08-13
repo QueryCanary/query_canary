@@ -20,7 +20,10 @@ defmodule QueryCanary.Connections.Adapters.ClickHouse do
       port: conn_details.port || 8123,
       username: conn_details.username,
       password: conn_details.password,
-      database: conn_details.database
+      database: conn_details.database,
+      pool_size: 1,
+      timeout: 5000,
+      connect_timeout: 5000
     ]
 
     case Ch.start_link(opts) do
