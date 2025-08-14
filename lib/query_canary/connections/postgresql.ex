@@ -38,6 +38,9 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
         # Queue settings to fail fast
         queue_target: 50,
         queue_interval: 1000,
+
+        # Misc settings
+        auto_reconnect: false,
         max_restarts: 1,
         show_sensitive_data_on_connection_error: true,
         name: :"db_conn_#{System.unique_integer([:positive])}"
