@@ -70,6 +70,10 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
 
       case query(pid, "SELECT 1;") do
         {:ok, _res} ->
+          Logger.info(
+            "QueryCanary.Connections: Successfully connected to #{conn_details.hostname}"
+          )
+
           {:ok, pid}
 
         {:error, _message} when ssl_mode in ["allow", "prefer"] ->
@@ -90,14 +94,26 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
 
           case query(no_ssl_pid, "SELECT 1;") do
             {:ok, _res} ->
+              Logger.info(
+                "QueryCanary.Connections: Successfully connected to #{conn_details.hostname}, with non-SSL fallback"
+              )
+
               {:ok, no_ssl_pid}
 
             error ->
+              Logger.warning(
+                "QueryCanary.Connections: Failed to connect to #{conn_details.hostname}, even without SSL"
+              )
+
               GenServer.stop(no_ssl_pid)
               {:error, "Failed to connect, even without SSL: #{inspect(error)}"}
           end
 
         error ->
+          Logger.warning(
+            "QueryCanary.Connections: Failed to connect to #{conn_details.hostname}, no SSL attempted"
+          )
+
           GenServer.stop(pid)
           {:error, "Failed to connect: #{inspect(error)}"}
       end
