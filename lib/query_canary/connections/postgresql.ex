@@ -18,6 +18,8 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
     * {:error, reason} - Connection failed
   """
   def connect(conn_details) do
+    Logger.info("QueryCanary.Connections: Connecting to #{conn_details.hostname}")
+
     try do
       opts = [
         hostname: conn_details.hostname,
