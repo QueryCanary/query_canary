@@ -6,6 +6,8 @@ defmodule QueryCanary.Connections.ConnectionManager do
   while abstracting away the complexity of SSH tunneling and connection pooling.
   """
 
+  require Logger
+
   alias QueryCanary.Servers.Server
   alias QueryCanary.Connections.SSHTunnel
 
@@ -36,6 +38,8 @@ defmodule QueryCanary.Connections.ConnectionManager do
     * {:error, reason} - Query failed with reason
   """
   def run_query(%Server{} = server, query, params \\ []) do
+    Logger.info("run_query #{server.name}")
+
     with {:ok, conn_details} <- prepare_connection(server),
          {:ok, conn} <- get_adapter(server).connect(conn_details),
          {:ok, results} <- get_adapter(server).query(conn, query, params) do
@@ -59,6 +63,8 @@ defmodule QueryCanary.Connections.ConnectionManager do
     * {:error, reason} - Operation failed with reason
   """
   def list_tables(%Server{} = server) do
+    Logger.info("list_tables #{server.name}")
+
     with {:ok, conn_details} <- prepare_connection(server),
          {:ok, conn} <- get_adapter(server).connect(conn_details),
          {:ok, tables} <- get_adapter(server).list_tables(conn) do
@@ -82,6 +88,8 @@ defmodule QueryCanary.Connections.ConnectionManager do
     * {:error, reason} - Operation failed with reason
   """
   def get_database_schema(%Server{} = server) do
+    Logger.info("get_database_schema #{server.name}")
+
     with {:ok, conn_details} <- prepare_connection(server),
          {:ok, conn} <- get_adapter(server).connect(conn_details),
          {:ok, schema} <- get_adapter(server).get_database_schema(conn, server.db_name) do

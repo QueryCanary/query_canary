@@ -26,9 +26,19 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
         password: conn_details.password,
         database: conn_details.database,
         socket_options: Map.get(conn_details, :socket_options, []),
+        # Connection pool settings
         pool_size: 1,
+
+        # Short timeouts
+        connect_timeout: 5000,
         timeout: 5000,
-        connect_timeout: 5000
+
+        # Queue settings to fail fast
+        queue_target: 50,
+        queue_interval: 1000,
+        max_restarts: 1,
+        show_sensitive_data_on_connection_error: true,
+        name: :"db_conn_#{System.unique_integer([:positive])}"
       ]
 
       # Build advanced SSL options if present
@@ -54,25 +64,44 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
 
       opts = opts ++ [ssl: ssl_opts]
 
-      with {:ok, pid} <- Postgrex.start_link(opts),
-           {:ok, _res} <- query(pid, "SELECT 1;") do
-        {:ok, pid}
-      else
+      {:ok, pid} = Postgrex.start_link(opts)
+
+      case query(pid, "SELECT 1;") do
+        {:ok, _res} ->
+          {:ok, pid}
+
         {:error, _message} when ssl_mode in ["allow", "prefer"] ->
+          GenServer.stop(pid)
+
           Logger.info(
             "PostgreSQL connection with SSL failed to #{conn_details.hostname}, retrying without SSL"
           )
 
           # Retry without SSL
           opts_no_ssl = Keyword.delete(opts, :ssl)
+
+          opts_no_ssl =
+            Keyword.put(opts_no_ssl, :name, :"db_conn_#{System.unique_integer([:positive])}")
+
           # opts_no_ssl = Keyword.delete(opts_no_ssl, :ssl_opts)
-          Postgrex.start_link(opts_no_ssl)
+          {:ok, no_ssl_pid} = Postgrex.start_link(opts_no_ssl)
+
+          case query(no_ssl_pid, "SELECT 1;") do
+            {:ok, _res} ->
+              {:ok, no_ssl_pid}
+
+            error ->
+              GenServer.stop(no_ssl_pid)
+              {:error, "Failed to connect, even without SSL: #{inspect(error)}"}
+          end
 
         error ->
+          GenServer.stop(pid)
           {:error, "Failed to connect: #{inspect(error)}"}
       end
     rescue
-      e -> {:error, "PostgreSQL connection error: #{inspect(e)}"}
+      e ->
+        {:error, "PostgreSQL connection error: #{inspect(e)}"}
     end
   end
 
