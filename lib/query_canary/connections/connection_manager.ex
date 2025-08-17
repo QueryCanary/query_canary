@@ -21,9 +21,8 @@ defmodule QueryCanary.Connections.ConnectionManager do
     * {:error, reason} - Connection failed with reason
   """
   def test_connection(%Server{} = server) do
-    with {:ok, _pid} <- ConnectionServer.ensure_started(server),
-         {:ok, _} <- ConnectionServer.query(server.id, "SELECT 1") do
-      :ok
+    with {:ok, _pid} <- ConnectionServer.ensure_started(server) do
+      ConnectionServer.query(server.id, "SELECT now()")
     else
       {:error, reason} -> {:error, reason}
       other -> other
