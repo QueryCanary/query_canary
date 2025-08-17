@@ -10,6 +10,7 @@ defmodule QueryCanary.Checks do
 
   alias QueryCanary.Checks.{Check, CheckResult}
   alias QueryCanary.Accounts.{User, Scope, TeamUser}
+  alias QueryCanary.Accounts
   alias QueryCanary.Connections.ConnectionManager
   alias QueryCanary.Checks.CheckNotifier
 
@@ -37,29 +38,41 @@ defmodule QueryCanary.Checks do
 
   # Public, we can view no matter what
   def can_perform?(:view, _, %QueryCanary.Checks.Check{public: true}), do: true
-  # If not public, only if we're the scoped user
+  # If not public, only if we're the scoped user or member of owning team
   def can_perform?(
         :view,
         %QueryCanary.Accounts.Scope{} = scope,
         %QueryCanary.Checks.Check{} = check
       ) do
-    server_ids = QueryCanary.Servers.list_servers(scope) |> Enum.map(fn s -> s.id end)
+    check = Repo.preload(check, server: [:team])
 
-    check.server_id in server_ids
+    cond do
+      is_nil(check.server.team_id) ->
+        check.user_id == scope.user.id
+
+      true ->
+        Accounts.user_has_access_to_team?(scope.user.id, check.server.team_id)
+    end
   end
 
   # No one can edit
   def can_perform?(:edit, nil, _), do: false
 
-  # Unless you are the scoped user
+  # Unless you are the owner or team member (for edit restrict maybe admin)
   def can_perform?(
         :edit,
         %QueryCanary.Accounts.Scope{} = scope,
         %QueryCanary.Checks.Check{} = check
       ) do
-    server_ids = QueryCanary.Servers.list_servers(scope) |> Enum.map(fn s -> s.id end)
+    check = Repo.preload(check, server: [:team])
 
-    check.server_id in server_ids
+    cond do
+      is_nil(check.server.team_id) ->
+        check.user_id == scope.user.id
+
+      true ->
+        Accounts.user_has_access_to_team?(scope.user.id, check.server.team_id)
+    end
   end
 
   def can_perform?(_, _, _), do: false
