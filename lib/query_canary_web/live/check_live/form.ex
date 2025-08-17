@@ -4,6 +4,8 @@ defmodule QueryCanaryWeb.CheckLive.Form do
   alias QueryCanary.Checks
   alias QueryCanary.Checks.Check
 
+  on_mount {QueryCanaryWeb.CheckAuth, :edit}
+
   @impl true
   def render(assigns) do
     ~H"""

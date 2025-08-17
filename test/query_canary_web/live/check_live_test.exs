@@ -3,6 +3,7 @@ defmodule QueryCanaryWeb.CheckLiveTest do
 
   import Phoenix.LiveViewTest
   import QueryCanary.ChecksFixtures
+  import QueryCanary.AccountsFixtures
 
   @update_attrs %{
     name: "Updated Check",
@@ -98,6 +99,29 @@ defmodule QueryCanaryWeb.CheckLiveTest do
       html = render(show_live)
       assert html =~ "Check updated successfully"
       assert html =~ "Updated Check"
+    end
+  end
+
+  describe "Permissions" do
+    test "cannot view another user's private check", %{conn: conn, scope: _scope} do
+      other_scope = user_scope_fixture()
+      other_check = check_fixture(other_scope)
+
+      # Attempt to load other user's check
+      assert {:error, {:redirect, %{to: redirected_to}}} = live(conn, ~p"/checks/#{other_check}")
+      # expecting redirect to index or auth page
+      assert redirected_to =~ "/"
+    end
+
+    test "cannot edit another user's check", %{conn: conn, scope: _scope} do
+      other_scope = user_scope_fixture()
+      other_check = check_fixture(other_scope)
+
+      # Try direct edit route
+      assert {:error, {:redirect, %{to: redirected_to}}} =
+               live(conn, ~p"/checks/#{other_check}/edit")
+
+      assert redirected_to =~ "/"
     end
   end
 end

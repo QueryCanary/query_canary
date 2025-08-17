@@ -6,7 +6,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
 
   import QueryCanaryWeb.Components.CheckAnalysis
 
-  on_mount QueryCanaryWeb.CheckAuth
+  on_mount {QueryCanaryWeb.CheckAuth, :view}
 
   @impl true
   def render(assigns) do
