@@ -72,10 +72,11 @@ defmodule QueryCanaryWeb.ServerLive.Form do
                 options={
                   [
                     {"disable - Don't allow a SSL connection", "disable"},
-                    {"allow - Use SSL if the server requires it", "allow"}
-                    # {"prefer - Try SSL but allow falling back to non-SSL", "prefer"},
-                    # {"require - Force SSL, don't allow connection without", "require"},
-                    # {"verify-ca - Force SSL, and verify the server has a valid certificate", "verify-ca"},
+                    {"allow - Use SSL if the server requires it", "allow"},
+                    {"prefer - Try SSL but allow falling back to non-SSL", "prefer"},
+                    {"require - Force SSL, don't allow connection without", "require"},
+                    {"verify-ca - Force SSL, and verify the server has a valid certificate",
+                     "verify-ca"}
                     # {"verify-full - Force SSL, and verify the server has a specific SSL certificate", "verify-full"}
                   ]
                 }

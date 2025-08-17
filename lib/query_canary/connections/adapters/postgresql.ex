@@ -23,84 +23,136 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
     Logger.metadata(db_hostname: conn_details.hostname)
     Logger.info("QueryCanary.Connections: Connecting to #{conn_details.hostname}")
 
-    opts = [
+    base_opts = [
       hostname: conn_details.hostname,
       port: conn_details.port,
       username: conn_details.username,
       password: conn_details.password,
       database: conn_details.database,
-      socket_options: Map.get(conn_details, :socket_options, []),
-      name: :"db_conn_#{System.unique_integer([:positive])}"
+      socket_options: Map.get(conn_details, :socket_options, [])
+      # we assign a name only after success (avoid clashes across attempts)
+      # name: will be injected on success
     ]
 
-    # Build advanced SSL options if present
-    ssl_mode = Map.get(conn_details, :ssl_mode)
+    ssl_mode = Map.get(conn_details, :ssl_mode, "prefer")
 
-    opts =
-      if ssl_mode do
-        ssl_opts =
-          [
-            # Map ssl_mode to verify options
-            verify:
-              case ssl_mode do
-                "verify-full" -> :verify_peer
-                "verify-ca" -> :verify_peer
-                "require" -> :verify_none
-                "prefer" -> :verify_none
-                "allow" -> :verify_none
-                _ -> :verify_none
-              end
-          ]
-          |> maybe_add_ssl_cert(conn_details)
-          |> maybe_add_ssl_key(conn_details)
-          |> maybe_add_ssl_ca_cert(conn_details)
-          |> Enum.reject(&is_nil/1)
+    case connect_with_sslmode(base_opts, ssl_mode, conn_details) do
+      {:ok, pid} -> {:ok, pid}
+      {:error, reason} -> {:error, reason}
+    end
+  end
 
-        opts ++ ssl_opts
-      else
-        opts
+  # SSL mode handling -------------------------------------------------------
+  defp connect_with_sslmode(base_opts, ssl_mode, conn_details) do
+    attempts = attempts_for_mode(ssl_mode)
+
+    Enum.reduce_while(attempts, {:error, :no_attempt_succeeded}, fn attempt, _acc ->
+      case do_attempt(base_opts, attempt, ssl_mode, conn_details) do
+        {:ok, _pid} = ok ->
+          {:halt, ok}
+
+        {:error, reason} ->
+          if fallback_allowed?(ssl_mode, attempt, reason) do
+            {:cont, {:error, reason}}
+          else
+            {:halt, {:error, reason}}
+          end
       end
+    end)
+  end
 
+  # Ordered attempts per libpq semantics
+  # disable      -> [:plain]
+  # allow        -> [:plain, :ssl] (only use SSL if server forces it / plain fails)
+  # prefer       -> [:ssl, :plain]
+  # require      -> [:ssl]
+  # verify-ca    -> [:ssl]
+  # verify-full  -> [:ssl]
+  defp attempts_for_mode("disable"), do: [:plain]
+  defp attempts_for_mode("allow"), do: [:plain, :ssl]
+  defp attempts_for_mode("prefer"), do: [:ssl, :plain]
+  defp attempts_for_mode("require"), do: [:ssl]
+  defp attempts_for_mode("verify-ca"), do: [:ssl]
+  defp attempts_for_mode("verify-full"), do: [:ssl]
+  defp attempts_for_mode(_), do: [:ssl]
+
+  # Decide if we should fallback after a failure for the given attempt
+  defp fallback_allowed?("allow", :plain, _reason), do: true
+  defp fallback_allowed?("prefer", :ssl, _reason), do: true
+  defp fallback_allowed?(_, _, _), do: false
+
+  defp do_attempt(base_opts, :plain, _ssl_mode, _details) do
+    opts = add_name(base_opts)
     Postgrex.start_link(opts)
   end
 
-  defp maybe_add_ssl_cert(opts, conn_details) do
-    if cert = Map.get(conn_details, :ssl_cert) do
-      # Accept PEM string or file path
-      if String.starts_with?(cert, "-----BEGIN CERTIFICATE") do
-        Keyword.put(opts, :cert, cert)
-      else
-        Keyword.put(opts, :certfile, cert)
-      end
-    else
-      opts
+  defp do_attempt(base_opts, :ssl, ssl_mode, conn_details) do
+    case build_ssl_opts(ssl_mode, conn_details) do
+      {:ok, ssl_opts} ->
+        opts = base_opts |> Keyword.put(:ssl, ssl_opts) |> add_name()
+        Postgrex.start_link(opts)
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
-  defp maybe_add_ssl_key(opts, conn_details) do
-    if key = Map.get(conn_details, :ssl_key) do
-      if String.starts_with?(key, "-----BEGIN") do
-        Keyword.put(opts, :key, key)
-      else
-        Keyword.put(opts, :keyfile, key)
-      end
-    else
-      opts
+  defp add_name(opts) do
+    Keyword.put_new(opts, :name, :"db_conn_#{System.unique_integer([:positive])}")
+  end
+
+  # Build :ssl option keyword list for :ssl -> :ssl.connect
+  defp build_ssl_opts(mode, _details) when mode in ["require", "allow", "prefer"] do
+    # No certificate validation
+    {:ok, [verify: :verify_none]}
+  end
+
+  defp build_ssl_opts("verify-ca", details) do
+    with {:ok, ca_opts} <- ca_opts(details) do
+      {:ok,
+       [
+         verify: :verify_peer,
+         server_name_indication: to_charlist(details.hostname)
+       ] ++ ca_opts}
     end
   end
 
-  defp maybe_add_ssl_ca_cert(opts, conn_details) do
-    if ca = Map.get(conn_details, :ssl_ca_cert) do
-      if String.starts_with?(ca, "-----BEGIN CERTIFICATE") do
-        Keyword.put(opts, :cacerts, [ca])
-      else
-        Keyword.put(opts, :cacertfile, ca)
-      end
-    else
-      opts
+  defp build_ssl_opts("verify-full", details) do
+    with {:ok, ca_opts} <- ca_opts(details) do
+      hostname = to_charlist(details.hostname)
+
+      hostname_check = [
+        customize_hostname_check: [match_fun: :public_key.pkix_verify_hostname_match_fun(:https)]
+      ]
+
+      {:ok,
+       [
+         verify: :verify_peer,
+         server_name_indication: hostname
+       ] ++ hostname_check ++ ca_opts}
     end
   end
 
+  defp build_ssl_opts("disable", _), do: {:error, :ssl_disabled}
+  defp build_ssl_opts(_other, details), do: build_ssl_opts("require", details)
+
+  defp ca_opts(details) do
+    cond do
+      details[:ssl_ca_cert] && String.starts_with?(details[:ssl_ca_cert], "-----BEGIN") ->
+        # PEM string
+        {:ok, [cacerts: [details[:ssl_ca_cert]]]}
+
+      details[:ssl_ca_cert] ->
+        # file path
+        {:ok, [cacertfile: details[:ssl_ca_cert]]}
+
+      true ->
+        # Rely on Erlang's default CA store (may be empty) – user should supply one
+        {:ok, []}
+    end
+  end
+
+  # ------------------------------------------------------------------------
   @doc """
   Executes a query on a PostgreSQL database.
 
