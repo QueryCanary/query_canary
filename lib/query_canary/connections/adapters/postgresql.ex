@@ -34,7 +34,7 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
       # name: will be injected on success
     ]
 
-    ssl_mode = Map.get(conn_details, :ssl_mode, "prefer")
+    ssl_mode = Map.get(conn_details, :ssl_mode, "allow")
 
     case connect_with_sslmode(base_opts, ssl_mode, conn_details) do
       {:ok, pid} -> {:ok, pid}
