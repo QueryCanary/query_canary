@@ -1,5 +1,7 @@
 defmodule QueryCanary.Jobs.CheckRunner do
-  use Oban.Worker, queue: :checks
+  use Oban.Worker,
+    queue: :checks,
+    max_attempts: 1
 
   alias QueryCanary.Checks
 

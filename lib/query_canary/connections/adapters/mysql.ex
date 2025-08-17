@@ -7,6 +7,8 @@ defmodule QueryCanary.Connections.Adapters.MySQL do
 
   require Logger
 
+  @behaviour QueryCanary.Connections.Adapter
+
   @doc """
   Connects to a MySQL database.
 
@@ -164,6 +166,25 @@ defmodule QueryCanary.Connections.Adapters.MySQL do
 
       {:error, reason} ->
         {:error, reason}
+    end
+  end
+
+  @doc """
+  Disconnects from a MySQL database.
+
+  ## Parameters
+    * pid - Process ID of the connection
+
+  ## Returns
+    * :ok - Disconnection successful
+    * {:error, reason} - Disconnection failed
+  """
+  def disconnect(pid) when is_pid(pid) do
+    try do
+      GenServer.stop(pid, :normal)
+      :ok
+    catch
+      _, _ -> :ok
     end
   end
 
