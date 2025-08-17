@@ -135,24 +135,16 @@ defmodule QueryCanary.Connections.Adapters.SQLite do
   @doc """
   Gets complete database schema information.
 
-  ## Parameters
-    * conn - Database connection
-
-  ## Returns
-    * {:ok, schema} - Complete database schema information
-    * {:error, reason} - Operation failed
+  Accepts the database name for behaviour conformity; ignored for SQLite.
   """
-  def get_database_schema(conn) do
+  def get_database_schema(conn, _database_name) do
     case list_tables(conn) do
       {:ok, tables} ->
         schema =
           Enum.reduce(tables, %{}, fn table, acc ->
             case get_table_schema(conn, table) do
-              {:ok, table_schema} ->
-                Map.put(acc, table, table_schema)
-
-              {:error, _reason} ->
-                acc
+              {:ok, table_schema} -> Map.put(acc, table, table_schema)
+              {:error, _} -> acc
             end
           end)
 
@@ -162,6 +154,8 @@ defmodule QueryCanary.Connections.Adapters.SQLite do
         {:error, reason}
     end
   end
+
+  def get_database_schema(conn), do: get_database_schema(conn, nil)
 
   # Formats query results into a more usable structure
   defp format_results(%Exqlite.Result{} = result) do
