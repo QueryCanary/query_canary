@@ -13,10 +13,10 @@ defmodule QueryCanary.Application do
       {DNSCluster, query: Application.get_env(:query_canary, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: QueryCanary.PubSub},
       {Oban, Application.fetch_env!(:query_canary, Oban)},
-      # Moved to Oban Cron to prevent multiple nodes from running this
-      # QueryCanary.CheckScheduler,
-      # Start a worker by calling: QueryCanary.Worker.start_link(arg)
-      # {QueryCanary.Worker, arg},
+      # Registry for connection servers
+      {Registry, keys: :unique, name: QueryCanary.ConnectionRegistry},
+      # Dynamic supervisor for per-server connection GenServers
+      {DynamicSupervisor, strategy: :one_for_one, name: QueryCanary.ConnectionSupervisor},
       # Start to serve requests, typically the last entry
       QueryCanaryWeb.Endpoint
     ]

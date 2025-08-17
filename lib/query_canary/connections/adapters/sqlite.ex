@@ -8,6 +8,8 @@ defmodule QueryCanary.Connections.Adapters.SQLite do
 
   require Logger
 
+  @behaviour QueryCanary.Connections.Adapter
+
   @doc """
   Connects to an SQLite database.
 

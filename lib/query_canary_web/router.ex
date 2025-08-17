@@ -2,6 +2,7 @@ defmodule QueryCanaryWeb.Router do
   use QueryCanaryWeb, :router
 
   import QueryCanaryWeb.UserAuth
+  import Oban.Web.Router
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -43,6 +44,8 @@ defmodule QueryCanaryWeb.Router do
 
       live_dashboard "/dashboard", metrics: QueryCanaryWeb.Telemetry
       forward "/mailbox", Plug.Swoosh.MailboxPreview
+
+      oban_dashboard("/oban")
     end
   end
 

@@ -64,17 +64,21 @@ defmodule QueryCanaryWeb.CheckLive.Index do
             <div class="text-sm opacity-60 truncate max-w-xs font-mono">{check.query}</div>
           </:col>
           <:col :let={check} label="Status">
-            <%= if check.last_result do %>
-              <%= if check.last_result.success do %>
-                <span class="badge badge-success">Success</span>
+            <%= if check.enabled do %>
+              <%= if check.last_result do %>
+                <%= if check.last_result.success do %>
+                  <span class="badge badge-success">Success</span>
+                <% else %>
+                  <span class="badge badge-error">Failed</span>
+                <% end %>
+                <div class="text-xs opacity-70">
+                  {format_time_ago(check.last_run_at)}
+                </div>
               <% else %>
-                <span class="badge badge-error">Failed</span>
+                <span class="badge badge-outline">Pending</span>
               <% end %>
-              <div class="text-xs opacity-70">
-                {format_time_ago(check.last_run_at)}
-              </div>
             <% else %>
-              <span class="badge badge-outline">Pending</span>
+              <span class="badge badge-outline">Disabled</span>
             <% end %>
           </:col>
           <:col :let={check} label="Alert Status">

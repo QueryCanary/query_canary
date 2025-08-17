@@ -7,6 +7,8 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
 
   require Logger
 
+  @behaviour QueryCanary.Connections.Adapter
+
   @doc """
   Connects to a PostgreSQL database.
 
@@ -18,112 +20,46 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
     * {:error, reason} - Connection failed
   """
   def connect(conn_details) do
+    Logger.metadata(db_hostname: conn_details.hostname)
     Logger.info("QueryCanary.Connections: Connecting to #{conn_details.hostname}")
 
-    try do
-      opts = [
-        hostname: conn_details.hostname,
-        port: conn_details.port,
-        username: conn_details.username,
-        password: conn_details.password,
-        database: conn_details.database,
-        socket_options: Map.get(conn_details, :socket_options, []),
-        # Connection pool settings
-        pool_size: 1,
+    # try do
+    Process.flag(:trap_exit, true)
 
-        # Short timeouts
-        connect_timeout: 5000,
-        timeout: 5000,
+    opts = [
+      hostname: conn_details.hostname,
+      port: conn_details.port,
+      username: conn_details.username,
+      password: conn_details.password,
+      database: conn_details.database,
+      socket_options: Map.get(conn_details, :socket_options, []),
+      name: :"db_conn_#{System.unique_integer([:positive])}"
+    ]
 
-        # Queue settings to fail fast
-        queue_target: 50,
-        queue_interval: 1000,
+    # Build advanced SSL options if present
+    ssl_mode = Map.get(conn_details, :ssl_mode, "allow")
 
-        # Misc settings
-        auto_reconnect: false,
-        max_restarts: 1,
-        show_sensitive_data_on_connection_error: true,
-        name: :"db_conn_#{System.unique_integer([:positive])}"
-      ]
-
-      # Build advanced SSL options if present
-      ssl_mode = Map.get(conn_details, :ssl_mode, "allow")
-
-      ssl_opts =
-        [
-          # Map ssl_mode to verify options
-          verify:
-            case ssl_mode do
-              "verify-full" -> :verify_peer
-              "verify-ca" -> :verify_peer
-              "require" -> :verify_none
-              "prefer" -> :verify_none
-              "allow" -> :verify_none
-              _ -> :verify_none
-            end
-        ]
-        |> maybe_add_ssl_cert(conn_details)
-        |> maybe_add_ssl_key(conn_details)
-        |> maybe_add_ssl_ca_cert(conn_details)
-        |> Enum.reject(&is_nil/1)
-
-      opts = opts ++ [ssl: ssl_opts]
-
-      {:ok, pid} = Postgrex.start_link(opts)
-
-      case query(pid, "SELECT 1;") do
-        {:ok, _res} ->
-          Logger.info(
-            "QueryCanary.Connections: Successfully connected to #{conn_details.hostname}"
-          )
-
-          {:ok, pid}
-
-        {:error, _message} when ssl_mode in ["allow", "prefer"] ->
-          GenServer.stop(pid)
-
-          Logger.info(
-            "PostgreSQL connection with SSL failed to #{conn_details.hostname}, retrying without SSL"
-          )
-
-          # Retry without SSL
-          opts_no_ssl = Keyword.delete(opts, :ssl)
-
-          opts_no_ssl =
-            Keyword.put(opts_no_ssl, :name, :"db_conn_#{System.unique_integer([:positive])}")
-
-          # opts_no_ssl = Keyword.delete(opts_no_ssl, :ssl_opts)
-          {:ok, no_ssl_pid} = Postgrex.start_link(opts_no_ssl)
-
-          case query(no_ssl_pid, "SELECT 1;") do
-            {:ok, _res} ->
-              Logger.info(
-                "QueryCanary.Connections: Successfully connected to #{conn_details.hostname}, with non-SSL fallback"
-              )
-
-              {:ok, no_ssl_pid}
-
-            error ->
-              Logger.warning(
-                "QueryCanary.Connections: Failed to connect to #{conn_details.hostname}, even without SSL"
-              )
-
-              GenServer.stop(no_ssl_pid)
-              {:error, "Failed to connect, even without SSL: #{inspect(error)}"}
+    ssl_opts =
+      [
+        # Map ssl_mode to verify options
+        verify:
+          case ssl_mode do
+            "verify-full" -> :verify_peer
+            "verify-ca" -> :verify_peer
+            "require" -> :verify_none
+            "prefer" -> :verify_none
+            "allow" -> :verify_none
+            _ -> :verify_none
           end
+      ]
+      |> maybe_add_ssl_cert(conn_details)
+      |> maybe_add_ssl_key(conn_details)
+      |> maybe_add_ssl_ca_cert(conn_details)
+      |> Enum.reject(&is_nil/1)
 
-        error ->
-          Logger.warning(
-            "QueryCanary.Connections: Failed to connect to #{conn_details.hostname}, no SSL attempted"
-          )
+    opts = opts ++ [ssl: ssl_opts]
 
-          GenServer.stop(pid)
-          {:error, "Failed to connect: #{inspect(error)}"}
-      end
-    rescue
-      e ->
-        {:error, "PostgreSQL connection error: #{inspect(e)}"}
-    end
+    Postgrex.start_link(opts)
   end
 
   defp maybe_add_ssl_cert(opts, conn_details) do
@@ -337,5 +273,24 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
       num_rows: result.num_rows,
       raw: result
     }
+  end
+
+  @doc """
+  Disconnects from a PostgreSQL database.
+
+  ## Parameters
+    * pid - Process ID of the connection
+
+  ## Returns
+    * :ok - Disconnection successful
+    * :error - Disconnection failed
+  """
+  def disconnect(pid) when is_pid(pid) do
+    try do
+      GenServer.stop(pid, :normal)
+      :ok
+    catch
+      _, _ -> :ok
+    end
   end
 end

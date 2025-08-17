@@ -3,6 +3,8 @@ defmodule QueryCanary.Connections.Adapters.ClickHouse do
   ClickHouse adapter for database connections using the `ch` library.
   """
 
+  @behaviour QueryCanary.Connections.Adapter
+
   @doc """
   Connects to a ClickHouse database using the `ch` library.
 
@@ -104,6 +106,24 @@ defmodule QueryCanary.Connections.Adapters.ClickHouse do
 
       {:error, reason} ->
         {:error, reason}
+    end
+  end
+
+  @doc """
+  Disconnects from a ClickHouse database.
+
+  ## Parameters
+    * pid - The process ID of the connection
+
+  ## Returns
+    * :ok - Disconnection successful
+  """
+  def disconnect(pid) when is_pid(pid) do
+    try do
+      GenServer.stop(pid, :normal)
+      :ok
+    catch
+      _, _ -> :ok
     end
   end
 end
