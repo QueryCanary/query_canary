@@ -23,9 +23,6 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
     Logger.metadata(db_hostname: conn_details.hostname)
     Logger.info("QueryCanary.Connections: Connecting to #{conn_details.hostname}")
 
-    # try do
-    Process.flag(:trap_exit, true)
-
     opts = [
       hostname: conn_details.hostname,
       port: conn_details.port,
@@ -37,27 +34,32 @@ defmodule QueryCanary.Connections.Adapters.PostgreSQL do
     ]
 
     # Build advanced SSL options if present
-    ssl_mode = Map.get(conn_details, :ssl_mode, "allow")
+    ssl_mode = Map.get(conn_details, :ssl_mode)
 
-    ssl_opts =
-      [
-        # Map ssl_mode to verify options
-        verify:
-          case ssl_mode do
-            "verify-full" -> :verify_peer
-            "verify-ca" -> :verify_peer
-            "require" -> :verify_none
-            "prefer" -> :verify_none
-            "allow" -> :verify_none
-            _ -> :verify_none
-          end
-      ]
-      |> maybe_add_ssl_cert(conn_details)
-      |> maybe_add_ssl_key(conn_details)
-      |> maybe_add_ssl_ca_cert(conn_details)
-      |> Enum.reject(&is_nil/1)
+    opts =
+      if ssl_mode do
+        ssl_opts =
+          [
+            # Map ssl_mode to verify options
+            verify:
+              case ssl_mode do
+                "verify-full" -> :verify_peer
+                "verify-ca" -> :verify_peer
+                "require" -> :verify_none
+                "prefer" -> :verify_none
+                "allow" -> :verify_none
+                _ -> :verify_none
+              end
+          ]
+          |> maybe_add_ssl_cert(conn_details)
+          |> maybe_add_ssl_key(conn_details)
+          |> maybe_add_ssl_ca_cert(conn_details)
+          |> Enum.reject(&is_nil/1)
 
-    opts = opts ++ [ssl: ssl_opts]
+        opts ++ ssl_opts
+      else
+        opts
+      end
 
     Postgrex.start_link(opts)
   end
