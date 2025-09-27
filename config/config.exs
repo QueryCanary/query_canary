@@ -82,7 +82,8 @@ config :query_canary, Oban,
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
     {Oban.Plugins.Cron,
      crontab: [
-       {"* * * * *", QueryCanary.Jobs.CheckScheduler}
+       {"* * * * *", QueryCanary.Jobs.CheckScheduler},
+       {"* * * * *", QueryCanary.Jobs.MetricScheduler}
      ]},
     Oban.Plugins.Lifeline
   ]
