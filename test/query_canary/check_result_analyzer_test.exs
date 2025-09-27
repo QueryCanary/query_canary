@@ -165,7 +165,7 @@ defmodule QueryCanary.CheckResultAnalyzerTest do
     test "handles constant values" do
       values = [10, 10, 10, 10, 10]
 
-      assert {:ok, nil} = CheckResultAnalyzer.detect_anomaly(values, 3.0)
+      assert {:ok, :low_variance} = CheckResultAnalyzer.detect_anomaly(values, 3.0)
     end
   end
 

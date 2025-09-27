@@ -11,6 +11,10 @@ defmodule QueryCanary.CheckResultAnalyzer do
 
   alias QueryCanary.Checks.CheckResult
 
+  @low_variance_epsilon 1.0e-10
+  @min_relative_deviation 0.10
+  @min_absolute_deviation 3.0
+
   @doc """
   Analyzes a series of check results to determine if there's a reportable issue.
 
@@ -55,9 +59,13 @@ defmodule QueryCanary.CheckResultAnalyzer do
             # Anomaly detected in time series
             {:alert, %{type: :anomaly, details: details.details}}
 
-          {:ok, nil} ->
-            # No anomaly detected, try diff analysis
-            detect_diff_issues(recent_results, diff_threshold)
+          {:ok, reason} ->
+            # Fall back to diff checks only when anomaly analysis couldn't decide
+            if should_fallback_to_diff?(reason, length(values), min_samples) do
+              detect_diff_issues(recent_results, diff_threshold)
+            else
+              {:ok, nil}
+            end
         end
 
       {:ok, values} when length(values) > 1 ->
@@ -152,6 +160,14 @@ defmodule QueryCanary.CheckResultAnalyzer do
 
       _ ->
         {:ok, nil}
+    end
+  end
+
+  defp should_fallback_to_diff?(reason, value_count, min_samples) do
+    cond do
+      reason in [:low_variance, :minor_deviation, :not_enough_values] -> true
+      value_count <= min_samples -> true
+      true -> false
     end
   end
 
@@ -412,7 +428,7 @@ defmodule QueryCanary.CheckResultAnalyzer do
 
   ## Returns
     * {:alert, details} - Alert with information about the anomaly
-    * {:ok, nil} - No anomalies detected
+    * {:ok, reason} - No anomalies detected (reason can be nil, :low_variance, :minor_deviation, or :not_enough_values)
   """
   def detect_anomaly(values, threshold) do
     # Get the most recent value (first in the list, as values are newest-first)
@@ -428,30 +444,37 @@ defmodule QueryCanary.CheckResultAnalyzer do
       # Calculate baseline statistics from historical values only
       mean = mean(historical_values)
       stdev = standard_deviation(historical_values, mean)
+      abs_deviation = abs(latest_value - mean)
+      relative_deviation = compute_relative_deviation(abs_deviation, mean)
 
       # No meaningful deviation if standard deviation is too small
       cond do
-        stdev < 1.0e-10 ->
-          {:ok, nil}
+        stdev < @low_variance_epsilon ->
+          {:ok, :low_variance}
 
         true ->
           # Calculate z-score (how many standard deviations from mean)
           z_score = (latest_value - mean) / stdev
 
-          if abs(z_score) >= threshold do
-            {:alert,
-             %{
-               details: %{
-                 message:
-                   "Anomalous value detected (#{Float.round(abs(z_score), 2)} standard deviations from mean)",
-                 current_value: latest_value,
-                 mean: mean,
-                 std_dev: stdev,
-                 z_score: z_score
-               }
-             }}
-          else
-            {:ok, nil}
+          cond do
+            abs(z_score) >= threshold and meets_minimum_deviation?(abs_deviation, relative_deviation) ->
+              {:alert,
+               %{
+                 details: %{
+                   message:
+                     "Anomalous value detected (#{Float.round(abs(z_score), 2)} standard deviations from mean)",
+                   current_value: latest_value,
+                   mean: mean,
+                   std_dev: stdev,
+                   z_score: z_score
+                 }
+               }}
+
+            abs(z_score) >= threshold ->
+              {:ok, :minor_deviation}
+
+            true ->
+              {:ok, nil}
           end
       end
     end
@@ -474,6 +497,22 @@ defmodule QueryCanary.CheckResultAnalyzer do
       |> Kernel./(length(values))
 
     :math.sqrt(variance)
+  end
+
+  defp compute_relative_deviation(abs_deviation, mean) do
+    if abs(mean) >= 1.0 do
+      abs_deviation / abs(mean)
+    else
+      nil
+    end
+  end
+
+  defp meets_minimum_deviation?(abs_deviation, relative_deviation) do
+    cond do
+      is_number(relative_deviation) and relative_deviation >= @min_relative_deviation -> true
+      abs_deviation >= @min_absolute_deviation -> true
+      true -> false
+    end
   end
 
   # Helper function for status text
