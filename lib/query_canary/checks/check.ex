@@ -13,6 +13,8 @@ defmodule QueryCanary.Checks.Check do
     belongs_to :server, QueryCanary.Servers.Server
     belongs_to :user, QueryCanary.Accounts.User
 
+    has_many :results, QueryCanary.Checks.CheckResult
+
     timestamps(type: :utc_datetime)
   end
 
