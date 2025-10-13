@@ -75,7 +75,9 @@ defmodule QueryCanary.MixProject do
       # Emails
       {:floki, "~> 0.37.1"},
       # Blog
-      {:earmark, "~> 1.4"}
+      {:earmark, "~> 1.4"},
+      # Time zones
+      {:tzdata, "~> 1.1"}
     ]
   end
 

@@ -5,7 +5,7 @@ defmodule QueryCanary.MetricsTest do
 
   import QueryCanary.AccountsFixtures
 
-  # @tag :database_adapters
+  @tag :database_adapters
   test "create and run metric stores result once" do
     scope = user_scope_fixture()
 

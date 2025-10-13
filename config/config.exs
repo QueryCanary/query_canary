@@ -74,6 +74,8 @@ config :logger, :default_formatter,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+config :elixir, :time_zone_database, Tzdata.TimeZoneDatabase
+
 config :query_canary, Oban,
   engine: Oban.Engines.Basic,
   queues: [default: 10, checks: 10],

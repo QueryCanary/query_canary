@@ -457,7 +457,8 @@ defmodule QueryCanary.CheckResultAnalyzer do
           z_score = (latest_value - mean) / stdev
 
           cond do
-            abs(z_score) >= threshold and meets_minimum_deviation?(abs_deviation, relative_deviation) ->
+            abs(z_score) >= threshold and
+                meets_minimum_deviation?(abs_deviation, relative_deviation) ->
               {:alert,
                %{
                  details: %{

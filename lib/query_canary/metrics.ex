@@ -3,7 +3,7 @@ defmodule QueryCanary.Metrics do
   Context for SQL-powered metrics: definitions, execution, and persistence.
   """
   import Ecto.Query, warn: false
-  alias QueryCanary.Repo
+  alias QueryCanary.Accounts.{Scope, TeamUser}
   alias QueryCanary.Metrics.{Metric, MetricResult}
   alias QueryCanary.Repo
   alias QueryCanary.Servers.Server
@@ -13,6 +13,17 @@ defmodule QueryCanary.Metrics do
   # CRUD
   def list_metrics(opts \\ []) do
     Repo.all(from m in Metric, preload: ^Keyword.get(opts, :preload, []))
+  end
+
+  def list_metrics_for_scope(%Scope{} = scope, opts \\ []) do
+    preload = Keyword.get(opts, :preload, [:server])
+
+    Metric
+    |> accessible_by_scope(scope.user.id)
+    |> distinct(true)
+    |> order_by([m, _s, _tu], asc: m.name)
+    |> Repo.all()
+    |> Repo.preload(preload)
   end
 
   def get_metric!(id, opts \\ []) do
@@ -28,6 +39,18 @@ defmodule QueryCanary.Metrics do
   end
 
   def delete_metric(%Metric{} = metric), do: Repo.delete(metric)
+
+  defp accessible_by_scope(query, user_id) do
+    query
+    |> join(:left, [m], s in Server, on: s.id == m.server_id)
+    |> join(:left, [m, s], tu in TeamUser, on: tu.team_id == m.team_id or tu.team_id == s.team_id)
+    |> where(
+      [m, s, tu],
+      (not is_nil(m.user_id) and m.user_id == ^user_id) or
+        (not is_nil(s.user_id) and s.user_id == ^user_id) or
+        (not is_nil(tu.user_id) and tu.user_id == ^user_id and tu.role != :invited)
+    )
+  end
 
   # Execution
   @doc """

@@ -4,8 +4,6 @@ defmodule QueryCanaryWeb.MetricLive.Index do
   alias QueryCanary.Metrics
 
   def mount(_params, _session, socket) do
-
-
     {:ok, assign(socket, metrics: Metrics.list_metrics())}
   end
 
