@@ -124,4 +124,10 @@ if config_env() == :prod do
     adapter: Swoosh.Adapters.Mailgun,
     api_key: System.get_env("MAILGUN_API_KEY"),
     domain: System.get_env("MAILGUN_DOMAIN")
+
+  config :sentry,
+    dsn: System.get_env("SENTRY_DSN"),
+    environment_name: Mix.env(),
+    enable_source_code_context: true,
+    root_source_code_paths: [File.cwd!()]
 end

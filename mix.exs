@@ -75,7 +75,10 @@ defmodule QueryCanary.MixProject do
       # Emails
       {:floki, "~> 0.37.1"},
       # Blog
-      {:earmark, "~> 1.4"}
+      {:earmark, "~> 1.4"},
+      # Error Reporting
+      {:sentry, "~> 10.2.0"},
+      {:hackney, "~> 1.8"}
     ]
   end
 
