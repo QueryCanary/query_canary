@@ -902,6 +902,24 @@ defmodule QueryCanaryWeb.ReportLive.Show do
           </div>
 
           <div class="max-h-[80vh] overflow-y-auto px-6 py-5">
+            <div
+              :if={@selected_metric.chart_data}
+              class="mb-4 rounded-xl border border-base-200 bg-base-200/30 p-3"
+            >
+              <canvas
+                id={"metric-history-chart-#{@selected_metric.metric_id}"}
+                class="w-full h-56"
+                phx-hook="CheckChart"
+                data-labels={Jason.encode!(@selected_metric.chart_data.labels)}
+                data-values={Jason.encode!(@selected_metric.chart_data.values)}
+                data-success={Jason.encode!(@selected_metric.chart_data.success)}
+                data-average={Jason.encode!(@selected_metric.chart_data.average)}
+                data-alert-threshold={Jason.encode!(@selected_metric.chart_data.alert_threshold)}
+                data-alert-type={@selected_metric.chart_data.alert_type}
+              >
+              </canvas>
+            </div>
+
             <div class="grid gap-3 md:grid-cols-4">
               <div class="rounded-xl border border-base-200 bg-base-200/50 p-4">
                 <div class="text-xs uppercase tracking-wide text-base-content/50">Latest</div>
@@ -969,12 +987,25 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                         label="Description"
                         rows="3"
                       />
-                      <.input
-                        field={@selected_metric_form[:sql]}
-                        type="textarea"
-                        label="SQL"
-                        rows="6"
-                      />
+                      <div class="space-y-1">
+                        <label class="label text-sm font-medium">SQL</label>
+                        <%= if server = selected_metric_editor_server(@servers, @selected_metric_form, @selected_metric.metric) do %>
+                          <.live_component
+                            module={QueryCanaryWeb.Components.SQLEditor}
+                            id={
+                              selected_metric_editor_id(
+                                @selected_metric.metric_id,
+                                @selected_metric_form
+                              )
+                            }
+                            server={server}
+                            input_name={@selected_metric_form[:sql].name}
+                            value={@selected_metric_form[:sql].value || ""}
+                          />
+                        <% else %>
+                          <.input field={@selected_metric_form[:sql]} type="textarea" rows="6" />
+                        <% end %>
+                      </div>
                       <.input field={@selected_metric_form[:schedule]} label="Cron (e.g. * * * * *)" />
                       <.input
                         field={@selected_metric_form[:granularity]}
@@ -1026,8 +1057,8 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                       </div>
                       <div>
                         <dt class="text-xs uppercase tracking-wide text-base-content/50">SQL</dt>
-                        <dd class="mt-1 overflow-x-auto rounded-lg bg-base-200 px-3 py-2 font-mono text-xs leading-6 text-base-content/80">
-                          {metric_sql(@selected_metric.metric)}
+                        <dd class="mt-1">
+                          <pre class="overflow-x-auto rounded-lg bg-base-200 px-3 py-3 text-sm"><code class="language-sql">{metric_sql(@selected_metric.metric)}</code></pre>
                         </dd>
                       </div>
                     </dl>
@@ -1429,16 +1460,30 @@ defmodule QueryCanaryWeb.ReportLive.Show do
         assign_selected_metric(socket, nil)
 
       row ->
-        history =
-          row.metric_id
-          |> Metrics.list_metric_results(limit: 12)
-          |> build_history_entries()
+        {from_ts, to_ts} = report_chart_window(socket.assigns.table_days, socket.assigns.report)
+
+        metric_results =
+          Metrics.list_metric_results(
+            row.metric_id,
+            from_ts: from_ts,
+            to_ts: to_ts,
+            limit: chart_point_limit(row.metric, length(socket.assigns.table_days)),
+            order: :desc
+          )
+
+        history = build_history_entries(metric_results)
 
         changeset = selected_metric_changeset(row.metric)
 
         assign(socket,
           selected_group_metric_id: group_metric_id,
-          selected_metric: Map.put(row, :history, history),
+          selected_metric:
+            row
+            |> Map.put(:history, history)
+            |> Map.put(
+              :chart_data,
+              build_metric_chart_data(metric_results, socket.assigns.report.timezone)
+            ),
           selected_metric_form: to_form(changeset, as: :metric),
           editing_selected_metric: false
         )
@@ -1472,6 +1517,97 @@ defmodule QueryCanaryWeb.ReportLive.Show do
       Map.put(entry, :change, history_change(entry.value, previous_entry && previous_entry.value))
     end)
   end
+
+  defp build_metric_chart_data([], _timezone), do: nil
+
+  defp build_metric_chart_data(results, timezone) do
+    chronological_results = Enum.reverse(results)
+
+    labels =
+      Enum.map(chronological_results, fn result ->
+        result
+        |> chart_label_for_metric_result(timezone || "Etc/UTC")
+      end)
+
+    values =
+      Enum.map(chronological_results, fn result ->
+        numeric_value(result.value)
+      end)
+
+    numeric_values = Enum.filter(values, &is_number/1)
+
+    average =
+      case numeric_values do
+        [] -> nil
+        nums -> Enum.sum(nums) / length(nums)
+      end
+
+    %{
+      labels: labels,
+      values: values,
+      success: Enum.map(values, fn _ -> 1 end),
+      average: average,
+      alert_threshold: %{upper: nil, lower: nil},
+      alert_type: ""
+    }
+  end
+
+  defp chart_label_for_metric_result(result, timezone) do
+    from_local = DateTime.shift_zone!(result.from_ts, timezone)
+    to_local = DateTime.shift_zone!(result.to_ts, timezone)
+    span_seconds = DateTime.diff(to_local, from_local)
+
+    cond do
+      span_seconds <= 3_600 ->
+        Calendar.strftime(from_local, "%m-%d %H:%M")
+
+      span_seconds <= 86_400 ->
+        Calendar.strftime(from_local, "%m-%d")
+
+      true ->
+        Calendar.strftime(from_local, "%Y-%m-%d")
+    end
+  end
+
+  defp report_chart_window([], %Report{} = report) do
+    tz = report.timezone || "Etc/UTC"
+    today = DateTime.now!(tz) |> DateTime.to_date()
+    report_chart_window([today], report)
+  end
+
+  defp report_chart_window(days, %Report{} = report) do
+    tz = report.timezone || "Etc/UTC"
+    first_day = List.first(days)
+    last_day = List.last(days)
+
+    from_ts = DateTime.new!(first_day, ~T[00:00:00], tz) |> DateTime.shift_zone!("Etc/UTC")
+
+    to_ts =
+      last_day
+      |> Date.add(1)
+      |> DateTime.new!(~T[00:00:00], tz)
+      |> DateTime.shift_zone!("Etc/UTC")
+
+    {from_ts, to_ts}
+  end
+
+  defp chart_point_limit(nil, day_count), do: max(day_count, 30)
+
+  defp chart_point_limit(%Metric{granularity: "minute"}, day_count),
+    do: min(max(day_count * 24 * 60, 60), 1000)
+
+  defp chart_point_limit(%Metric{granularity: "hour"}, day_count),
+    do: min(max(day_count * 24, 24), 1000)
+
+  defp chart_point_limit(%Metric{granularity: "day"}, day_count), do: max(day_count, 30)
+
+  defp chart_point_limit(%Metric{granularity: "week"}, day_count),
+    do: max(div(day_count, 7) + 2, 12)
+
+  defp chart_point_limit(%Metric{granularity: "month"}, day_count),
+    do: max(div(day_count, 30) + 2, 12)
+
+  defp chart_point_limit(%Metric{}, day_count), do: max(day_count, 30)
 
   defp history_change(nil, _previous_value), do: nil
   defp history_change(_value, nil), do: nil
@@ -1538,6 +1674,22 @@ defmodule QueryCanaryWeb.ReportLive.Show do
 
   defp server_options(servers) do
     Enum.map(servers, fn server -> {server.name, server.id} end)
+  end
+
+  defp selected_metric_editor_id(metric_id, form) do
+    "selected-metric-sql-editor-#{metric_id}-#{selected_metric_server_id(form) || "none"}"
+  end
+
+  defp selected_metric_editor_server(servers, form, metric) do
+    server_id = selected_metric_server_id(form) || (metric && metric.server_id)
+    Enum.find(servers, &(&1.id == server_id))
+  end
+
+  defp selected_metric_server_id(nil), do: nil
+
+  defp selected_metric_server_id(form) do
+    form[:server_id].value
+    |> parse_int()
   end
 
   defp default_new_metric_attrs(report \\ nil) do

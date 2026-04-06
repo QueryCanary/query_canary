@@ -2,6 +2,12 @@ defmodule QueryCanaryWeb.Components.SQLEditor do
   use Phoenix.LiveComponent
   import Phoenix.HTML
 
+  attr :id, :string, default: nil
+  attr :value, :string, default: ""
+  attr :input_name, :string, default: nil
+  attr :server, :map, required: true
+  attr :read_only, :boolean, default: false
+
   def render(assigns) do
     ~H"""
     <div id={@id} class="w-full" phx-update="ignore">
@@ -10,7 +16,8 @@ defmodule QueryCanaryWeb.Components.SQLEditor do
         phx-hook="SQLEditor"
         data-server-id={@server.id}
         data-dialect={@server.db_engine || "postgres"}
-        class="border rounded-md overflow-hidden"
+        data-read-only={to_string(@read_only)}
+        class="min-h-56 border rounded-md overflow-hidden bg-base-100"
       >
       </div>
 
@@ -28,7 +35,7 @@ defmodule QueryCanaryWeb.Components.SQLEditor do
      socket
      |> assign(:id, assigns[:id] || "sql-editor-#{:erlang.monotonic_time()}")
      |> assign(:value, assigns[:value] || "")
-     |> assign(:input_name, assigns[:input_name] || "query")
+     |> assign(:input_name, assigns[:input_name])
      |> assign(:server, assigns[:server])}
   end
 end

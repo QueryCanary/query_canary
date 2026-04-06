@@ -48,13 +48,42 @@ defmodule QueryCanary.Metrics do
   def list_metric_results(metric_id, opts) when is_integer(metric_id) do
     preload = Keyword.get(opts, :preload, [])
     limit = Keyword.get(opts, :limit, 200)
+    from_ts = Keyword.get(opts, :from_ts)
+    to_ts = Keyword.get(opts, :to_ts)
+    order = Keyword.get(opts, :order, :desc)
 
-    Repo.all(
+    query =
       from r in MetricResult,
-        where: r.metric_id == ^metric_id,
-        order_by: [desc: r.from_ts],
-        limit: ^limit
-    )
+        where: r.metric_id == ^metric_id
+
+    query =
+      if from_ts do
+        from r in query, where: r.from_ts >= ^from_ts
+      else
+        query
+      end
+
+    query =
+      if to_ts do
+        from r in query, where: r.to_ts <= ^to_ts
+      else
+        query
+      end
+
+    query =
+      case order do
+        :asc -> from r in query, order_by: [asc: r.from_ts]
+        _ -> from r in query, order_by: [desc: r.from_ts]
+      end
+
+    query =
+      if is_nil(limit) do
+        query
+      else
+        from r in query, limit: ^limit
+      end
+
+    Repo.all(query)
     |> Repo.preload(preload)
   end
 
