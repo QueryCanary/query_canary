@@ -189,8 +189,7 @@ defmodule QueryCanaryWeb.ServerLive.Show do
       {:ok, result} ->
         connection_result = %{
           success: true,
-          message:
-            "Server time: #{format_cell_value(result.rows |> List.first() |> Map.values() |> List.first())}"
+          message: "Server responded: #{format_cell_value(connection_preview_value(result))}"
         }
 
         {:noreply, assign(socket, :connection_result, connection_result)}
@@ -300,6 +299,14 @@ defmodule QueryCanaryWeb.ServerLive.Show do
   end
 
   defp truncate(nil, _), do: ""
+
+  defp connection_preview_value(%{rows: [%{"version" => version} | _]}), do: version
+  defp connection_preview_value(%{rows: [%{version: version} | _]}), do: version
+
+  defp connection_preview_value(%{rows: [row | _]}) when is_map(row),
+    do: row |> Map.values() |> List.first()
+
+  defp connection_preview_value(_), do: nil
 
   defp format_cell_value(nil), do: "<NULL>"
   defp format_cell_value(value) when is_binary(value), do: value

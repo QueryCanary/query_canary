@@ -10,6 +10,18 @@ defmodule QueryCanary.Metrics do
 
   @type metric_id :: pos_integer()
 
+  @doc """
+  Subscribes the current process to result updates for the given metric ids.
+  """
+  def subscribe_metric_results(metric_ids) when is_list(metric_ids) do
+    Enum.each(metric_ids, &subscribe_metric_results/1)
+    :ok
+  end
+
+  def subscribe_metric_results(metric_id) when is_integer(metric_id) do
+    Phoenix.PubSub.subscribe(QueryCanary.PubSub, metric_results_topic(metric_id))
+  end
+
   # CRUD
   def list_metrics(opts \\ []) do
     Repo.all(from m in Metric, preload: ^Keyword.get(opts, :preload, []))
@@ -28,6 +40,22 @@ defmodule QueryCanary.Metrics do
 
   def get_metric!(id, opts \\ []) do
     Repo.get!(Metric, id) |> Repo.preload(Keyword.get(opts, :preload, []))
+  end
+
+  def list_metric_results(metric_or_id, opts \\ [])
+  def list_metric_results(%Metric{id: id}, opts), do: list_metric_results(id, opts)
+
+  def list_metric_results(metric_id, opts) when is_integer(metric_id) do
+    preload = Keyword.get(opts, :preload, [])
+    limit = Keyword.get(opts, :limit, 200)
+
+    Repo.all(
+      from r in MetricResult,
+        where: r.metric_id == ^metric_id,
+        order_by: [desc: r.from_ts],
+        limit: ^limit
+    )
+    |> Repo.preload(preload)
   end
 
   def create_metric(attrs) do
@@ -74,18 +102,35 @@ defmodule QueryCanary.Metrics do
       }
       |> dbg()
 
-    Repo.insert(
-      MetricResult.changeset(%MetricResult{}, changes),
-      on_conflict: [
-        set: [
-          value: value,
-          payload: payload,
-          updated_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
-        ]
-      ],
-      conflict_target: [:metric_id, :from_ts, :to_ts]
+    case Repo.insert(
+           MetricResult.changeset(%MetricResult{}, changes),
+           on_conflict: [
+             set: [
+               value: value,
+               payload: payload,
+               updated_at: NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+             ]
+           ],
+           conflict_target: [:metric_id, :from_ts, :to_ts]
+         ) do
+      {:ok, result} = ok ->
+        broadcast_metric_result_updated(result.metric_id)
+        ok
+
+      other ->
+        other
+    end
+  end
+
+  defp broadcast_metric_result_updated(metric_id) do
+    Phoenix.PubSub.broadcast(
+      QueryCanary.PubSub,
+      metric_results_topic(metric_id),
+      {:metric_result_updated, metric_id}
     )
   end
+
+  defp metric_results_topic(metric_id), do: "metric:#{metric_id}:results"
 
   defp execute_sql(%Metric{server_id: server_id, sql: sql} = _metric, from_ts, to_ts) do
     # Ensure connection and run query via manager

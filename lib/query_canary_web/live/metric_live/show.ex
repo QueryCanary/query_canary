@@ -2,7 +2,6 @@ defmodule QueryCanaryWeb.MetricLive.Show do
   use QueryCanaryWeb, :live_view
 
   alias QueryCanary.Metrics
-  import Ecto.Query
 
   def mount(%{"id" => id}, _session, socket) do
     metric = Metrics.get_metric!(id)
@@ -52,12 +51,6 @@ defmodule QueryCanaryWeb.MetricLive.Show do
   end
 
   defp load_results(metric) do
-    QueryCanary.Repo.all(
-      from(r in QueryCanary.Metrics.MetricResult,
-        where: r.metric_id == ^metric.id,
-        order_by: [desc: r.from_ts],
-        limit: 200
-      )
-    )
+    Metrics.list_metric_results(metric, limit: 200)
   end
 end

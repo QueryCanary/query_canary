@@ -293,33 +293,28 @@ defmodule QueryCanary.Reports do
     tz = report.timezone || "Etc/UTC"
 
     {:ok, local_now} = DateTime.shift_zone(now, tz)
+    local_date = Date.new!(local_now.year, local_now.month, local_now.day)
     range = report.default_range || "30d"
 
     case range do
       "today" ->
-        {beginning_of_day(local_now, tz), shift_to_utc(local_now)}
+        rolling_day_window(local_date, tz, effective_window_days(report))
 
       "yesterday" ->
         previous_day_window(local_now, tz)
 
       "7d" ->
-        {shift_to_utc(DateTime.add(local_now, -7 * 86_400, :second)), shift_to_utc(local_now)}
+        rolling_day_window(local_date, tz, effective_window_days(report))
 
       "30d" ->
-        {shift_to_utc(DateTime.add(local_now, -30 * 86_400, :second)), shift_to_utc(local_now)}
+        rolling_day_window(local_date, tz, effective_window_days(report))
 
       "quarter" ->
-        quarter_window(local_now, tz)
+        rolling_day_window(local_date, tz, effective_window_days(report))
 
       _ ->
-        {shift_to_utc(DateTime.add(local_now, -30 * 86_400, :second)), shift_to_utc(local_now)}
+        rolling_day_window(local_date, tz, effective_window_days(report))
     end
-  end
-
-  defp beginning_of_day(local_dt, tz) do
-    local_date = Date.new!(local_dt.year, local_dt.month, local_dt.day)
-    local_start = DateTime.new!(local_date, ~T[00:00:00], tz)
-    shift_to_utc(local_start)
   end
 
   defp previous_day_window(local_now, tz) do
@@ -330,21 +325,43 @@ defmodule QueryCanary.Reports do
     {shift_to_utc(start_local), shift_to_utc(end_local)}
   end
 
-  defp quarter_window(local_now, tz) do
-    quarter = div(local_now.month - 1, 3)
-    start_month = quarter * 3 + 1
-
-    local_start =
-      DateTime.new!(
-        Date.new!(local_now.year, start_month, 1),
-        ~T[00:00:00],
-        tz
-      )
-
-    {shift_to_utc(local_start), shift_to_utc(local_now)}
+  defp rolling_day_window(local_date, tz, days) do
+    end_local = DateTime.new!(Date.add(local_date, 1), ~T[00:00:00], tz)
+    start_local = DateTime.add(end_local, -(days * 86_400), :second)
+    {shift_to_utc(start_local), shift_to_utc(end_local)}
   end
 
   defp shift_to_utc(%DateTime{} = dt), do: DateTime.shift_zone!(dt, "Etc/UTC")
+
+  defp effective_window_days(%Report{} = report) do
+    max(range_to_days(report.default_range || "30d"), minimum_metric_window_days(report))
+  end
+
+  defp minimum_metric_window_days(%Report{} = report) do
+    report.groups
+    |> Enum.flat_map(& &1.group_metrics)
+    |> Enum.map(fn group_metric ->
+      case group_metric.metric do
+        %Metric{granularity: granularity} -> minimum_granularity_window_days(granularity)
+        _ -> 1
+      end
+    end)
+    |> Enum.max(fn -> 1 end)
+  end
+
+  defp minimum_granularity_window_days("minute"), do: 1
+  defp minimum_granularity_window_days("hour"), do: 7
+  defp minimum_granularity_window_days("day"), do: 30
+  defp minimum_granularity_window_days("week"), do: 90
+  defp minimum_granularity_window_days("month"), do: 90
+  defp minimum_granularity_window_days(_), do: 30
+
+  defp range_to_days("today"), do: 1
+  defp range_to_days("yesterday"), do: 1
+  defp range_to_days("7d"), do: 7
+  defp range_to_days("30d"), do: 30
+  defp range_to_days("quarter"), do: 90
+  defp range_to_days(_), do: 30
 end
 
 defmodule QueryCanary.Reports.AccessError do

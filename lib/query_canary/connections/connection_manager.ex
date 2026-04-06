@@ -22,7 +22,7 @@ defmodule QueryCanary.Connections.ConnectionManager do
   """
   def test_connection(%Server{} = server) do
     with {:ok, _pid} <- ConnectionServer.ensure_started(server) do
-      ConnectionServer.query(server.id, "SELECT now()")
+      ConnectionServer.query(server.id, connection_test_query(server))
     else
       {:error, reason} -> {:error, reason}
       other -> other
@@ -80,4 +80,9 @@ defmodule QueryCanary.Connections.ConnectionManager do
       ConnectionServer.get_database_schema(server.id)
     end
   end
+
+  defp connection_test_query(%Server{db_engine: "prometheus"}),
+    do: QueryCanary.Connections.Adapters.Prometheus.version_query()
+
+  defp connection_test_query(_server), do: "SELECT now()"
 end

@@ -246,6 +246,9 @@ defmodule QueryCanary.Connections.ConnectionServer do
   defp adapter_for(%Server{db_engine: "clickhouse"}),
     do: QueryCanary.Connections.Adapters.ClickHouse
 
+  defp adapter_for(%Server{db_engine: "prometheus"}),
+    do: QueryCanary.Connections.Adapters.Prometheus
+
   defp adapter_for(%Server{db_engine: other}), do: raise("Unsupported database engine: #{other}")
 
   defp via(server_id),

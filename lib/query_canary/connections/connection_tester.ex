@@ -148,6 +148,10 @@ defmodule QueryCanary.Connections.ConnectionTester do
   # Get appropriate version query based on DB engine
   defp get_version_query(%Server{db_engine: "postgresql"}), do: "SELECT version();"
   defp get_version_query(%Server{db_engine: "mysql"}), do: "SELECT VERSION();"
+
+  defp get_version_query(%Server{db_engine: "prometheus"}),
+    do: QueryCanary.Connections.Adapters.Prometheus.version_query()
+
   defp get_version_query(%Server{db_engine: engine}), do: "SELECT 'Connected to #{engine}';"
 
   # Extract version information from query results based on DB engine
@@ -156,6 +160,8 @@ defmodule QueryCanary.Connections.ConnectionTester do
       case results do
         [[version]] when is_binary(version) -> version
         %{rows: [[version]]} when is_binary(version) -> version
+        %{rows: [%{"version" => version} | _]} when is_binary(version) -> version
+        %{rows: [%{version: version} | _]} when is_binary(version) -> version
         _ -> "Unknown version"
       end
     rescue

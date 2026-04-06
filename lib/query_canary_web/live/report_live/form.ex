@@ -31,7 +31,7 @@ defmodule QueryCanaryWeb.ReportLive.Form do
     changeset =
       Reports.change_report(socket.assigns.current_scope, %Report{
         timezone: "Etc/UTC",
-        default_range: "today"
+        default_range: "30d"
       })
 
     socket
