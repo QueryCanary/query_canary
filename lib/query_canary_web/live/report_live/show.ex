@@ -305,6 +305,53 @@ defmodule QueryCanaryWeb.ReportLive.Show do
     end
   end
 
+  def handle_event(
+        "move_metric_to_group",
+        %{
+          "metric_group_id" => metric_group_id,
+          "target_group_id" => target_group_id
+        } = params,
+        socket
+      ) do
+    before_group_metric_id =
+      params
+      |> Map.get("before_group_metric_id")
+      |> parse_int()
+
+    case {find_group_metric(socket.assigns.report, metric_group_id),
+          find_group(socket.assigns.report, target_group_id)} do
+      {%ReportGroupMetric{} = group_metric, %ReportGroup{} = target_group} ->
+        case Reports.move_metric_to_group(
+               socket.assigns.current_scope,
+               group_metric,
+               target_group,
+               before_group_metric_id: before_group_metric_id
+             ) do
+          {:ok, _} ->
+            {:noreply, refresh_report(socket)}
+
+          {:error, %Ecto.Changeset{} = changeset} ->
+            message =
+              changeset.errors
+              |> Keyword.values()
+              |> Enum.map_join(", ", fn {msg, _opts} -> msg end)
+
+            {:noreply,
+             put_flash(
+               socket,
+               :error,
+               if(message == "", do: "Unable to move metric", else: message)
+             )}
+
+          {:error, _reason} ->
+            {:noreply, put_flash(socket, :error, "Unable to move metric")}
+        end
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
   def handle_event("edit_selected_metric", _params, socket) do
     {:noreply, assign(socket, :editing_selected_metric, true)}
   end
@@ -478,27 +525,27 @@ defmodule QueryCanaryWeb.ReportLive.Show do
   def render(assigns) do
     ~H"""
     <Layouts.fluid_app flash={@flash} current_scope={@current_scope}>
-      <.header>
+      <.header class="mb-2">
         {@report.name}
         <:subtitle>
           Default Range: {@report.default_range} • Timezone: {@report.timezone}
         </:subtitle>
         <:actions>
-          <.link navigate={~p"/reports"} class="btn btn-ghost">
+          <.link navigate={~p"/reports"} class="btn btn-ghost btn-sm">
             <.icon name="hero-arrow-left" /> Back
           </.link>
-          <.link navigate={~p"/reports/#{@report.id}/edit"} class="btn btn-primary">
+          <.link navigate={~p"/reports/#{@report.id}/edit"} class="btn btn-primary btn-sm">
             Edit Details
           </.link>
         </:actions>
       </.header>
 
-      <section class="space-y-6">
-        <div class="space-y-3">
-          <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+      <section class="space-y-3">
+        <div class="space-y-2">
+          <div class="flex flex-col gap-2 xl:flex-row xl:items-end xl:justify-between">
             <div>
-              <h2 class="text-lg font-semibold tracking-tight">Report Overview</h2>
-              <div class="text-xs text-base-content/60">
+              <h2 class="text-base font-semibold tracking-tight">Report Overview</h2>
+              <div class="text-[11px] text-base-content/60">
                 Showing {length(@table_days)} day(s) ending {format_day(List.last(@table_days))}
               </div>
             </div>
@@ -506,15 +553,15 @@ defmodule QueryCanaryWeb.ReportLive.Show do
             <.form
               for={@new_group_form}
               phx-submit="add_group"
-              class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
+              class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2"
             >
               <.input
                 field={@new_group_form[:name]}
                 placeholder="New group name"
                 required
-                class="min-w-[12rem]"
+                class="min-w-[10rem] input-sm"
               />
-              <.button type="submit" variant="primary" class="sm:w-auto">
+              <.button type="submit" variant="primary-sm" class="sm:w-auto">
                 Add Group
               </.button>
             </.form>
@@ -522,35 +569,34 @@ defmodule QueryCanaryWeb.ReportLive.Show do
 
           <div
             :if={!Enum.empty?(@table_rows)}
-            class="overflow-x-auto rounded border border-base-300 bg-base-100 shadow-sm"
+            id="report-metric-board"
+            phx-hook="ReportMetricDrag"
+            class="-mx-4 overflow-auto rounded-none border-y border-base-300 bg-base-100 shadow-sm sm:-mx-6 lg:-mx-8"
           >
-            <table class="min-w-full border-collapse text-xs leading-tight">
+            <table class="min-w-full border-collapse text-[10px] leading-none lg:text-[11px]">
               <thead class="bg-base-200 sticky top-0 z-20">
                 <tr>
-                  <th class="sticky left-0 z-30 bg-base-200 px-3 py-2 text-left font-medium text-base-content/70 border-b border-base-300 w-52">
+                  <th class="sticky left-0 z-30 bg-base-200 px-2 py-1.5 text-left font-medium text-base-content/70 border-b border-base-300 w-40 lg:w-44">
                     Metric
                   </th>
                   <%= for day <- @table_days do %>
-                    <th class="px-2 py-2 text-center font-medium text-base-content/70 border-b border-base-300 w-16">
-                      <div class="flex flex-col items-center gap-0.5">
-                        <span>{format_day_short(day)}</span>
-                        <span class="text-[9px] font-normal text-base-content/50">
-                          {day_of_week(day)}
+                    <th class="px-0.5 py-1 text-center font-medium text-base-content/70 border-b border-base-300 w-8 lg:w-9">
+                      <div class="flex flex-col items-center gap-px">
+                        <span class="font-semibold tabular-nums">{format_day_compact(day)}</span>
+                        <span class="text-[8px] font-normal uppercase text-base-content/45">
+                          {day_of_week_initial(day)}
                         </span>
                       </div>
                     </th>
                   <% end %>
-                  <th class="px-2 py-2 text-center font-medium text-base-content/70 border-b border-base-300 w-16">
-                    Δ 7d
+                  <th class="px-1 py-1 text-center font-medium text-base-content/70 border-b border-base-300 w-11 lg:w-12">
+                    7d
                   </th>
-                  <th class="px-2 py-2 text-center font-medium text-base-content/70 border-b border-base-300 w-16">
-                    Δ Start
+                  <th class="px-1 py-1 text-center font-medium text-base-content/70 border-b border-base-300 w-11 lg:w-12">
+                    Start
                   </th>
-                  <th class="px-2 py-2 text-center font-medium text-base-content/70 border-b border-base-300 w-16">
+                  <th class="px-1 py-1 text-center font-medium text-base-content/70 border-b border-base-300 w-11 lg:w-12">
                     Avg
-                  </th>
-                  <th class="px-3 py-2 text-left font-medium text-base-content/70 border-b border-base-300 w-48">
-                    Actions
                   </th>
                 </tr>
               </thead>
@@ -560,33 +606,34 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                   <% adding_metric? = @adding_metric_group_id == group.id %>
                   <tr>
                     <td
-                      class="sticky left-0 z-10 bg-base-200/80 backdrop-blur px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-base-content/60 border-t border-b border-base-300"
-                      colspan={length(@table_days) + 5}
+                      data-metric-drop-group-id={group.id}
+                      class="sticky left-0 z-10 bg-base-200/90 backdrop-blur px-2 py-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-base-content/60 border-t border-b border-base-300"
+                      colspan={length(@table_days) + 4}
                     >
-                      <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+                      <div class="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
+                        <div class="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
                           <%= if group_editing? do %>
                             <.form
                               for={%{}}
                               as={:group}
                               phx-submit="save_group"
-                              class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2"
+                              class="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2"
                             >
                               <input type="hidden" name="group[id]" value={group.id} />
                               <input
                                 type="text"
                                 name="group[name]"
                                 value={group.name}
-                                class="input input-sm w-full sm:w-64"
+                                class="input input-xs w-full sm:w-52"
                                 autofocus
                               />
                               <div class="flex gap-2">
-                                <button type="submit" class="btn btn-xs btn-primary sm:btn-sm">
+                                <button type="submit" class="btn btn-xs btn-primary">
                                   Save
                                 </button>
                                 <button
                                   type="button"
-                                  class="btn btn-xs btn-ghost sm:btn-sm"
+                                  class="btn btn-xs btn-ghost"
                                   phx-click="cancel_group_edit"
                                 >
                                   Cancel
@@ -595,7 +642,7 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                             </.form>
                           <% else %>
                             <div class="flex items-center gap-2">
-                              <span class="text-sm font-semibold tracking-wide">{group.name}</span>
+                              <span class="text-xs font-semibold tracking-wide">{group.name}</span>
                               <button
                                 type="button"
                                 class="btn btn-ghost btn-xs"
@@ -618,11 +665,11 @@ defmodule QueryCanaryWeb.ReportLive.Show do
 
                         <div class="flex flex-wrap items-center gap-2">
                           <%= if adding_metric? do %>
-                            <form phx-submit="add_metric" class="flex flex-wrap gap-2 items-center">
+                            <form phx-submit="add_metric" class="flex flex-wrap gap-1.5 items-center">
                               <input type="hidden" name="add_metric[group_id]" value={group.id} />
                               <select
                                 name="add_metric[metric_id]"
-                                class="select select-bordered select-xs sm:select-sm min-w-[10rem]"
+                                class="select select-bordered select-xs min-w-[9rem]"
                                 required
                               >
                                 <option value="">Select metric…</option>
@@ -685,22 +732,36 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                   <%= if Enum.empty?(rows) do %>
                     <tr>
                       <td
-                        class="sticky left-0 z-10 bg-base-100 px-3 py-2 text-sm text-base-content/60 border-b border-base-200"
-                        colspan={length(@table_days) + 5}
+                        class="sticky left-0 z-10 bg-base-100 px-2 py-1.5 text-[11px] text-base-content/60 border-b border-base-200"
+                        colspan={length(@table_days) + 4}
                       >
                         No metrics in this group yet.
                       </td>
                     </tr>
                   <% else %>
                     <%= for row <- rows do %>
-                      <tr class="hover:bg-base-200/30">
-                        <td class="sticky left-0 z-10 bg-base-100 px-3 py-1.5 font-medium text-base-content border-b border-base-200">
-                          <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+                      <tr
+                        class="hover:bg-base-200/30"
+                        data-metric-row-id={row.group_metric_id}
+                        data-metric-drop-group-id={row.group_id}
+                        data-metric-drop-before-id={row.group_metric_id}
+                      >
+                        <td class="sticky left-0 z-10 bg-base-100 px-2 py-1 font-medium text-base-content border-b border-base-200">
+                          <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
                             <div class="flex items-center gap-2">
+                              <span
+                                draggable="true"
+                                data-draggable-metric-id={row.group_metric_id}
+                                data-metric-drag-handle
+                                class="inline-flex cursor-grab select-none items-center rounded px-1 py-0.5 text-base-content/35 hover:bg-base-200 hover:text-base-content/60 active:cursor-grabbing"
+                                title="Drag to another group"
+                              >
+                                <.icon name="hero-bars-3" class="h-3.5 w-3.5" />
+                              </span>
                               <button
                                 type="button"
                                 id={"metric-title-#{row.group_metric_id}"}
-                                class="truncate text-left link link-hover font-medium"
+                                class="truncate text-left link link-hover font-medium text-[11px] lg:text-xs"
                                 phx-click="open_metric_modal"
                                 phx-value-id={row.group_metric_id}
                               >
@@ -712,39 +773,29 @@ defmodule QueryCanaryWeb.ReportLive.Show do
 
                         <%= for day <- @table_days do %>
                           <% value = Map.get(row.values, day) %>
-                          <% cls = heat_class(value, row.min, row.max) %>
+                          <% cls = heat_class(value, row.min, row.max, row.avg) %>
                           <td
-                            class={"relative px-1.5 py-1 text-center align-middle border-b border-base-200 #{cls}"}
+                            class={"relative px-0.5 py-0.5 text-center align-middle border-b border-base-200 #{cls}"}
                             title={"#{row.display_name} #{format_day(day)}: #{fmt(value, row.opts)}"}
                           >
-                            <div class="font-medium tabular-nums">
+                            <div class="font-medium tabular-nums text-[9px] lg:text-[10px]">
                               {fmt_compact(value, row.opts)}
                             </div>
                             <div class="absolute inset-0 pointer-events-none">
-                              <div class={"h-full w-full opacity-15 " <> heat_bg_color(value, row.min, row.max)}>
+                              <div class={"h-full w-full opacity-15 " <> heat_bg_color(value, row.min, row.max, row.avg)}>
                               </div>
                             </div>
                           </td>
                         <% end %>
 
-                        <td class="px-2 py-1 text-center border-b border-base-200">
+                        <td class="px-1 py-0.5 text-center border-b border-base-200">
                           <.delta_chip latest={row.latest} past={row.week_ago} />
                         </td>
-                        <td class="px-2 py-1 text-center border-b border-base-200">
+                        <td class="px-1 py-0.5 text-center border-b border-base-200">
                           <.delta_chip latest={row.latest} past={row.fortnight} />
                         </td>
-                        <td class="px-2 py-1 text-center border-b border-base-200 text-base-content/70 tabular-nums">
+                        <td class="px-1 py-0.5 text-center border-b border-base-200 text-base-content/70 tabular-nums">
                           {fmt(row.avg, row.opts)}
-                        </td>
-                        <td class="px-3 py-1 text-left border-b border-base-200">
-                          <div class="flex flex-wrap items-center gap-2 text-xs text-base-content/60">
-                            <span>
-                              Latest: {fmt(row.latest, row.opts)}
-                            </span>
-                            <span>
-                              Avg: {fmt(row.avg, row.opts)}
-                            </span>
-                          </div>
                         </td>
                       </tr>
                     <% end %>
@@ -758,16 +809,16 @@ defmodule QueryCanaryWeb.ReportLive.Show do
             No metric data available yet. Add metrics to this report to see trends here.
           </div>
 
-          <div class="flex items-center gap-4 pt-1 text-[10px] text-base-content/60">
+          <div class="flex items-center gap-3 pt-0.5 text-[9px] text-base-content/55">
             <div class="flex items-center gap-1">
-              <span class="inline-block h-3 w-5 rounded bg-emerald-200"></span> High
+              <span class="inline-block h-2.5 w-4 rounded bg-emerald-200"></span> High
             </div>
             <div class="flex items-center gap-1">
-              <span class="inline-block h-3 w-5 rounded border border-base-300 bg-base-100"></span>
+              <span class="inline-block h-2.5 w-4 rounded border border-base-300 bg-base-100"></span>
               Mid
             </div>
             <div class="flex items-center gap-1">
-              <span class="inline-block h-3 w-5 rounded bg-rose-200"></span> Low
+              <span class="inline-block h-2.5 w-4 rounded bg-rose-200"></span> Low
             </div>
           </div>
         </div>
@@ -1428,8 +1479,8 @@ defmodule QueryCanaryWeb.ReportLive.Show do
 
   defp format_day(nil), do: "—"
   defp format_day(d), do: Calendar.strftime(d, "%Y-%m-%d")
-  defp format_day_short(d), do: Calendar.strftime(d, "%m-%d")
-  defp day_of_week(d), do: Calendar.strftime(d, "%a")
+  defp format_day_compact(d), do: Calendar.strftime(d, "%d")
+  defp day_of_week_initial(d), do: Calendar.strftime(d, "%a") |> String.first()
 
   defp history_window_label(entry, timezone) do
     from_day =
@@ -1544,37 +1595,60 @@ defmodule QueryCanaryWeb.ReportLive.Show do
   defp minimum_backfill_days("month"), do: 365
   defp minimum_backfill_days(_), do: 30
 
-  defp heat_class(nil, _min, _max), do: "text-base-content/40"
-  defp heat_class(_v, nil, _max), do: "text-base-content/70"
-  defp heat_class(_v, _min, nil), do: "text-base-content/70"
-  defp heat_class(_v, min, max) when max == min, do: "text-base-content/70"
-
-  defp heat_class(v, min, max) do
-    ratio = (v - min) / max(1.0, max - min)
-
-    cond do
-      ratio >= 0.75 -> "text-emerald-700"
-      ratio >= 0.50 -> "text-emerald-600"
-      ratio >= 0.25 -> "text-base-content"
-      ratio >= 0.10 -> "text-rose-600"
-      true -> "text-rose-700"
+  defp heat_class(v, min, max, avg) do
+    case heat_signal(v, min, max, avg) do
+      :high -> "text-emerald-700"
+      :mid_high -> "text-emerald-600"
+      :mid_low -> "text-rose-600"
+      :low -> "text-rose-700"
+      :neutral -> "text-base-content/70"
+      :empty -> "text-base-content/40"
     end
   end
 
-  defp heat_bg_color(nil, _min, _max), do: "bg-base-100"
-  defp heat_bg_color(_v, nil, _max), do: "bg-base-100"
-  defp heat_bg_color(_v, _min, nil), do: "bg-base-100"
-  defp heat_bg_color(_v, min, max) when max == min, do: "bg-base-100"
+  defp heat_bg_color(v, min, max, avg) do
+    case heat_signal(v, min, max, avg) do
+      :high -> "bg-emerald-300"
+      :mid_high -> "bg-emerald-200"
+      :mid_low -> "bg-rose-200"
+      :low -> "bg-rose-300"
+      _ -> "bg-base-100"
+    end
+  end
 
-  defp heat_bg_color(v, min, max) do
-    ratio = (v - min) / max(1.0, max - min)
+  defp heat_signal(nil, _min, _max, _avg), do: :empty
+  defp heat_signal(_v, nil, _max, _avg), do: :neutral
+  defp heat_signal(_v, _min, nil, _avg), do: :neutral
+  defp heat_signal(_v, min, max, _avg) when max == min, do: :neutral
+
+  defp heat_signal(v, min, max, avg) do
+    span = max - min
+    scale = Enum.max([abs(min), abs(max), abs(avg || 0.0)])
 
     cond do
-      ratio >= 0.75 -> "bg-emerald-300"
-      ratio >= 0.50 -> "bg-emerald-200"
-      ratio >= 0.25 -> "bg-base-100"
-      ratio >= 0.10 -> "bg-rose-200"
-      true -> "bg-rose-300"
+      span <= 0 ->
+        :neutral
+
+      # Small-value metrics shouldn't look alarming unless the move is truly meaningful.
+      scale < 5.0 and span < 5.0 ->
+        :neutral
+
+      true ->
+        center = avg || (min + max) / 2.0
+        diff = v - center
+        diff_abs = abs(diff)
+        significant_move = max(span * 0.35, max(abs(center) * 0.75, 1.0))
+
+        cond do
+          diff_abs < significant_move ->
+            :neutral
+
+          diff > 0 ->
+            if diff_abs >= significant_move * 1.5, do: :high, else: :mid_high
+
+          true ->
+            if diff_abs >= significant_move * 1.5, do: :low, else: :mid_low
+        end
     end
   end
 

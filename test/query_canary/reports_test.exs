@@ -113,5 +113,51 @@ defmodule QueryCanary.ReportsTest do
       refreshed = Reports.get_report!(scope, group.report_id)
       assert Enum.empty?(hd(refreshed.groups).group_metrics)
     end
+
+    test "move_metric_to_group/3 reassigns a metric to another group", %{
+      scope: scope,
+      report: report,
+      group: group,
+      metric: metric
+    } do
+      {:ok, gm} = Reports.add_metric_to_group(scope, group, metric)
+      {:ok, target_group} = Reports.create_group(scope, report, %{name: "Secondary"})
+
+      assert {:ok, moved} = Reports.move_metric_to_group(scope, gm, target_group)
+      assert moved.report_group_id == target_group.id
+    end
+
+    test "move_metric_to_group/4 reorders metrics within the same group", %{
+      scope: scope,
+      report: report,
+      group: group,
+      metric: metric
+    } do
+      metric_two = metric_fixture(scope, %{name: "Second Metric"})
+      metric_three = metric_fixture(scope, %{name: "Third Metric"})
+
+      {:ok, gm_one} = Reports.add_metric_to_group(scope, group, metric)
+      {:ok, gm_two} = Reports.add_metric_to_group(scope, group, metric_two)
+      {:ok, gm_three} = Reports.add_metric_to_group(scope, group, metric_three)
+
+      assert {:ok, _moved} =
+               Reports.move_metric_to_group(
+                 scope,
+                 gm_three,
+                 group,
+                 before_group_metric_id: gm_one.id
+               )
+
+      refreshed = Reports.get_report!(scope, report.id)
+      [refreshed_group | _] = refreshed.groups
+
+      assert Enum.map(refreshed_group.group_metrics, & &1.id) == [
+               gm_three.id,
+               gm_one.id,
+               gm_two.id
+             ]
+
+      assert Enum.map(refreshed_group.group_metrics, & &1.position) == [0, 1, 2]
+    end
   end
 end

@@ -146,6 +146,63 @@ defmodule QueryCanary.Reports do
     Repo.delete(group_metric)
   end
 
+  def move_metric_to_group(
+        %Scope{} = scope,
+        %ReportGroupMetric{} = group_metric,
+        %ReportGroup{} = target_group,
+        opts \\ []
+      ) do
+    ensure_access_by_group_metric!(scope, group_metric)
+    ensure_access_by_group!(scope, target_group)
+
+    before_group_metric_id = Keyword.get(opts, :before_group_metric_id)
+    group_metric = Repo.preload(group_metric, :report_group)
+
+    cond do
+      group_metric.report_group.report_id != target_group.report_id ->
+        {:error, :different_report}
+
+      before_group_metric_id == group_metric.id ->
+        {:ok, group_metric}
+
+      true ->
+        Repo.transaction(fn ->
+          target_metrics =
+            Repo.all(
+              from gm in ReportGroupMetric,
+                where: gm.report_group_id == ^target_group.id and gm.id != ^group_metric.id,
+                order_by: [asc: gm.position, asc: gm.id]
+            )
+
+          insert_index =
+            target_metrics
+            |> Enum.find_index(&(&1.id == before_group_metric_id))
+            |> case do
+              nil -> length(target_metrics)
+              idx -> idx
+            end
+
+          reordered_metric_ids =
+            target_metrics
+            |> Enum.map(& &1.id)
+            |> List.insert_at(insert_index, group_metric.id)
+
+          if reordered_metric_ids == Enum.map(target_metrics, & &1.id) and
+               group_metric.report_group_id == target_group.id do
+            group_metric
+          else
+            reorder_group_metrics(target_group.id, reordered_metric_ids, group_metric.id)
+
+            if group_metric.report_group_id != target_group.id do
+              normalize_group_metric_positions(group_metric.report_group_id)
+            end
+
+            Repo.get!(ReportGroupMetric, group_metric.id)
+          end
+        end)
+    end
+  end
+
   def metric_results_for_report(%Report{} = report, opts \\ []) do
     limit_per_metric = Keyword.get(opts, :limit, 50)
     now = Keyword.get(opts, :now, DateTime.utc_now())
@@ -259,6 +316,38 @@ defmodule QueryCanary.Reports do
         where: gm.report_group_id == ^group.id,
         select: coalesce(max(gm.position), -1)
     ) + 1
+  end
+
+  defp reorder_group_metrics(target_group_id, metric_ids, moving_metric_id) do
+    Enum.with_index(metric_ids)
+    |> Enum.each(fn {metric_id, index} ->
+      updates =
+        if metric_id == moving_metric_id do
+          [report_group_id: target_group_id, position: index]
+        else
+          [position: index]
+        end
+
+      Repo.update_all(
+        from(gm in ReportGroupMetric, where: gm.id == ^metric_id),
+        set: updates
+      )
+    end)
+  end
+
+  defp normalize_group_metric_positions(group_id) do
+    Repo.all(
+      from gm in ReportGroupMetric,
+        where: gm.report_group_id == ^group_id,
+        order_by: [asc: gm.position, asc: gm.id]
+    )
+    |> Enum.with_index()
+    |> Enum.each(fn {%ReportGroupMetric{id: id}, index} ->
+      Repo.update_all(
+        from(gm in ReportGroupMetric, where: gm.id == ^id),
+        set: [position: index]
+      )
+    end)
   end
 
   defp string_key_map(attrs) when is_map(attrs) do
