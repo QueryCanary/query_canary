@@ -5,6 +5,8 @@ defmodule QueryCanary.Connections.Adapters.ClickHouse do
 
   @behaviour QueryCanary.Connections.Adapter
 
+  alias Decimal, as: DecimalValue
+
   @doc """
   Connects to a ClickHouse database using the `ch` library.
 
@@ -40,13 +42,15 @@ defmodule QueryCanary.Connections.Adapters.ClickHouse do
   ## Parameters
     * conn - Connection options
     * query - SQL query string
-    * params - Query parameters (not supported in HTTP API)
+    * params - Query parameters
 
   ## Returns
     * {:ok, results} - Query successful
     * {:error, reason} - Query failed
   """
   def query(conn, query, params \\ []) do
+    {query, params} = normalize_query(query, params)
+
     case Ch.query(conn, query, params) do
       {:ok, %Ch.Result{columns: columns, rows: rows}} ->
         row_maps = Enum.map(rows, fn row -> Enum.zip(columns, row) |> Map.new() end)
@@ -56,6 +60,38 @@ defmodule QueryCanary.Connections.Adapters.ClickHouse do
         {:error, reason}
     end
   end
+
+  defp normalize_query(query, params) when is_binary(query) and is_list(params) do
+    if Regex.match?(~r/(?<!\{)\$[1-9]\d*/, query) do
+      {rewrite_postgres_placeholders(query, params), params}
+    else
+      {query, params}
+    end
+  end
+
+  defp normalize_query(query, params), do: {query, params}
+
+  defp rewrite_postgres_placeholders(query, params) do
+    Regex.replace(~r/(?<!\{)\$([1-9]\d*)/, query, fn _match, raw_index ->
+      index = String.to_integer(raw_index) - 1
+
+      case Enum.fetch(params, index) do
+        {:ok, value} -> "{$#{index}:#{clickhouse_param_type(value)}}"
+        :error -> "$#{raw_index}"
+      end
+    end)
+  end
+
+  defp clickhouse_param_type(%DateTime{}), do: "DateTime64(6, 'UTC')"
+  defp clickhouse_param_type(%NaiveDateTime{}), do: "DateTime64(6)"
+  defp clickhouse_param_type(%Date{}), do: "Date"
+  defp clickhouse_param_type(%Time{}), do: "String"
+  defp clickhouse_param_type(%DecimalValue{}), do: "Decimal(38, 10)"
+  defp clickhouse_param_type(value) when is_integer(value), do: "Int64"
+  defp clickhouse_param_type(value) when is_float(value), do: "Float64"
+  defp clickhouse_param_type(value) when is_boolean(value), do: "Bool"
+  defp clickhouse_param_type(value) when is_binary(value), do: "String"
+  defp clickhouse_param_type(_value), do: "String"
 
   @doc """
   Lists tables in a ClickHouse database.
