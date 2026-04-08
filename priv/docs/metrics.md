@@ -7,8 +7,9 @@ Contract:
 - The first column of the first row is taken as the metric value.
 
 Scheduling:
-- Metrics have a cron in `schedule`. An Oban Cron plugin enqueues MetricRunner jobs every minute.
-- Granularity controls the default rolling window (minute/hour/day/week/month).
+- Metrics default to a `0 8 * * *` schedule. An Oban Cron plugin enqueues MetricRunner jobs every minute.
+- Granularity controls the base execution window (minute/hour/day/week/month).
+- Reports sum stored metric values into the selected timeline bucket.
 
 Backfill:
 - Backfill can enqueue multiple MetricRunner jobs across historical ranges (future work).

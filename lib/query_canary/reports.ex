@@ -398,6 +398,9 @@ defmodule QueryCanary.Reports do
       "30d" ->
         rolling_day_window(local_date, tz, effective_window_days(report))
 
+      "ytd" ->
+        year_to_date_window(local_date, tz)
+
       "quarter" ->
         rolling_day_window(local_date, tz, effective_window_days(report))
 
@@ -417,6 +420,12 @@ defmodule QueryCanary.Reports do
   defp rolling_day_window(local_date, tz, days) do
     end_local = DateTime.new!(Date.add(local_date, 1), ~T[00:00:00], tz)
     start_local = DateTime.add(end_local, -(days * 86_400), :second)
+    {shift_to_utc(start_local), shift_to_utc(end_local)}
+  end
+
+  defp year_to_date_window(local_date, tz) do
+    start_local = DateTime.new!(Date.new!(local_date.year, 1, 1), ~T[00:00:00], tz)
+    end_local = DateTime.new!(Date.add(local_date, 1), ~T[00:00:00], tz)
     {shift_to_utc(start_local), shift_to_utc(end_local)}
   end
 
@@ -449,6 +458,7 @@ defmodule QueryCanary.Reports do
   defp range_to_days("yesterday"), do: 1
   defp range_to_days("7d"), do: 7
   defp range_to_days("30d"), do: 30
+  defp range_to_days("ytd"), do: 366
   defp range_to_days("quarter"), do: 90
   defp range_to_days(_), do: 30
 end

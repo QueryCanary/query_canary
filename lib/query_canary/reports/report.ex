@@ -23,6 +23,7 @@ defmodule QueryCanary.Reports.Report do
 
   @required_fields ~w(name timezone default_range)a
   @optional_fields ~w(description settings team_id user_id)a
+  @timeline_buckets ~w(day week month)
 
   @doc """
   Changeset that infers ownership from the provided scope. Behaviour matches servers/checks.
@@ -35,6 +36,7 @@ defmodule QueryCanary.Reports.Report do
     |> validate_length(:name, min: 2)
     |> validate_timezone()
     |> put_default_settings()
+    |> validate_settings()
   end
 
   def changeset(report, attrs) do
@@ -44,6 +46,7 @@ defmodule QueryCanary.Reports.Report do
     |> validate_length(:name, min: 2)
     |> validate_timezone()
     |> put_default_settings()
+    |> validate_settings()
   end
 
   defp maybe_put_owner(changeset, %Scope{} = scope, attrs) do
@@ -100,9 +103,21 @@ defmodule QueryCanary.Reports.Report do
   end
 
   defp put_default_settings(changeset) do
-    update_change(changeset, :settings, fn
-      nil -> %{}
-      settings -> settings
+    settings =
+      case get_field(changeset, :settings) do
+        settings when is_map(settings) -> settings
+        _ -> %{}
+      end
+
+    put_change(changeset, :settings, Map.put_new(settings, "timeline_bucket", "day"))
+  end
+
+  defp validate_settings(changeset) do
+    validate_change(changeset, :settings, fn :settings, settings ->
+      case Map.get(settings || %{}, "timeline_bucket", "day") do
+        bucket when bucket in @timeline_buckets -> []
+        _ -> [settings: "timeline bucket must be day, week, or month"]
+      end
     end)
   end
 

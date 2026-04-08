@@ -12,8 +12,13 @@ defmodule QueryCanaryWeb.ReportLive.Form do
     {"Yesterday", "yesterday"},
     {"Last 7 days", "7d"},
     {"Last 30 days", "30d"},
-    {"Last quarter", "quarter"},
-    {"Custom", "custom"}
+    {"Year to date", "ytd"},
+    {"Last quarter", "quarter"}
+  ]
+  @timeline_buckets [
+    {"Daily", "day"},
+    {"Weekly", "week"},
+    {"Monthly", "month"}
   ]
 
   @impl true
@@ -24,6 +29,7 @@ defmodule QueryCanaryWeb.ReportLive.Form do
      socket
      |> assign(:teams, teams)
      |> assign(:default_ranges, @default_ranges)
+     |> assign(:timeline_buckets, @timeline_buckets)
      |> apply_action(socket.assigns.live_action, params)}
   end
 
@@ -69,6 +75,13 @@ defmodule QueryCanaryWeb.ReportLive.Form do
           type="select"
           label="Default Date Range"
           options={@default_ranges}
+        />
+        <.input
+          name="report[settings][timeline_bucket]"
+          type="select"
+          label="Timeline Bucket"
+          value={report_timeline_bucket(@form.source)}
+          options={@timeline_buckets}
         />
         <.input field={@form[:timezone]} type="text" label="Timezone (IANA name)" />
 
@@ -195,4 +208,19 @@ defmodule QueryCanaryWeb.ReportLive.Form do
 
   defp cancel_path(%Report{id: nil}), do: ~p"/reports"
   defp cancel_path(%Report{id: id}), do: ~p"/reports/#{id}"
+
+  defp report_timeline_bucket(%Ecto.Changeset{} = changeset) do
+    settings =
+      Ecto.Changeset.get_change(changeset, :settings) ||
+        Ecto.Changeset.get_field(changeset, :settings) ||
+        %{}
+
+    Map.get(settings, "timeline_bucket", "day")
+  end
+
+  defp report_timeline_bucket(%Report{settings: settings}) when is_map(settings) do
+    Map.get(settings, "timeline_bucket", "day")
+  end
+
+  defp report_timeline_bucket(_), do: "day"
 end

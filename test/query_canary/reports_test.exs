@@ -14,6 +14,7 @@ defmodule QueryCanary.ReportsTest do
       assert {:ok, report} = Reports.create_report(scope, report_params)
       assert report.user_id == scope.user.id
       assert report.team_id == nil
+      assert report.settings["timeline_bucket"] == "day"
     end
 
     test "create_report/2 stores team ownership" do
@@ -30,6 +31,33 @@ defmodule QueryCanary.ReportsTest do
       assert {:ok, report} = Reports.create_report(scope, params)
       assert report.team_id == team.id
       assert report.user_id == nil
+    end
+
+    test "create_report/2 stores the report timeline bucket in settings" do
+      scope = user_scope_fixture()
+
+      params = %{
+        name: "Weekly Team Dashboard",
+        timezone: "America/New_York",
+        default_range: "30d",
+        settings: %{"timeline_bucket" => "week"}
+      }
+
+      assert {:ok, report} = Reports.create_report(scope, params)
+      assert report.settings["timeline_bucket"] == "week"
+    end
+
+    test "create_report/2 accepts year-to-date as a default range" do
+      scope = user_scope_fixture()
+
+      params = %{
+        name: "YTD Dashboard",
+        timezone: "America/New_York",
+        default_range: "ytd"
+      }
+
+      assert {:ok, report} = Reports.create_report(scope, params)
+      assert report.default_range == "ytd"
     end
 
     test "list_reports/1 only returns accessible reports" do

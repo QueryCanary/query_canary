@@ -14,8 +14,9 @@ defmodule QueryCanary.MetricsFixtures do
       |> Map.merge(%{
         name: Map.get(attrs, :name, "Metric #{System.unique_integer()}"),
         sql: Map.get(attrs, :sql, "select 1 as value"),
-        schedule: Map.get(attrs, :schedule, "* * * * *"),
+        schedule: Map.get(attrs, :schedule, "0 8 * * *"),
         granularity: Map.get(attrs, :granularity, "day"),
+        rollup_strategy: Map.get(attrs, :rollup_strategy, "sum"),
         timezone: Map.get(attrs, :timezone, "Etc/UTC"),
         enabled: Map.get(attrs, :enabled, true),
         server_id: Map.get(attrs, :server_id, server.id),

@@ -74,6 +74,7 @@ defmodule QueryCanaryWeb.ReportLive.Index do
             </div>
             <div class="flex flex-wrap gap-2 text-xs text-base-content/70">
               <span class="badge badge-outline">Default Range: {report.default_range}</span>
+              <span class="badge badge-outline">Timeline: {report_timeline(report)}</span>
               <span class="badge badge-outline">Timezone: {report.timezone}</span>
               <span class="badge badge-outline">
                 Groups: {length(report.groups || [])}
@@ -105,4 +106,14 @@ defmodule QueryCanaryWeb.ReportLive.Index do
   defp report_owner(%{team: %{name: name}}), do: "Team • #{name}"
   defp report_owner(%{user: %{email: email}}), do: "User • #{email}"
   defp report_owner(_), do: "Personal"
+
+  defp report_timeline(%{settings: settings}) when is_map(settings) do
+    case Map.get(settings, "timeline_bucket", "day") do
+      "week" -> "weekly"
+      "month" -> "monthly"
+      _ -> "daily"
+    end
+  end
+
+  defp report_timeline(_), do: "daily"
 end

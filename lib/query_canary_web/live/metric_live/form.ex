@@ -44,13 +44,16 @@ defmodule QueryCanaryWeb.MetricLive.Form do
     <.form for={@changeset} as={:metric} phx-change="validate" phx-submit="save">
       <.input name="metric[name]" value={@changeset.data.name} label="Name" />
       <.input name="metric[sql]" type="textarea" value={@changeset.data.sql} label="SQL" rows="6" />
-      <.input name="metric[schedule]" value={@changeset.data.schedule} label="Cron (e.g. * * * * *)" />
       <.input
         name="metric[granularity]"
         type="select"
         value={@changeset.data.granularity}
+        label="Base Granularity"
         options={["minute", "hour", "day", "week", "month"]}
       />
+      <p class="mb-2 text-xs text-base-content/70">
+        Metrics run automatically at `0 8 * * *`.
+      </p>
       <.input name="metric[timezone]" value={@changeset.data.timezone} label="Timezone" />
       <.input name="metric[enabled]" type="checkbox" value={@changeset.data.enabled} label="Enabled" />
       <.input

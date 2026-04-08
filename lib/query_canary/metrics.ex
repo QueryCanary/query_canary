@@ -115,8 +115,8 @@ defmodule QueryCanary.Metrics do
   Returns {:ok, %MetricResult{}} or {:error, reason}.
   """
   def run_metric_range(%Metric{} = metric, from_ts, to_ts) do
-    with {:ok, value, payload} <- execute_sql(metric, from_ts, to_ts) |> dbg() do
-      upsert_result(metric, from_ts, to_ts, value, payload) |> dbg()
+    with {:ok, value, payload} <- execute_sql(metric, from_ts, to_ts) do
+      upsert_result(metric, from_ts, to_ts, value, payload)
     end
   end
 
@@ -129,7 +129,6 @@ defmodule QueryCanary.Metrics do
         value: value,
         payload: payload || %{}
       }
-      |> dbg()
 
     case Repo.insert(
            MetricResult.changeset(%MetricResult{}, changes),
@@ -249,6 +248,21 @@ defmodule QueryCanary.Metrics do
   end
 
   @doc """
+  Deletes stored metric results for the exact backfill window span.
+  """
+  def delete_metric_results_for_windows(_metric_id, []), do: {0, nil}
+
+  def delete_metric_results_for_windows(metric_id, windows) when is_integer(metric_id) do
+    {from_ts, _} = List.first(windows)
+    {_, to_ts} = List.last(windows)
+
+    Repo.delete_all(
+      from r in MetricResult,
+        where: r.metric_id == ^metric_id and r.from_ts >= ^from_ts and r.to_ts <= ^to_ts
+    )
+  end
+
+  @doc """
   Build [from, to) windows between two DateTimes using granularity and timezone.
   """
   def windows_for_range(granularity, from_dt, to_dt, tz \\ "Etc/UTC") do
@@ -259,10 +273,9 @@ defmodule QueryCanary.Metrics do
         nxt = step_fun.(cur)
 
         if DateTime.compare(nxt, to_dt) == :gt do
-          # {{cur, to_dt}, nil} |> dbg()
           nil
         else
-          {{cur, nxt}, nxt} |> dbg()
+          {{cur, nxt}, nxt}
         end
       else
         nil

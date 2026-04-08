@@ -17,7 +17,6 @@ defmodule QueryCanaryWeb.MetricLive.Show do
     <.header>
       {@metric.name}
       <:subtitle>
-        <span class="badge">{@metric.schedule}</span>
         <span class="badge">{@metric.granularity}</span>
       </:subtitle>
       <:actions>

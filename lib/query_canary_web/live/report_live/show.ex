@@ -487,7 +487,7 @@ defmodule QueryCanaryWeb.ReportLive.Show do
     assign(socket,
       report: report,
       metric_results: metric_results,
-      table_days: table_state.days,
+      table_periods: table_state.periods,
       table_groups: table_state.groups,
       table_rows: table_state.rows
     )
@@ -528,7 +528,7 @@ defmodule QueryCanaryWeb.ReportLive.Show do
       <.header class="mb-2">
         {@report.name}
         <:subtitle>
-          Default Range: {@report.default_range} • Timezone: {@report.timezone}
+          Default Range: {@report.default_range} • Timeline: {timeline_bucket_label(@report)} • Timezone: {@report.timezone}
         </:subtitle>
         <:actions>
           <.link navigate={~p"/reports"} class="btn btn-ghost btn-sm">
@@ -546,7 +546,7 @@ defmodule QueryCanaryWeb.ReportLive.Show do
             <div>
               <h2 class="text-base font-semibold tracking-tight">Report Overview</h2>
               <div class="text-[11px] text-base-content/60">
-                Showing {length(@table_days)} day(s) ending {format_day(List.last(@table_days))}
+                Showing {length(@table_periods)} {timeline_bucket_label(@report)} period(s) ending {format_period(List.last(@table_periods), @report)}
               </div>
             </div>
 
@@ -579,18 +579,18 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                   <th class="sticky left-0 z-30 bg-base-200 px-2 py-1.5 text-left font-medium text-base-content/70 border-b border-base-300 w-40 lg:w-44">
                     Metric
                   </th>
-                  <%= for day <- @table_days do %>
+                  <%= for period <- @table_periods do %>
                     <th class="px-0.5 py-1 text-center font-medium text-base-content/70 border-b border-base-300 w-8 lg:w-9">
                       <div class="flex flex-col items-center gap-px">
-                        <span class="font-semibold tabular-nums">{format_day_compact(day)}</span>
+                        <span class="font-semibold tabular-nums">{format_period_compact(period, @report)}</span>
                         <span class="text-[8px] font-normal uppercase text-base-content/45">
-                          {day_of_week_initial(day)}
+                          {format_period_subtitle(period, @report)}
                         </span>
                       </div>
                     </th>
                   <% end %>
                   <th class="px-1 py-1 text-center font-medium text-base-content/70 border-b border-base-300 w-11 lg:w-12">
-                    7d
+                    Prev
                   </th>
                   <th class="px-1 py-1 text-center font-medium text-base-content/70 border-b border-base-300 w-11 lg:w-12">
                     Start
@@ -608,7 +608,7 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                     <td
                       data-metric-drop-group-id={group.id}
                       class="sticky left-0 z-10 bg-base-200/90 backdrop-blur px-2 py-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-base-content/60 border-t border-b border-base-300"
-                      colspan={length(@table_days) + 4}
+                      colspan={length(@table_periods) + 4}
                     >
                       <div class="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
                         <div class="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
@@ -733,7 +733,7 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                     <tr>
                       <td
                         class="sticky left-0 z-10 bg-base-100 px-2 py-1.5 text-[11px] text-base-content/60 border-b border-base-200"
-                        colspan={length(@table_days) + 4}
+                        colspan={length(@table_periods) + 4}
                       >
                         No metrics in this group yet.
                       </td>
@@ -771,12 +771,12 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                           </div>
                         </td>
 
-                        <%= for day <- @table_days do %>
-                          <% value = Map.get(row.values, day) %>
+                        <%= for period <- @table_periods do %>
+                          <% value = Map.get(row.values, period) %>
                           <% cls = heat_class(value, row.min, row.max, row.avg) %>
                           <td
                             class={"relative px-0.5 py-0.5 text-center align-middle border-b border-base-200 #{cls}"}
-                            title={"#{row.display_name} #{format_day(day)}: #{fmt(value, row.opts)}"}
+                            title={"#{row.display_name} #{format_period(period, @report)}: #{fmt(value, row.opts)}"}
                           >
                             <div class="font-medium tabular-nums text-[9px] lg:text-[10px]">
                               {fmt_compact(value, row.opts)}
@@ -789,10 +789,10 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                         <% end %>
 
                         <td class="px-1 py-0.5 text-center border-b border-base-200">
-                          <.delta_chip latest={row.latest} past={row.week_ago} />
+                          <.delta_chip latest={row.latest} past={row.previous_period} />
                         </td>
                         <td class="px-1 py-0.5 text-center border-b border-base-200">
-                          <.delta_chip latest={row.latest} past={row.fortnight} />
+                          <.delta_chip latest={row.latest} past={row.start_period} />
                         </td>
                         <td class="px-1 py-0.5 text-center border-b border-base-200 text-base-content/70 tabular-nums">
                           {fmt(row.avg, row.opts)}
@@ -927,17 +927,17 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                   {fmt(@selected_metric.latest, @selected_metric.opts)}
                 </div>
                 <div class="mt-1 text-xs text-base-content/60">
-                  Report window ending {format_day(List.last(@table_days))}
+                  Report window ending {format_period(List.last(@table_periods), @report)}
                 </div>
               </div>
 
               <div class="rounded-xl border border-base-200 bg-base-200/50 p-4">
-                <div class="text-xs uppercase tracking-wide text-base-content/50">7d Change</div>
+                <div class="text-xs uppercase tracking-wide text-base-content/50">Previous Period</div>
                 <div class="mt-2">
-                  <.delta_chip latest={@selected_metric.latest} past={@selected_metric.week_ago} />
+                  <.delta_chip latest={@selected_metric.latest} past={@selected_metric.previous_period} />
                 </div>
                 <div class="mt-2 text-xs text-base-content/60">
-                  Compared with the value from 7 periods earlier
+                  Compared with the prior {timeline_bucket_label(@report)} bucket
                 </div>
               </div>
 
@@ -952,12 +952,12 @@ defmodule QueryCanaryWeb.ReportLive.Show do
               </div>
 
               <div class="rounded-xl border border-base-200 bg-base-200/50 p-4">
-                <div class="text-xs uppercase tracking-wide text-base-content/50">Granularity</div>
+                <div class="text-xs uppercase tracking-wide text-base-content/50">Base Metric</div>
                 <div class="mt-2 text-lg font-semibold">
                   {metric_granularity(@selected_metric.metric)}
                 </div>
                 <div class="mt-1 text-xs text-base-content/60">
-                  Schedule: {metric_schedule(@selected_metric.metric)}
+                  Timeline: {timeline_bucket_label(@report)}
                 </div>
               </div>
             </div>
@@ -1006,11 +1006,10 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                           <.input field={@selected_metric_form[:sql]} type="textarea" rows="6" />
                         <% end %>
                       </div>
-                      <.input field={@selected_metric_form[:schedule]} label="Cron (e.g. * * * * *)" />
                       <.input
                         field={@selected_metric_form[:granularity]}
                         type="select"
-                        label="Granularity"
+                        label="Base Granularity"
                         options={granularity_options()}
                       />
                       <.input field={@selected_metric_form[:timezone]} label="Timezone" />
@@ -1192,15 +1191,17 @@ defmodule QueryCanaryWeb.ReportLive.Show do
               />
               <.input field={@new_metric_form[:sql]} type="textarea" label="SQL" rows="6" />
               <div class="grid gap-3 md:grid-cols-3">
-                <.input field={@new_metric_form[:schedule]} label="Cron (e.g. * * * * *)" />
                 <.input
                   field={@new_metric_form[:granularity]}
                   type="select"
-                  label="Granularity"
+                  label="Base Granularity"
                   options={granularity_options()}
                 />
                 <.input field={@new_metric_form[:timezone]} label="Timezone" />
               </div>
+              <p class="text-xs text-base-content/70">
+                Metrics run automatically at `0 8 * * *`.
+              </p>
               <.input field={@new_metric_form[:enabled]} type="checkbox" label="Enabled" />
 
               <div class="flex items-center gap-2 pt-2">
@@ -1249,23 +1250,22 @@ defmodule QueryCanaryWeb.ReportLive.Show do
 
   defp build_table_state(report, metric_results, metrics_by_id) do
     tz = report.timezone || "Etc/UTC"
+    bucket = report_timeline_bucket(report)
     max_days = effective_window_days(report)
 
-    result_days =
+    result_periods =
       metric_results
       |> Enum.flat_map(fn {_metric_id, results} ->
         Enum.map(results, fn res ->
-          res.from_ts
-          |> DateTime.shift_zone!(tz)
-          |> DateTime.to_date()
+          result_period_start(res, tz, bucket)
         end)
       end)
       |> Enum.uniq()
 
-    base_days = default_days(report, max_days)
+    base_periods = default_periods(report, max_days, bucket)
 
-    days =
-      (base_days ++ Enum.reject(result_days, &(&1 in base_days)))
+    periods =
+      (base_periods ++ Enum.reject(result_periods, &(&1 in base_periods)))
       |> Enum.uniq()
       |> Enum.sort(Date)
       |> maybe_truncate(max_days)
@@ -1282,25 +1282,15 @@ defmodule QueryCanaryWeb.ReportLive.Show do
         metric = Map.get(metrics_by_id, metric_id, group_metric.metric)
         results = Map.get(metric_results, metric_id, [])
 
-        value_map =
-          results
-          |> Enum.map(fn res ->
-            day =
-              res.from_ts
-              |> DateTime.shift_zone!(tz)
-              |> DateTime.to_date()
+        value_map = aggregate_results_by_period(results, tz, bucket)
 
-            {day, numeric_value(res.value)}
-          end)
-          |> Enum.into(%{})
-
-        values_for_days =
-          Enum.reduce(days, %{}, fn day, acc ->
-            Map.put(acc, day, Map.get(value_map, day))
+        values_for_periods =
+          Enum.reduce(periods, %{}, fn period, acc ->
+            Map.put(acc, period, Map.get(value_map, period))
           end)
 
         numbers =
-          values_for_days
+          values_for_periods
           |> Map.values()
           |> Enum.filter(&is_number/1)
 
@@ -1316,18 +1306,18 @@ defmodule QueryCanaryWeb.ReportLive.Show do
             group_metric.settings["display_name"] ||
               (metric && metric.name) ||
               "Metric #{metric_id}",
-          values: values_for_days,
+          values: values_for_periods,
           min: stats.min,
           max: stats.max,
           avg: stats.avg,
-          latest: value_at_offset(values_for_days, days, 0),
-          week_ago: value_at_offset(values_for_days, days, 7),
-          fortnight: value_at_offset(values_for_days, days, length(days) - 1),
+          latest: value_at_offset(values_for_periods, periods, 0),
+          previous_period: value_at_offset(values_for_periods, periods, 1),
+          start_period: value_at_offset(values_for_periods, periods, length(periods) - 1),
           opts: Map.get(group_metric.settings, "display", %{})
         }
       end
 
-    %{days: days, groups: groups, rows: rows}
+    %{periods: periods, groups: groups, rows: rows}
   end
 
   defp maybe_truncate(days, max_days) do
@@ -1343,14 +1333,31 @@ defmodule QueryCanaryWeb.ReportLive.Show do
   defp default_days(report, max_days) do
     today = DateTime.now!(report.timezone || "Etc/UTC") |> DateTime.to_date()
 
-    end_day =
-      case report.default_range do
-        "yesterday" -> Date.add(today, -1)
-        _ -> today
-      end
+    case report.default_range do
+      "ytd" ->
+        start_day = Date.new!(today.year, 1, 1)
 
-    0..(max_days - 1)
-    |> Enum.map(&Date.add(end_day, -&1))
+        Date.range(start_day, today)
+        |> Enum.to_list()
+
+      _ ->
+        end_day =
+          case report.default_range do
+            "yesterday" -> Date.add(today, -1)
+            _ -> today
+          end
+
+        0..(max_days - 1)
+        |> Enum.map(&Date.add(end_day, -&1))
+        |> Enum.sort(Date)
+    end
+  end
+
+  defp default_periods(report, max_days, bucket) do
+    report
+    |> default_days(max_days)
+    |> Enum.map(&period_start_for_date(&1, bucket))
+    |> Enum.uniq()
     |> Enum.sort(Date)
   end
 
@@ -1360,6 +1367,7 @@ defmodule QueryCanaryWeb.ReportLive.Show do
       "yesterday" -> 1
       "7d" -> 7
       "30d" -> 30
+      "ytd" -> 366
       "quarter" -> 90
       _ -> 30
     end
@@ -1402,6 +1410,43 @@ defmodule QueryCanaryWeb.ReportLive.Show do
   defp numeric_value(value) when is_integer(value), do: value * 1.0
   defp numeric_value(value) when is_float(value), do: value
   defp numeric_value(_), do: nil
+
+  defp aggregate_results_by_period(results, timezone, bucket) do
+    results
+    |> Enum.group_by(&result_period_start(&1, timezone, bucket))
+    |> Map.new(fn {period, period_results} ->
+      {period, roll_up_period_values(period_results)}
+    end)
+  end
+
+  defp roll_up_period_values(results) do
+    results
+    |> Enum.map(&numeric_value(&1.value))
+    |> Enum.filter(&is_number/1)
+    |> case do
+      [] -> nil
+      values -> Enum.sum(values)
+    end
+  end
+
+  defp result_period_start(result, timezone, bucket) do
+    result.from_ts
+    |> DateTime.shift_zone!(timezone)
+    |> DateTime.to_date()
+    |> period_start_for_date(bucket)
+  end
+
+  defp period_start_for_date(date, "day"), do: date
+
+  defp period_start_for_date(date, "week") do
+    Date.add(date, 1 - Date.day_of_week(date))
+  end
+
+  defp period_start_for_date(date, "month") do
+    Date.new!(date.year, date.month, 1)
+  end
+
+  defp period_start_for_date(date, _bucket), do: date
 
   defp value_at_offset(_values, [], _offset), do: nil
 
@@ -1460,14 +1505,15 @@ defmodule QueryCanaryWeb.ReportLive.Show do
         assign_selected_metric(socket, nil)
 
       row ->
-        {from_ts, to_ts} = report_chart_window(socket.assigns.table_days, socket.assigns.report)
+        {from_ts, to_ts} = report_chart_window(socket.assigns.table_periods, socket.assigns.report)
+        window_days = effective_window_days(socket.assigns.report)
 
         metric_results =
           Metrics.list_metric_results(
             row.metric_id,
             from_ts: from_ts,
             to_ts: to_ts,
-            limit: chart_point_limit(row.metric, length(socket.assigns.table_days)),
+            limit: chart_point_limit(row.metric, window_days),
             order: :desc
           )
 
@@ -1570,21 +1616,20 @@ defmodule QueryCanaryWeb.ReportLive.Show do
   end
 
   defp report_chart_window([], %Report{} = report) do
-    tz = report.timezone || "Etc/UTC"
-    today = DateTime.now!(tz) |> DateTime.to_date()
-    report_chart_window([today], report)
+    report_chart_window(default_periods(report, effective_window_days(report), report_timeline_bucket(report)), report)
   end
 
-  defp report_chart_window(days, %Report{} = report) do
+  defp report_chart_window(periods, %Report{} = report) do
     tz = report.timezone || "Etc/UTC"
-    first_day = List.first(days)
-    last_day = List.last(days)
+    bucket = report_timeline_bucket(report)
+    first_day = List.first(periods)
+    last_day = List.last(periods)
 
     from_ts = DateTime.new!(first_day, ~T[00:00:00], tz) |> DateTime.shift_zone!("Etc/UTC")
 
     to_ts =
       last_day
-      |> Date.add(1)
+      |> next_period_start(bucket)
       |> DateTime.new!(~T[00:00:00], tz)
       |> DateTime.shift_zone!("Etc/UTC")
 
@@ -1613,10 +1658,60 @@ defmodule QueryCanaryWeb.ReportLive.Show do
   defp history_change(_value, nil), do: nil
   defp history_change(value, previous_value), do: value - previous_value
 
+  defp report_timeline_bucket(%Report{settings: settings}) when is_map(settings) do
+    Map.get(settings, "timeline_bucket", "day")
+  end
+
+  defp report_timeline_bucket(_), do: "day"
+
+  defp timeline_bucket_label(%Report{} = report) do
+    case report_timeline_bucket(report) do
+      "week" -> "weekly"
+      "month" -> "monthly"
+      _ -> "daily"
+    end
+  end
+
+  defp next_period_start(date, "month") do
+    if date.month == 12 do
+      Date.new!(date.year + 1, 1, 1)
+    else
+      Date.new!(date.year, date.month + 1, 1)
+    end
+  end
+
+  defp next_period_start(date, "week"), do: Date.add(date, 7)
+  defp next_period_start(date, _bucket), do: Date.add(date, 1)
+
   defp format_day(nil), do: "—"
   defp format_day(d), do: Calendar.strftime(d, "%Y-%m-%d")
-  defp format_day_compact(d), do: Calendar.strftime(d, "%d")
-  defp day_of_week_initial(d), do: Calendar.strftime(d, "%a") |> String.first()
+
+  defp format_period(nil, _report), do: "—"
+  defp format_period(period, %Report{} = report) do
+    case report_timeline_bucket(report) do
+      "week" -> "Week of #{format_day(period)}"
+      "month" -> Calendar.strftime(period, "%b %Y")
+      _ -> format_day(period)
+    end
+  end
+
+  defp format_period_compact(nil, _report), do: "—"
+  defp format_period_compact(period, %Report{} = report) do
+    case report_timeline_bucket(report) do
+      "week" -> Calendar.strftime(period, "%m-%d")
+      "month" -> Calendar.strftime(period, "%b")
+      _ -> Calendar.strftime(period, "%d")
+    end
+  end
+
+  defp format_period_subtitle(nil, _report), do: ""
+  defp format_period_subtitle(period, %Report{} = report) do
+    case report_timeline_bucket(report) do
+      "week" -> "WK"
+      "month" -> Calendar.strftime(period, "%Y")
+      _ -> Calendar.strftime(period, "%a") |> String.first()
+    end
+  end
 
   defp history_window_label(entry, timezone) do
     from_day =
@@ -1656,9 +1751,6 @@ defmodule QueryCanaryWeb.ReportLive.Show do
   defp metric_granularity(nil), do: "—"
   defp metric_granularity(metric), do: metric.granularity
 
-  defp metric_schedule(nil), do: "—"
-  defp metric_schedule(metric), do: metric.schedule
-
   defp metric_timezone(nil), do: "—"
   defp metric_timezone(metric), do: metric.timezone || "Etc/UTC"
 
@@ -1697,7 +1789,6 @@ defmodule QueryCanaryWeb.ReportLive.Show do
       "name" => "",
       "description" => "",
       "sql" => "",
-      "schedule" => "* * * * *",
       "granularity" => "day",
       "timezone" => if(report, do: report.timezone || "Etc/UTC", else: "Etc/UTC"),
       "enabled" => true,

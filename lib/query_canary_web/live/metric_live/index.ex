@@ -21,7 +21,6 @@ defmodule QueryCanaryWeb.MetricLive.Index do
         <thead>
           <tr>
             <th>Name</th>
-            <th>Schedule</th>
             <th>Granularity</th>
             <th>Server</th>
             <th>Enabled</th>
@@ -32,7 +31,6 @@ defmodule QueryCanaryWeb.MetricLive.Index do
           <%= for m <- @metrics do %>
             <tr>
               <td><.link navigate={"/metrics/#{m.id}"} class="link">{m.name}</.link></td>
-              <td>{m.schedule}</td>
               <td>{m.granularity}</td>
               <td>{m.server_id}</td>
               <td>{if m.enabled, do: "Yes", else: "No"}</td>
