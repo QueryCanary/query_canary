@@ -98,22 +98,6 @@ defmodule QueryCanaryWeb.ReportLive.Show do
     end
   end
 
-  def handle_event("toggle_add_metric", %{"id" => id}, socket) do
-    group_id = parse_int(id)
-
-    new_value =
-      if socket.assigns.adding_metric_group_id == group_id do
-        nil
-      else
-        group_id
-      end
-
-    {:noreply,
-     socket
-     |> assign(:adding_metric_group_id, new_value)
-     |> assign(:creating_metric_group_id, nil)}
-  end
-
   def handle_event("start_create_metric", %{"id" => id}, socket) do
     group_id = parse_int(id)
 
@@ -546,7 +530,10 @@ defmodule QueryCanaryWeb.ReportLive.Show do
             <div>
               <h2 class="text-base font-semibold tracking-tight">Report Overview</h2>
               <div class="text-[11px] text-base-content/60">
-                Showing {length(@table_periods)} {timeline_bucket_label(@report)} period(s) ending {format_period(List.last(@table_periods), @report)}
+                Showing {length(@table_periods)} {timeline_bucket_label(@report)} period(s) ending {format_period(
+                  List.last(@table_periods),
+                  @report
+                )}
               </div>
             </div>
 
@@ -582,7 +569,9 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                   <%= for period <- @table_periods do %>
                     <th class="px-0.5 py-1 text-center font-medium text-base-content/70 border-b border-base-300 w-8 lg:w-9">
                       <div class="flex flex-col items-center gap-px">
-                        <span class="font-semibold tabular-nums">{format_period_compact(period, @report)}</span>
+                        <span class="font-semibold tabular-nums">
+                          {format_period_compact(period, @report)}
+                        </span>
                         <span class="text-[8px] font-normal uppercase text-base-content/45">
                           {format_period_subtitle(period, @report)}
                         </span>
@@ -638,6 +627,14 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                                 >
                                   Cancel
                                 </button>
+                                <button
+                                  class="btn btn-ghost btn-xs text-error"
+                                  phx-click="delete_group"
+                                  phx-value-id={group.id}
+                                  data-confirm="Remove this group?"
+                                >
+                                  Delete
+                                </button>
                               </div>
                             </.form>
                           <% else %>
@@ -650,14 +647,6 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                                 phx-value-id={group.id}
                               >
                                 <.icon name="hero-pencil-square" class="h-4 w-4" />
-                              </button>
-                              <button
-                                class="btn btn-ghost btn-xs text-error"
-                                phx-click="delete_group"
-                                phx-value-id={group.id}
-                                data-confirm="Remove this group?"
-                              >
-                                <.icon name="hero-trash" class="h-4 w-4" />
                               </button>
                             </div>
                           <% end %>
@@ -706,19 +695,11 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                               <button
                                 type="button"
                                 class="btn btn-ghost btn-xs"
-                                phx-click="toggle_add_metric"
+                                phx-click="start_create_metric"
                                 phx-value-id={group.id}
                               >
                                 <.icon name="hero-plus" class="h-4 w-4" />
                                 <span class="sr-only">Add metric</span>
-                              </button>
-                              <button
-                                type="button"
-                                class="btn btn-ghost btn-xs"
-                                phx-click="start_create_metric"
-                                phx-value-id={group.id}
-                              >
-                                New metric
                               </button>
                             </div>
                           <% end %>
@@ -932,9 +913,14 @@ defmodule QueryCanaryWeb.ReportLive.Show do
               </div>
 
               <div class="rounded-xl border border-base-200 bg-base-200/50 p-4">
-                <div class="text-xs uppercase tracking-wide text-base-content/50">Previous Period</div>
+                <div class="text-xs uppercase tracking-wide text-base-content/50">
+                  Previous Period
+                </div>
                 <div class="mt-2">
-                  <.delta_chip latest={@selected_metric.latest} past={@selected_metric.previous_period} />
+                  <.delta_chip
+                    latest={@selected_metric.latest}
+                    past={@selected_metric.previous_period}
+                  />
                 </div>
                 <div class="mt-2 text-xs text-base-content/60">
                   Compared with the prior {timeline_bucket_label(@report)} bucket
@@ -1505,7 +1491,9 @@ defmodule QueryCanaryWeb.ReportLive.Show do
         assign_selected_metric(socket, nil)
 
       row ->
-        {from_ts, to_ts} = report_chart_window(socket.assigns.table_periods, socket.assigns.report)
+        {from_ts, to_ts} =
+          report_chart_window(socket.assigns.table_periods, socket.assigns.report)
+
         window_days = effective_window_days(socket.assigns.report)
 
         metric_results =
@@ -1616,7 +1604,10 @@ defmodule QueryCanaryWeb.ReportLive.Show do
   end
 
   defp report_chart_window([], %Report{} = report) do
-    report_chart_window(default_periods(report, effective_window_days(report), report_timeline_bucket(report)), report)
+    report_chart_window(
+      default_periods(report, effective_window_days(report), report_timeline_bucket(report)),
+      report
+    )
   end
 
   defp report_chart_window(periods, %Report{} = report) do
@@ -1687,6 +1678,7 @@ defmodule QueryCanaryWeb.ReportLive.Show do
   defp format_day(d), do: Calendar.strftime(d, "%Y-%m-%d")
 
   defp format_period(nil, _report), do: "—"
+
   defp format_period(period, %Report{} = report) do
     case report_timeline_bucket(report) do
       "week" -> "Week of #{format_day(period)}"
@@ -1696,6 +1688,7 @@ defmodule QueryCanaryWeb.ReportLive.Show do
   end
 
   defp format_period_compact(nil, _report), do: "—"
+
   defp format_period_compact(period, %Report{} = report) do
     case report_timeline_bucket(report) do
       "week" -> Calendar.strftime(period, "%m-%d")
@@ -1705,6 +1698,7 @@ defmodule QueryCanaryWeb.ReportLive.Show do
   end
 
   defp format_period_subtitle(nil, _report), do: ""
+
   defp format_period_subtitle(period, %Report{} = report) do
     case report_timeline_bucket(report) do
       "week" -> "WK"
