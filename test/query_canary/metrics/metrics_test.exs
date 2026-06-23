@@ -74,6 +74,7 @@ defmodule QueryCanary.MetricsTest do
       )
 
     assert Enum.map(queued_jobs, & &1.queue) == ["metric_backfill", "metric_backfill"]
+
     assert Enum.map(queued_jobs, &{&1.args["from"], &1.args["to"]}) == [
              {DateTime.to_iso8601(from_dt), DateTime.to_iso8601(mid_dt)},
              {DateTime.to_iso8601(mid_dt), DateTime.to_iso8601(to_dt)}
