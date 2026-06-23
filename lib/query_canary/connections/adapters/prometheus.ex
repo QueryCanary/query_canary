@@ -29,14 +29,15 @@ defmodule QueryCanary.Connections.Adapters.Prometheus do
   @doc """
   Executes an instant PromQL query against Prometheus.
   """
-  def query(conn, query), do: query(conn, query, [])
+  def query(conn, query), do: query(conn, query, [], [])
+  def query(conn, query, params), do: query(conn, query, params, [])
 
-  def query(_conn, _query, params) when params != [] do
+  def query(_conn, _query, params, _opts) when params != [] do
     {:error, "Prometheus queries do not support positional parameters"}
   end
 
-  def query(conn, @build_info_query, []) do
-    case fetch_build_info(conn) do
+  def query(conn, @build_info_query, [], opts) do
+    case fetch_build_info(conn, opts) do
       {:ok, build_info} ->
         row =
           build_info
@@ -59,9 +60,9 @@ defmodule QueryCanary.Connections.Adapters.Prometheus do
     end
   end
 
-  def query(conn, promql, []) do
+  def query(conn, promql, [], opts) do
     with {:ok, %{"resultType" => result_type, "result" => result} = raw} <-
-           api_get(conn, "/api/v1/query", params: [query: promql]) do
+           api_get(conn, "/api/v1/query", [params: [query: promql]], opts) do
       rows = format_query_rows(result_type, result)
       columns = rows |> Enum.flat_map(&Map.keys/1) |> Enum.uniq() |> Enum.sort()
 
@@ -178,8 +179,8 @@ defmodule QueryCanary.Connections.Adapters.Prometheus do
     end
   end
 
-  defp fetch_build_info(conn) do
-    api_get(conn, "/api/v1/status/buildinfo")
+  defp fetch_build_info(conn, opts \\ []) do
+    api_get(conn, "/api/v1/status/buildinfo", [], opts)
   end
 
   defp fetch_series(conn, metric_name) do
@@ -195,8 +196,11 @@ defmodule QueryCanary.Connections.Adapters.Prometheus do
     end
   end
 
-  defp api_get(conn, path, opts \\ []) do
-    request_options = Keyword.merge([url: path], opts)
+  defp api_get(conn, path, request_options \\ [], query_opts \\ []) do
+    request_options =
+      [url: path]
+      |> Keyword.merge(request_options)
+      |> Keyword.merge(req_timeout_options(conn, query_opts))
 
     case Req.get(conn, request_options) do
       {:ok, %{status: 200, body: %{"status" => "success", "data" => data}}} ->
@@ -223,6 +227,21 @@ defmodule QueryCanary.Connections.Adapters.Prometheus do
   defp format_transport_error(%{reason: reason}), do: "Transport error: #{inspect(reason)}"
   defp format_transport_error(%_{} = error), do: Exception.message(error)
   defp format_transport_error(reason), do: "Transport error: #{inspect(reason)}"
+
+  defp req_timeout_options(conn, opts) do
+    case Keyword.get(opts, :timeout) do
+      nil ->
+        []
+
+      timeout ->
+        connect_options =
+          conn
+          |> Req.Request.get_option(:connect_options, [])
+          |> Keyword.put(:timeout, timeout)
+
+        [receive_timeout: timeout, connect_options: connect_options]
+    end
+  end
 
   defp format_query_rows("vector", result), do: Enum.map(result, &format_vector_row/1)
 

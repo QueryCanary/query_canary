@@ -52,9 +52,9 @@ defmodule QueryCanary.Connections.Adapters.SQLite do
     * {:ok, results} - Query successful
     * {:error, reason} - Query failed
   """
-  def query(conn, query, params \\ []) do
+  def query(conn, query, params \\ [], opts \\ []) do
     try do
-      case Exqlite.query(conn, query, params) do
+      case Exqlite.query(conn, query, params, opts) do
         {:ok, result} ->
           {:ok, format_results(result)}
 

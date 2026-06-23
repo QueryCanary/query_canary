@@ -14,6 +14,8 @@ defmodule QueryCanary.Checks do
   alias QueryCanary.Connections.ConnectionManager
   alias QueryCanary.Checks.CheckNotifier
 
+  @check_query_timeout 30_000
+
   @doc """
   Subscribes to scoped notifications about any check changes.
 
@@ -227,7 +229,9 @@ defmodule QueryCanary.Checks do
     # Run the query using the ConnectionManager
     result =
       try do
-        case ConnectionManager.run_query(check.server, check.query) do
+        case ConnectionManager.run_query(check.server, check.query, [],
+               timeout: @check_query_timeout
+             ) do
           {:ok, %{rows: rows}} ->
             # Calculate time taken
             end_time = System.monotonic_time(:millisecond)

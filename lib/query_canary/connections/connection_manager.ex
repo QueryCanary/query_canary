@@ -36,14 +36,15 @@ defmodule QueryCanary.Connections.ConnectionManager do
     * server - The database server configuration
     * query - The SQL query to execute
     * params - Query parameters (optional)
+    * opts - Query options passed through to the connection adapter
 
   ## Returns
     * {:ok, results} - Query executed successfully
     * {:error, reason} - Query failed with reason
   """
-  def run_query(%Server{} = server, query, params \\ []) do
+  def run_query(%Server{} = server, query, params \\ [], opts \\ []) do
     with {:ok, _pid} <- ConnectionServer.ensure_started(server),
-         reply <- ConnectionServer.query(server.id, query, params) do
+         reply <- ConnectionServer.query(server.id, query, params, opts) do
       reply
     end
   end

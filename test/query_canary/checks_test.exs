@@ -1,8 +1,35 @@
+defmodule QueryCanary.ChecksTest.FakeConnectionServer do
+  use GenServer
+
+  def start_link(server_id, test_pid) do
+    GenServer.start_link(__MODULE__, test_pid,
+      name: {:via, Registry, {QueryCanary.ConnectionRegistry, {:server, server_id}}}
+    )
+  end
+
+  @impl GenServer
+  def init(test_pid), do: {:ok, test_pid}
+
+  @impl GenServer
+  def handle_call({:query, sql, params, opts}, _from, test_pid) do
+    send(test_pid, {:query_called, sql, params, opts})
+
+    {:reply,
+     {:ok,
+      %{
+        rows: [%{"value" => 1}],
+        columns: ["value"],
+        num_rows: 1
+      }}, test_pid}
+  end
+end
+
 defmodule QueryCanary.ChecksTest do
   use QueryCanary.DataCase
 
   alias QueryCanary.Checks
   alias QueryCanary.Checks.Check
+  alias QueryCanary.Checks.CheckResult
 
   import QueryCanary.AccountsFixtures, only: [user_scope_fixture: 0]
   import QueryCanary.ChecksFixtures
@@ -95,6 +122,20 @@ defmodule QueryCanary.ChecksTest do
       scope = user_scope_fixture()
       check = check_fixture(scope)
       assert %Ecto.Changeset{} = Checks.change_check(scope, check)
+    end
+
+    test "run_check/1 gives checks a 30 second query timeout" do
+      scope = user_scope_fixture()
+      server = server_fixture(scope)
+      check = check_fixture(scope, %{server_id: server.id, query: "SELECT 1"})
+
+      {:ok, pid} = QueryCanary.ChecksTest.FakeConnectionServer.start_link(server.id, self())
+      on_exit(fn -> if Process.alive?(pid), do: GenServer.stop(pid) end)
+
+      assert {:ok, %CheckResult{} = result} = Checks.run_check(check)
+      assert result.success == true
+      assert_receive {:query_called, "SELECT 1", [], opts}
+      assert Keyword.fetch!(opts, :timeout) == 30_000
     end
 
     # test "run_check/1 executes a check and saves the result" do

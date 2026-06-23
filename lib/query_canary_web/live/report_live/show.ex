@@ -23,8 +23,6 @@ defmodule QueryCanaryWeb.ReportLive.Show do
      |> assign(:servers, servers)
      |> assign(:subscribed_metric_ids, MapSet.new())
      |> assign(:editing_group_id, nil)
-     |> assign(:editing_metric_id, nil)
-     |> assign(:adding_metric_group_id, nil)
      |> assign(:creating_metric_group_id, nil)
      |> assign(:selected_group_metric_id, nil)
      |> assign(:selected_metric, nil)
@@ -56,22 +54,17 @@ defmodule QueryCanaryWeb.ReportLive.Show do
         {:noreply,
          socket
          |> put_flash(:info, "Group added")
-         |> assign(:adding_metric_group_id, nil)
          |> refresh_report()
          |> reset_new_group_form()}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply,
-         assign(socket, :group_error, changeset.errors |> Keyword.values() |> Enum.join(", "))}
+         put_flash(socket, :error, changeset_error_text(changeset, "Unable to add group"))}
     end
   end
 
   def handle_event("start_group_edit", %{"id" => id}, socket) do
-    {:noreply,
-     socket
-     |> assign(:editing_group_id, parse_int(id))
-     |> assign(:editing_metric_id, nil)
-     |> assign(:adding_metric_group_id, nil)}
+    {:noreply, assign(socket, :editing_group_id, parse_int(id))}
   end
 
   def handle_event("cancel_group_edit", _params, socket) do
@@ -90,7 +83,8 @@ defmodule QueryCanaryWeb.ReportLive.Show do
              |> refresh_report()}
 
           {:error, %Ecto.Changeset{} = changeset} ->
-            {:noreply, assign(socket, :group_error, changeset)}
+            {:noreply,
+             put_flash(socket, :error, changeset_error_text(changeset, "Unable to update group"))}
         end
 
       _ ->
@@ -104,7 +98,6 @@ defmodule QueryCanaryWeb.ReportLive.Show do
     {:noreply,
      socket
      |> assign(:creating_metric_group_id, group_id)
-     |> assign(:adding_metric_group_id, nil)
      |> assign(:selected_group_metric_id, nil)
      |> assign(:selected_metric, nil)
      |> assign(:selected_metric_form, nil)
@@ -137,90 +130,11 @@ defmodule QueryCanaryWeb.ReportLive.Show do
              socket
              |> put_flash(:info, "Group removed")
              |> assign(:editing_group_id, nil)
-             |> assign(:adding_metric_group_id, nil)
+             |> assign(:creating_metric_group_id, nil)
              |> refresh_report()}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, "Unable to remove group")}
-        end
-
-      _ ->
-        {:noreply, socket}
-    end
-  end
-
-  def handle_event(
-        "add_metric",
-        %{"add_metric" => %{"group_id" => group_id, "metric_id" => metric_id}},
-        socket
-      ) do
-    with %ReportGroup{} = group <- find_group(socket.assigns.report, group_id),
-         {metric_id_int, ""} <- Integer.parse(metric_id),
-         {:ok, metric} <- metric_from_socket(socket, metric_id_int),
-         {:ok, _gm} <-
-           Reports.add_metric_to_group(socket.assigns.current_scope, group, metric) do
-      {:noreply,
-       socket
-       |> put_flash(:info, "Metric added")
-       |> assign(:editing_metric_id, nil)
-       |> assign(:adding_metric_group_id, nil)
-       |> refresh_report()}
-    else
-      :not_found ->
-        {:noreply, put_flash(socket, :error, "Metric not available")}
-
-      _ ->
-        {:noreply, put_flash(socket, :error, "Unable to add metric")}
-    end
-  end
-
-  def handle_event("start_metric_edit", %{"id" => id}, socket) do
-    {:noreply, assign(socket, :editing_metric_id, parse_int(id))}
-  end
-
-  def handle_event("cancel_metric_edit", _params, socket) do
-    {:noreply, assign(socket, :editing_metric_id, nil)}
-  end
-
-  def handle_event(
-        "save_metric",
-        %{"metric_config" => %{"id" => id, "display_name" => display_name}},
-        socket
-      ) do
-    case find_group_metric(socket.assigns.report, id) do
-      %ReportGroupMetric{} = gm ->
-        case Reports.update_group_metric(socket.assigns.current_scope, gm, %{
-               settings: Map.put(gm.settings, "display_name", display_name)
-             }) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> put_flash(:info, "Metric updated")
-             |> assign(:editing_metric_id, nil)
-             |> refresh_report()}
-
-          {:error, %Ecto.Changeset{} = changeset} ->
-            {:noreply, assign(socket, :metric_error, changeset)}
-        end
-
-      _ ->
-        {:noreply, socket}
-    end
-  end
-
-  def handle_event("remove_metric", %{"id" => id}, socket) do
-    case find_group_metric(socket.assigns.report, id) do
-      %ReportGroupMetric{} = gm ->
-        case Reports.remove_metric_from_group(socket.assigns.current_scope, gm) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> put_flash(:info, "Metric removed")
-             |> assign(:editing_metric_id, nil)
-             |> refresh_report()}
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, "Unable to remove metric")}
         end
 
       _ ->
@@ -422,7 +336,6 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                 {:noreply,
                  socket
                  |> put_flash(:info, "Metric removed")
-                 |> assign(:editing_metric_id, nil)
                  |> assign(:selected_group_metric_id, nil)
                  |> assign(:selected_metric, nil)
                  |> assign(:selected_metric_form, nil)
@@ -477,13 +390,6 @@ defmodule QueryCanaryWeb.ReportLive.Show do
     )
     |> subscribe_to_report_metrics(report)
     |> assign_selected_metric(socket.assigns.selected_group_metric_id)
-  end
-
-  defp metric_from_socket(socket, id) do
-    case Map.fetch(socket.assigns.metrics_by_id, id) do
-      {:ok, metric} -> {:ok, metric}
-      :error -> :not_found
-    end
   end
 
   defp find_group(%Report{} = report, id) do
@@ -561,13 +467,13 @@ defmodule QueryCanaryWeb.ReportLive.Show do
             class="-mx-4 overflow-auto rounded-none border-y border-base-300 bg-base-100 shadow-sm sm:-mx-6 lg:-mx-8"
           >
             <table class="min-w-full border-collapse text-[10px] leading-none lg:text-[11px]">
-              <thead class="bg-base-200 sticky top-0 z-20">
+              <thead class="sticky top-0 z-20 bg-base-200">
                 <tr>
-                  <th class="sticky left-0 z-30 bg-base-200 px-2 py-1.5 text-left font-medium text-base-content/70 border-b border-base-300 w-40 lg:w-44">
+                  <th class="sticky left-0 z-30 w-40 border-b border-base-300 bg-base-200 px-2 py-1.5 text-left font-medium text-base-content/70 lg:w-44">
                     Metric
                   </th>
                   <%= for period <- @table_periods do %>
-                    <th class="px-0.5 py-1 text-center font-medium text-base-content/70 border-b border-base-300 w-8 lg:w-9">
+                    <th class="w-8 border-b border-base-300 px-0.5 py-1 text-center font-medium text-base-content/70 lg:w-9">
                       <div class="flex flex-col items-center gap-px">
                         <span class="font-semibold tabular-nums">
                           {format_period_compact(period, @report)}
@@ -578,13 +484,13 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                       </div>
                     </th>
                   <% end %>
-                  <th class="px-1 py-1 text-center font-medium text-base-content/70 border-b border-base-300 w-11 lg:w-12">
+                  <th class="w-11 px-1 py-1 text-center font-medium text-base-content/70 lg:w-12">
                     Prev
                   </th>
-                  <th class="px-1 py-1 text-center font-medium text-base-content/70 border-b border-base-300 w-11 lg:w-12">
+                  <th class="w-11 px-1 py-1 text-center font-medium text-base-content/70 lg:w-12">
                     Start
                   </th>
-                  <th class="px-1 py-1 text-center font-medium text-base-content/70 border-b border-base-300 w-11 lg:w-12">
+                  <th class="w-11 px-1 py-1 text-center font-medium text-base-content/70 lg:w-12">
                     Avg
                   </th>
                 </tr>
@@ -592,11 +498,10 @@ defmodule QueryCanaryWeb.ReportLive.Show do
               <tbody>
                 <%= for group <- @table_groups do %>
                   <% group_editing? = @editing_group_id == group.id %>
-                  <% adding_metric? = @adding_metric_group_id == group.id %>
                   <tr>
                     <td
                       data-metric-drop-group-id={group.id}
-                      class="sticky left-0 z-10 bg-base-200/90 backdrop-blur px-2 py-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-base-content/60 border-t border-b border-base-300"
+                      class="sticky left-0 z-10 border-y border-base-300 bg-base-200/90 px-2 py-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-base-content/60 backdrop-blur"
                       colspan={length(@table_periods) + 4}
                     >
                       <div class="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
@@ -652,58 +557,15 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                           <% end %>
                         </div>
 
-                        <div class="flex flex-wrap items-center gap-2">
-                          <%= if adding_metric? do %>
-                            <form phx-submit="add_metric" class="flex flex-wrap gap-1.5 items-center">
-                              <input type="hidden" name="add_metric[group_id]" value={group.id} />
-                              <select
-                                name="add_metric[metric_id]"
-                                class="select select-bordered select-xs min-w-[9rem]"
-                                required
-                              >
-                                <option value="">Select metric…</option>
-                                <%= for metric <-
-                                      available_metrics_for_group(@report, group.id, @metrics_by_id) do %>
-                                  <option value={metric.id}>
-                                    {metric.name} — {(metric.server && metric.server.name) ||
-                                      "Server ##{metric.server_id}"}
-                                  </option>
-                                <% end %>
-                              </select>
-                              <button type="submit" class="btn btn-xs btn-primary sm:btn-sm">
-                                Add
-                              </button>
-                              <button
-                                type="button"
-                                class="btn btn-xs btn-ghost sm:btn-sm"
-                                phx-click="toggle_add_metric"
-                                phx-value-id={group.id}
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="button"
-                                class="btn btn-xs btn-ghost sm:btn-sm"
-                                phx-click="start_create_metric"
-                                phx-value-id={group.id}
-                              >
-                                New metric
-                              </button>
-                            </form>
-                          <% else %>
-                            <div class="flex items-center gap-2">
-                              <button
-                                type="button"
-                                class="btn btn-ghost btn-xs"
-                                phx-click="start_create_metric"
-                                phx-value-id={group.id}
-                              >
-                                <.icon name="hero-plus" class="h-4 w-4" />
-                                <span class="sr-only">Add metric</span>
-                              </button>
-                            </div>
-                          <% end %>
-                        </div>
+                        <button
+                          type="button"
+                          class="btn btn-ghost btn-xs"
+                          phx-click="start_create_metric"
+                          phx-value-id={group.id}
+                        >
+                          <.icon name="hero-plus" class="h-4 w-4" />
+                          <span class="sr-only">Add metric</span>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -713,7 +575,7 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                   <%= if Enum.empty?(rows) do %>
                     <tr>
                       <td
-                        class="sticky left-0 z-10 bg-base-100 px-2 py-1.5 text-[11px] text-base-content/60 border-b border-base-200"
+                        class="sticky left-0 z-10 border-b border-base-200 bg-base-100 px-2 py-1.5 text-[11px] text-base-content/60"
                         colspan={length(@table_periods) + 4}
                       >
                         No metrics in this group yet.
@@ -727,7 +589,7 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                         data-metric-drop-group-id={row.group_id}
                         data-metric-drop-before-id={row.group_metric_id}
                       >
-                        <td class="sticky left-0 z-10 bg-base-100 px-2 py-1 font-medium text-base-content border-b border-base-200">
+                        <td class="sticky left-0 z-10 border-b border-base-200 bg-base-100 px-2 py-1 font-medium text-base-content">
                           <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
                             <div class="flex items-center gap-2">
                               <span
@@ -742,7 +604,7 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                               <button
                                 type="button"
                                 id={"metric-title-#{row.group_metric_id}"}
-                                class="truncate text-left link link-hover font-medium text-[11px] lg:text-xs"
+                                class="truncate text-left text-[11px] font-medium link link-hover lg:text-xs"
                                 phx-click="open_metric_modal"
                                 phx-value-id={row.group_metric_id}
                               >
@@ -756,26 +618,26 @@ defmodule QueryCanaryWeb.ReportLive.Show do
                           <% value = Map.get(row.values, period) %>
                           <% cls = heat_class(value, row.min, row.max, row.avg) %>
                           <td
-                            class={"relative px-0.5 py-0.5 text-center align-middle border-b border-base-200 #{cls}"}
+                            class={"relative border-b border-base-200 px-0.5 py-0.5 text-center align-middle #{cls}"}
                             title={"#{row.display_name} #{format_period(period, @report)}: #{fmt(value, row.opts)}"}
                           >
                             <div class="font-medium tabular-nums text-[9px] lg:text-[10px]">
                               {fmt_compact(value, row.opts)}
                             </div>
-                            <div class="absolute inset-0 pointer-events-none">
+                            <div class="pointer-events-none absolute inset-0">
                               <div class={"h-full w-full opacity-15 " <> heat_bg_color(value, row.min, row.max, row.avg)}>
                               </div>
                             </div>
                           </td>
                         <% end %>
 
-                        <td class="px-1 py-0.5 text-center border-b border-base-200">
+                        <td class="border-b border-base-200 px-1 py-0.5 text-center">
                           <.delta_chip latest={row.latest} past={row.previous_period} />
                         </td>
-                        <td class="px-1 py-0.5 text-center border-b border-base-200">
+                        <td class="border-b border-base-200 px-1 py-0.5 text-center">
                           <.delta_chip latest={row.latest} past={row.start_period} />
                         </td>
-                        <td class="px-1 py-0.5 text-center border-b border-base-200 text-base-content/70 tabular-nums">
+                        <td class="border-b border-base-200 px-1 py-0.5 text-center tabular-nums text-base-content/70">
                           {fmt(row.avg, row.opts)}
                         </td>
                       </tr>
@@ -805,401 +667,26 @@ defmodule QueryCanaryWeb.ReportLive.Show do
         </div>
       </section>
 
-      <div
+      <.live_component
         :if={@selected_metric}
-        id="metric-details-modal"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="metric-details-title"
-        phx-window-keydown="close_metric_modal"
-        phx-key="escape"
-      >
-        <div
-          class="absolute inset-0 bg-base-content/45 backdrop-blur-sm"
-          phx-click="close_metric_modal"
-        >
-        </div>
+        module={QueryCanaryWeb.ReportLive.MetricDetailsComponent}
+        id="metric-details-modal-component"
+        report={@report}
+        table_periods={@table_periods}
+        selected_metric={@selected_metric}
+        selected_metric_form={@selected_metric_form}
+        editing_selected_metric={@editing_selected_metric}
+        servers={@servers}
+      />
 
-        <div class="relative z-10 w-full max-w-4xl overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-2xl">
-          <div class="flex items-start justify-between gap-4 border-b border-base-200 px-6 py-5">
-            <div class="space-y-2">
-              <div class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">
-                Metric Details
-              </div>
-              <h3 id="metric-details-title" class="text-2xl font-semibold tracking-tight">
-                {@selected_metric.display_name}
-              </h3>
-              <div class="flex flex-wrap gap-2 text-xs text-base-content/70">
-                <span class="badge badge-outline">
-                  Group: {@selected_metric.group_name}
-                </span>
-                <span class="badge badge-outline">
-                  Metric: {metric_name(@selected_metric.metric, @selected_metric.metric_id)}
-                </span>
-                <span class="badge badge-outline">
-                  Server: {metric_server_name(@selected_metric.metric)}
-                </span>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-2">
-              <button
-                :if={@selected_metric.metric}
-                id="edit-metric-details"
-                type="button"
-                class="btn btn-ghost btn-sm"
-                phx-click={
-                  if @editing_selected_metric,
-                    do: "cancel_selected_metric_edit",
-                    else: "edit_selected_metric"
-                }
-              >
-                <.icon :if={!@editing_selected_metric} name="hero-pencil-square" class="h-4 w-4" />
-                <.icon :if={@editing_selected_metric} name="hero-x-mark" class="h-4 w-4" />
-                {if @editing_selected_metric, do: "Cancel edit", else: "Edit metric"}
-              </button>
-
-              <button
-                :if={@selected_metric}
-                id="remove-metric-from-report"
-                type="button"
-                class="btn btn-error btn-outline btn-sm"
-                phx-click="remove_selected_metric"
-                data-confirm="Remove this metric from the report?"
-              >
-                <.icon name="hero-trash" class="h-4 w-4" /> Remove
-              </button>
-
-              <button
-                id="close-metric-details"
-                type="button"
-                class="btn btn-ghost btn-sm"
-                phx-click="close_metric_modal"
-              >
-                <.icon name="hero-x-mark" class="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-
-          <div class="max-h-[80vh] overflow-y-auto px-6 py-5">
-            <div
-              :if={@selected_metric.chart_data}
-              class="mb-4 rounded-xl border border-base-200 bg-base-200/30 p-3"
-            >
-              <canvas
-                id={"metric-history-chart-#{@selected_metric.metric_id}"}
-                class="w-full h-56"
-                phx-hook="CheckChart"
-                data-labels={Jason.encode!(@selected_metric.chart_data.labels)}
-                data-values={Jason.encode!(@selected_metric.chart_data.values)}
-                data-success={Jason.encode!(@selected_metric.chart_data.success)}
-                data-average={Jason.encode!(@selected_metric.chart_data.average)}
-                data-alert-threshold={Jason.encode!(@selected_metric.chart_data.alert_threshold)}
-                data-alert-type={@selected_metric.chart_data.alert_type}
-              >
-              </canvas>
-            </div>
-
-            <div class="grid gap-3 md:grid-cols-4">
-              <div class="rounded-xl border border-base-200 bg-base-200/50 p-4">
-                <div class="text-xs uppercase tracking-wide text-base-content/50">Latest</div>
-                <div class="mt-2 text-2xl font-semibold tabular-nums">
-                  {fmt(@selected_metric.latest, @selected_metric.opts)}
-                </div>
-                <div class="mt-1 text-xs text-base-content/60">
-                  Report window ending {format_period(List.last(@table_periods), @report)}
-                </div>
-              </div>
-
-              <div class="rounded-xl border border-base-200 bg-base-200/50 p-4">
-                <div class="text-xs uppercase tracking-wide text-base-content/50">
-                  Previous Period
-                </div>
-                <div class="mt-2">
-                  <.delta_chip
-                    latest={@selected_metric.latest}
-                    past={@selected_metric.previous_period}
-                  />
-                </div>
-                <div class="mt-2 text-xs text-base-content/60">
-                  Compared with the prior {timeline_bucket_label(@report)} bucket
-                </div>
-              </div>
-
-              <div class="rounded-xl border border-base-200 bg-base-200/50 p-4">
-                <div class="text-xs uppercase tracking-wide text-base-content/50">Average</div>
-                <div class="mt-2 text-2xl font-semibold tabular-nums">
-                  {fmt(@selected_metric.avg, @selected_metric.opts)}
-                </div>
-                <div class="mt-1 text-xs text-base-content/60">
-                  Across the current report window
-                </div>
-              </div>
-
-              <div class="rounded-xl border border-base-200 bg-base-200/50 p-4">
-                <div class="text-xs uppercase tracking-wide text-base-content/50">Base Metric</div>
-                <div class="mt-2 text-lg font-semibold">
-                  {metric_granularity(@selected_metric.metric)}
-                </div>
-                <div class="mt-1 text-xs text-base-content/60">
-                  Timeline: {timeline_bucket_label(@report)}
-                </div>
-              </div>
-            </div>
-
-            <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
-              <div class="space-y-4">
-                <div class="rounded-xl border border-base-200 p-4">
-                  <div class="flex items-center justify-between gap-3">
-                    <h4 class="text-sm font-semibold">Metric configuration</h4>
-                    <span :if={@editing_selected_metric} class="badge badge-outline badge-primary">
-                      Editing
-                    </span>
-                  </div>
-
-                  <%= if @editing_selected_metric and @selected_metric_form do %>
-                    <.form
-                      id="selected-metric-form"
-                      for={@selected_metric_form}
-                      phx-change="validate_selected_metric"
-                      phx-submit="save_selected_metric"
-                      class="mt-4 space-y-3"
-                    >
-                      <.input field={@selected_metric_form[:name]} label="Name" />
-                      <.input
-                        field={@selected_metric_form[:description]}
-                        type="textarea"
-                        label="Description"
-                        rows="3"
-                      />
-                      <div class="space-y-1">
-                        <label class="label text-sm font-medium">SQL</label>
-                        <%= if server = selected_metric_editor_server(@servers, @selected_metric_form, @selected_metric.metric) do %>
-                          <.live_component
-                            module={QueryCanaryWeb.Components.SQLEditor}
-                            id={
-                              selected_metric_editor_id(
-                                @selected_metric.metric_id,
-                                @selected_metric_form
-                              )
-                            }
-                            server={server}
-                            input_name={@selected_metric_form[:sql].name}
-                            value={@selected_metric_form[:sql].value || ""}
-                          />
-                        <% else %>
-                          <.input field={@selected_metric_form[:sql]} type="textarea" rows="6" />
-                        <% end %>
-                      </div>
-                      <.input
-                        field={@selected_metric_form[:granularity]}
-                        type="select"
-                        label="Base Granularity"
-                        options={granularity_options()}
-                      />
-                      <.input field={@selected_metric_form[:timezone]} label="Timezone" />
-                      <.input
-                        field={@selected_metric_form[:server_id]}
-                        type="select"
-                        label="Server"
-                        options={server_options(@servers)}
-                      />
-                      <.input field={@selected_metric_form[:enabled]} type="checkbox" label="Enabled" />
-
-                      <div class="flex items-center gap-2 pt-2">
-                        <.button type="submit" variant="primary-sm">Save changes</.button>
-                        <button
-                          type="button"
-                          class="btn btn-ghost btn-sm"
-                          phx-click="cancel_selected_metric_edit"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </.form>
-                  <% else %>
-                    <dl class="mt-4 space-y-3 text-sm">
-                      <div>
-                        <dt class="text-xs uppercase tracking-wide text-base-content/50">Name</dt>
-                        <dd class="mt-1 text-base-content/80">
-                          {metric_name(@selected_metric.metric, @selected_metric.metric_id)}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt class="text-xs uppercase tracking-wide text-base-content/50">
-                          Description
-                        </dt>
-                        <dd class="mt-1 text-base-content/80">
-                          {metric_description(@selected_metric.metric)}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt class="text-xs uppercase tracking-wide text-base-content/50">Timezone</dt>
-                        <dd class="mt-1 text-base-content/80">
-                          {metric_timezone(@selected_metric.metric)}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt class="text-xs uppercase tracking-wide text-base-content/50">SQL</dt>
-                        <dd class="mt-1">
-                          <pre class="overflow-x-auto rounded-lg bg-base-200 px-3 py-3 text-sm"><code class="language-sql">{metric_sql(@selected_metric.metric)}</code></pre>
-                        </dd>
-                      </div>
-                    </dl>
-                  <% end %>
-                </div>
-              </div>
-
-              <div class="rounded-xl border border-base-200 p-4">
-                <div class="flex items-center justify-between gap-3">
-                  <div>
-                    <h4 class="text-sm font-semibold">Previous values</h4>
-                    <p class="mt-1 text-xs text-base-content/60">
-                      Most recent stored samples for this metric
-                    </p>
-                  </div>
-                  <button
-                    :if={@selected_metric.metric}
-                    id="metric-auto-backfill"
-                    type="button"
-                    class="btn btn-ghost btn-xs"
-                    phx-click="auto_backfill_selected_metric"
-                  >
-                    Backfill {auto_backfill_label(@report, @selected_metric.metric)}
-                  </button>
-                </div>
-
-                <div :if={Enum.empty?(@selected_metric.history)} class="alert alert-info mt-4 text-sm">
-                  No previous values have been stored for this metric yet.
-                </div>
-
-                <div :if={!Enum.empty?(@selected_metric.history)} class="mt-4 overflow-x-auto">
-                  <table class="table table-sm">
-                    <thead>
-                      <tr>
-                        <th>Window</th>
-                        <th class="text-right">Value</th>
-                        <th class="text-right">Change</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <%= for entry <- @selected_metric.history do %>
-                        <tr>
-                          <td>
-                            <div class="font-medium">
-                              {history_window_label(entry, @report.timezone)}
-                            </div>
-                            <div class="text-xs text-base-content/60">
-                              {history_timestamp_label(entry, @report.timezone)}
-                            </div>
-                          </td>
-                          <td class="text-right font-medium tabular-nums">
-                            {fmt(entry.value, @selected_metric.opts)}
-                          </td>
-                          <td class="text-right">
-                            <.history_change_chip change={entry.change} opts={@selected_metric.opts} />
-                          </td>
-                        </tr>
-                      <% end %>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div
+      <.live_component
         :if={creating_group = creating_metric_group(@report, @creating_metric_group_id)}
-        id="new-metric-modal"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="new-metric-title"
-        phx-window-keydown="cancel_create_metric"
-        phx-key="escape"
-      >
-        <div
-          class="absolute inset-0 bg-base-content/45 backdrop-blur-sm"
-          phx-click="cancel_create_metric"
-        >
-        </div>
-
-        <div class="relative z-10 w-full max-w-3xl overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-2xl">
-          <div class="flex items-start justify-between gap-4 border-b border-base-200 px-6 py-5">
-            <div class="space-y-2">
-              <div class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">
-                New Metric
-              </div>
-              <h3 id="new-metric-title" class="text-2xl font-semibold tracking-tight">
-                Create metric in {creating_group.name}
-              </h3>
-              <p class="text-sm text-base-content/60">
-                Save a new metric and add it directly to this report group.
-              </p>
-            </div>
-
-            <button
-              id="close-new-metric-modal"
-              type="button"
-              class="btn btn-ghost btn-sm"
-              phx-click="cancel_create_metric"
-            >
-              <.icon name="hero-x-mark" class="h-5 w-5" />
-            </button>
-          </div>
-
-          <div class="max-h-[80vh] overflow-y-auto px-6 py-5">
-            <.form
-              id={"new-metric-form-#{creating_group.id}"}
-              for={@new_metric_form}
-              phx-change="validate_new_metric"
-              phx-submit="create_metric_for_group"
-              class="space-y-3"
-            >
-              <input type="hidden" name="group_id" value={creating_group.id} />
-              <div class="grid gap-3 md:grid-cols-2">
-                <.input field={@new_metric_form[:name]} label="Name" />
-                <.input
-                  field={@new_metric_form[:server_id]}
-                  type="select"
-                  label="Server"
-                  options={server_options(@servers)}
-                />
-              </div>
-              <.input
-                field={@new_metric_form[:description]}
-                type="textarea"
-                label="Description"
-                rows="2"
-              />
-              <.input field={@new_metric_form[:sql]} type="textarea" label="SQL" rows="6" />
-              <div class="grid gap-3 md:grid-cols-3">
-                <.input
-                  field={@new_metric_form[:granularity]}
-                  type="select"
-                  label="Base Granularity"
-                  options={granularity_options()}
-                />
-                <.input field={@new_metric_form[:timezone]} label="Timezone" />
-              </div>
-              <p class="text-xs text-base-content/70">
-                Metrics run automatically at `0 8 * * *`.
-              </p>
-              <.input field={@new_metric_form[:enabled]} type="checkbox" label="Enabled" />
-
-              <div class="flex items-center gap-2 pt-2">
-                <.button type="submit" variant="primary-sm">Create metric</.button>
-                <button type="button" class="btn btn-ghost btn-sm" phx-click="cancel_create_metric">
-                  Cancel
-                </button>
-              </div>
-            </.form>
-          </div>
-        </div>
-      </div>
+        module={QueryCanaryWeb.ReportLive.NewMetricComponent}
+        id={"new-metric-modal-component-#{creating_group.id}"}
+        creating_group={creating_group}
+        new_metric_form={@new_metric_form}
+        servers={@servers}
+      />
     </Layouts.fluid_app>
     """
   end
@@ -1453,24 +940,6 @@ defmodule QueryCanaryWeb.ReportLive.Show do
     end
   end
 
-  defp available_metrics_for_group(report, group_id, metrics_by_id) do
-    used_ids =
-      report.groups
-      |> Enum.find(&(&1.id == group_id))
-      |> case do
-        nil ->
-          MapSet.new()
-
-        group ->
-          group.group_metrics |> Enum.map(& &1.metric_id) |> MapSet.new()
-      end
-
-    metrics_by_id
-    |> Map.values()
-    |> Enum.reject(&MapSet.member?(used_ids, &1.id))
-    |> Enum.sort_by(& &1.name)
-  end
-
   defp creating_metric_group(%Report{} = report, group_id) when is_integer(group_id) do
     Enum.find(report.groups, &(&1.id == group_id))
   end
@@ -1517,6 +986,10 @@ defmodule QueryCanaryWeb.ReportLive.Show do
             |> Map.put(
               :chart_data,
               build_metric_chart_data(metric_results, socket.assigns.report.timezone)
+            )
+            |> Map.put(
+              :auto_backfill_label,
+              auto_backfill_label(socket.assigns.report, row.metric)
             ),
           selected_metric_form: to_form(changeset, as: :metric),
           editing_selected_metric: false
@@ -1675,7 +1148,7 @@ defmodule QueryCanaryWeb.ReportLive.Show do
   defp next_period_start(date, _bucket), do: Date.add(date, 1)
 
   defp format_day(nil), do: "—"
-  defp format_day(d), do: Calendar.strftime(d, "%Y-%m-%d")
+  defp format_day(day), do: Calendar.strftime(day, "%Y-%m-%d")
 
   defp format_period(nil, _report), do: "—"
 
@@ -1707,77 +1180,6 @@ defmodule QueryCanaryWeb.ReportLive.Show do
     end
   end
 
-  defp history_window_label(entry, timezone) do
-    from_day =
-      entry.from_ts
-      |> DateTime.shift_zone!(timezone)
-      |> DateTime.to_date()
-      |> format_day()
-
-    to_day =
-      entry.to_ts
-      |> DateTime.shift_zone!(timezone)
-      |> DateTime.to_date()
-      |> Date.add(-1)
-      |> format_day()
-
-    if from_day == to_day do
-      from_day
-    else
-      "#{from_day} → #{to_day}"
-    end
-  end
-
-  defp history_timestamp_label(entry, timezone) do
-    from_ts = Calendar.strftime(DateTime.shift_zone!(entry.from_ts, timezone), "%b %-d, %Y %H:%M")
-    to_ts = Calendar.strftime(DateTime.shift_zone!(entry.to_ts, timezone), "%b %-d, %Y %H:%M")
-    "#{from_ts} to #{to_ts}"
-  end
-
-  defp metric_name(nil, metric_id), do: "Metric #{metric_id}"
-  defp metric_name(metric, _metric_id), do: metric.name
-
-  defp metric_server_name(nil), do: "Unknown server"
-  defp metric_server_name(%{server: %{name: name}}), do: name
-  defp metric_server_name(%{server_id: nil}), do: "Unknown server"
-  defp metric_server_name(%{server_id: server_id}), do: "Server ##{server_id}"
-
-  defp metric_granularity(nil), do: "—"
-  defp metric_granularity(metric), do: metric.granularity
-
-  defp metric_timezone(nil), do: "—"
-  defp metric_timezone(metric), do: metric.timezone || "Etc/UTC"
-
-  defp metric_description(nil), do: "No description provided."
-  defp metric_description(%{description: nil}), do: "No description provided."
-  defp metric_description(%{description: ""}), do: "No description provided."
-  defp metric_description(metric), do: metric.description
-
-  defp metric_sql(nil), do: "SQL unavailable"
-  defp metric_sql(metric), do: metric.sql
-
-  defp granularity_options, do: ["minute", "hour", "day", "week", "month"]
-
-  defp server_options(servers) do
-    Enum.map(servers, fn server -> {server.name, server.id} end)
-  end
-
-  defp selected_metric_editor_id(metric_id, form) do
-    "selected-metric-sql-editor-#{metric_id}-#{selected_metric_server_id(form) || "none"}"
-  end
-
-  defp selected_metric_editor_server(servers, form, metric) do
-    server_id = selected_metric_server_id(form) || (metric && metric.server_id)
-    Enum.find(servers, &(&1.id == server_id))
-  end
-
-  defp selected_metric_server_id(nil), do: nil
-
-  defp selected_metric_server_id(form) do
-    form[:server_id].value
-    |> parse_int()
-  end
-
   defp default_new_metric_attrs(report \\ nil) do
     %{
       "name" => "",
@@ -1803,6 +1205,8 @@ defmodule QueryCanaryWeb.ReportLive.Show do
     start_date = Date.add(end_date, -(total_days - 1))
     {start_date, end_date, total_days}
   end
+
+  defp auto_backfill_label(_report, nil), do: nil
 
   defp auto_backfill_label(%Report{} = report, %Metric{} = metric) do
     {_from_date, _to_date, total_days} = auto_backfill_window(report, metric)
@@ -1832,8 +1236,8 @@ defmodule QueryCanaryWeb.ReportLive.Show do
   defp minimum_backfill_days("month"), do: 365
   defp minimum_backfill_days(_), do: 30
 
-  defp heat_class(v, min, max, avg) do
-    case heat_signal(v, min, max, avg) do
+  defp heat_class(value, min, max, avg) do
+    case heat_signal(value, min, max, avg) do
       :high -> "text-emerald-700"
       :mid_high -> "text-emerald-600"
       :mid_low -> "text-rose-600"
@@ -1843,8 +1247,8 @@ defmodule QueryCanaryWeb.ReportLive.Show do
     end
   end
 
-  defp heat_bg_color(v, min, max, avg) do
-    case heat_signal(v, min, max, avg) do
+  defp heat_bg_color(value, min, max, avg) do
+    case heat_signal(value, min, max, avg) do
       :high -> "bg-emerald-300"
       :mid_high -> "bg-emerald-200"
       :mid_low -> "bg-rose-200"
@@ -1854,11 +1258,11 @@ defmodule QueryCanaryWeb.ReportLive.Show do
   end
 
   defp heat_signal(nil, _min, _max, _avg), do: :empty
-  defp heat_signal(_v, nil, _max, _avg), do: :neutral
-  defp heat_signal(_v, _min, nil, _avg), do: :neutral
-  defp heat_signal(_v, min, max, _avg) when max == min, do: :neutral
+  defp heat_signal(_value, nil, _max, _avg), do: :neutral
+  defp heat_signal(_value, _min, nil, _avg), do: :neutral
+  defp heat_signal(_value, min, max, _avg) when max == min, do: :neutral
 
-  defp heat_signal(v, min, max, avg) do
+  defp heat_signal(value, min, max, avg) do
     span = max - min
     scale = Enum.max([abs(min), abs(max), abs(avg || 0.0)])
 
@@ -1866,13 +1270,12 @@ defmodule QueryCanaryWeb.ReportLive.Show do
       span <= 0 ->
         :neutral
 
-      # Small-value metrics shouldn't look alarming unless the move is truly meaningful.
       scale < 5.0 and span < 5.0 ->
         :neutral
 
       true ->
         center = avg || (min + max) / 2.0
-        diff = v - center
+        diff = value - center
         diff_abs = abs(diff)
         significant_move = max(span * 0.35, max(abs(center) * 0.75, 1.0))
 
@@ -1935,12 +1338,12 @@ defmodule QueryCanaryWeb.ReportLive.Show do
     |> numeric_value()
     |> case do
       nil -> "—"
-      v -> to_compact(v)
+      numeric -> to_compact(numeric)
     end
   end
 
-  attr :latest, :float, default: nil
-  attr :past, :float, default: nil
+  attr :latest, :any, default: nil
+  attr :past, :any, default: nil
 
   defp delta_chip(assigns) do
     cond do
@@ -1960,11 +1363,11 @@ defmodule QueryCanaryWeb.ReportLive.Show do
 
         cls =
           cond do
-            pct > 0.15 -> "bg-emerald-100 text-emerald-700 border border-emerald-200"
-            pct > 0.03 -> "bg-emerald-50 text-emerald-600 border border-emerald-200"
-            pct < -0.15 -> "bg-rose-100 text-rose-700 border border-rose-200"
-            pct < -0.03 -> "bg-rose-50 text-rose-600 border border-rose-200"
-            true -> "bg-base-100 text-base-content border border-base-200"
+            pct > 0.15 -> "border border-emerald-200 bg-emerald-100 text-emerald-700"
+            pct > 0.03 -> "border border-emerald-200 bg-emerald-50 text-emerald-600"
+            pct < -0.15 -> "border border-rose-200 bg-rose-100 text-rose-700"
+            pct < -0.03 -> "border border-rose-200 bg-rose-50 text-rose-600"
+            true -> "border border-base-200 bg-base-100 text-base-content"
           end
 
         arrow =
@@ -1982,14 +1385,14 @@ defmodule QueryCanaryWeb.ReportLive.Show do
 
         assigns =
           assigns
-          |> Map.put(:cls, cls)
-          |> Map.put(:arrow, arrow)
-          |> Map.put(:pct_str, pct_str)
-          |> Map.put(:diff, Float.round(diff, 1))
+          |> assign(:cls, cls)
+          |> assign(:arrow, arrow)
+          |> assign(:pct_str, pct_str)
+          |> assign(:diff, Float.round(diff, 1))
 
         ~H"""
         <span
-          class={"inline-block px-1.5 py-0.5 rounded text-[10px] font-medium tabular-nums #{@cls}"}
+          class={"inline-block rounded px-1.5 py-0.5 text-[10px] font-medium tabular-nums #{@cls}"}
           title={"Δ #{@diff} (#{@pct_str}%)"}
         >
           {@arrow} {@pct_str}%
@@ -1998,31 +1401,14 @@ defmodule QueryCanaryWeb.ReportLive.Show do
     end
   end
 
-  attr :change, :float, default: nil
-  attr :opts, :map, required: true
+  defp changeset_error_text(%Ecto.Changeset{errors: errors}, fallback) do
+    message =
+      errors
+      |> Enum.map(fn {_field, {msg, _opts}} -> msg end)
+      |> Enum.reject(&(&1 in [nil, ""]))
+      |> Enum.join(", ")
 
-  defp history_change_chip(assigns) do
-    cond do
-      is_nil(assigns.change) ->
-        ~H"""
-        <span class="text-base-content/40">—</span>
-        """
-
-      assigns.change > 0 ->
-        ~H"""
-        <span class="text-emerald-700 tabular-nums">+{fmt(@change, @opts)}</span>
-        """
-
-      assigns.change < 0 ->
-        ~H"""
-        <span class="text-rose-700 tabular-nums">{fmt(@change, @opts)}</span>
-        """
-
-      true ->
-        ~H"""
-        <span class="text-base-content/60 tabular-nums">{fmt(@change, @opts)}</span>
-        """
-    end
+    if message == "", do: fallback, else: message
   end
 
   defp parse_int(value) when is_integer(value), do: value

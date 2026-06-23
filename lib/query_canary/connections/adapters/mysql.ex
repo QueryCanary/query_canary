@@ -59,9 +59,9 @@ defmodule QueryCanary.Connections.Adapters.MySQL do
     * {:ok, results} - Query successful
     * {:error, reason} - Query failed
   """
-  def query(conn, query, params \\ []) do
+  def query(conn, query, params \\ [], opts \\ []) do
     try do
-      case MyXQL.query(conn, query, params) do
+      case MyXQL.query(conn, query, params, opts) do
         {:ok, result} ->
           {:ok, format_results(result)}
 

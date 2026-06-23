@@ -48,10 +48,10 @@ defmodule QueryCanary.Connections.Adapters.ClickHouse do
     * {:ok, results} - Query successful
     * {:error, reason} - Query failed
   """
-  def query(conn, query, params \\ []) do
+  def query(conn, query, params \\ [], opts \\ []) do
     {query, params} = normalize_query(query, params)
 
-    case Ch.query(conn, query, params) do
+    case Ch.query(conn, query, params, opts) do
       {:ok, %Ch.Result{columns: columns, rows: rows}} ->
         row_maps = Enum.map(rows, fn row -> Enum.zip(columns, row) |> Map.new() end)
         {:ok, %{rows: row_maps, columns: columns, num_rows: length(row_maps), raw: rows}}
