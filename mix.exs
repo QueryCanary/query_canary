@@ -77,7 +77,10 @@ defmodule QueryCanary.MixProject do
       # Blog
       {:earmark, "~> 1.4"},
       # Time zones
-      {:tzdata, "~> 1.1"}
+      {:tzdata, "~> 1.1"},
+      # Error Reporting
+      {:sentry, "~> 10.2.0"},
+      {:hackney, "~> 1.8"}
     ]
   end
 
