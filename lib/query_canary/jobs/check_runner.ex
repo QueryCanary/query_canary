@@ -7,11 +7,9 @@ defmodule QueryCanary.Jobs.CheckRunner do
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"id" => check_id} = _args}) do
-    check_id
-    |> Checks.get_check_for_system!()
-    |> Checks.run_check()
-
-    # Need to understand when / how to re-try these?
-    :ok
+    case check_id |> Checks.get_check_for_system!() |> Checks.run_check() do
+      {:ok, _result} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
   end
 end

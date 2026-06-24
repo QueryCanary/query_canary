@@ -259,8 +259,8 @@ defmodule QueryCanary.Checks do
             # Build error result
             %{
               success: false,
-              result: %{},
-              error: "#{inspect(error)}",
+              result: [],
+              error: error_to_string(error),
               time_taken: time_taken,
               check_id: check.id
             }
@@ -274,7 +274,7 @@ defmodule QueryCanary.Checks do
           # Build error result for exception
           %{
             success: false,
-            result: %{},
+            result: [],
             error: "Exception: #{inspect(e)}",
             time_taken: time_taken,
             check_id: check.id
@@ -312,6 +312,9 @@ defmodule QueryCanary.Checks do
   def run_check(_) do
     {:error, :disabled}
   end
+
+  defp error_to_string(error) when is_binary(error), do: error
+  defp error_to_string(error), do: inspect(error)
 
   @doc """
   Creates a check result.

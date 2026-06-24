@@ -7,6 +7,8 @@ defmodule QueryCanaryWeb.CheckLiveTest do
   import QueryCanary.ServersFixtures
 
   alias QueryCanary.Accounts
+  alias QueryCanary.Checks.CheckResult
+  alias QueryCanary.Repo
 
   @update_attrs %{
     name: "Updated Check",
@@ -76,6 +78,21 @@ defmodule QueryCanaryWeb.CheckLiveTest do
       assert html =~ "Last run"
       assert html =~ check.name
       assert html =~ check.query
+    end
+
+    test "displays failed check results", %{conn: conn, check: check} do
+      Repo.insert!(%CheckResult{
+        check_id: check.id,
+        success: false,
+        result: [],
+        error: "permission denied for table users",
+        time_taken: 12
+      })
+
+      {:ok, _show_live, html} = live(conn, ~p"/checks/#{check}")
+
+      assert html =~ "Failed"
+      assert html =~ "permission denied for table users"
     end
 
     test "updates check and returns to show", %{conn: conn, check: check} do

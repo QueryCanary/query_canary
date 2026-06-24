@@ -1,26 +1,26 @@
 defmodule QueryCanary.ChecksTest.FakeConnectionServer do
   use GenServer
 
-  def start_link(server_id, test_pid) do
-    GenServer.start_link(__MODULE__, test_pid,
+  @default_reply {:ok,
+                  %{
+                    rows: [%{"value" => 1}],
+                    columns: ["value"],
+                    num_rows: 1
+                  }}
+
+  def start_link(server_id, test_pid, reply \\ @default_reply) do
+    GenServer.start_link(__MODULE__, {test_pid, reply},
       name: {:via, Registry, {QueryCanary.ConnectionRegistry, {:server, server_id}}}
     )
   end
 
   @impl GenServer
-  def init(test_pid), do: {:ok, test_pid}
+  def init(state), do: {:ok, state}
 
   @impl GenServer
-  def handle_call({:query, sql, params, opts}, _from, test_pid) do
+  def handle_call({:query, sql, params, opts}, _from, {test_pid, reply} = state) do
     send(test_pid, {:query_called, sql, params, opts})
-
-    {:reply,
-     {:ok,
-      %{
-        rows: [%{"value" => 1}],
-        columns: ["value"],
-        num_rows: 1
-      }}, test_pid}
+    {:reply, reply, state}
   end
 end
 
@@ -31,6 +31,7 @@ defmodule QueryCanary.ChecksTest do
   alias QueryCanary.Checks.Check
   alias QueryCanary.Checks.CheckResult
   alias QueryCanary.Accounts
+  alias QueryCanary.Jobs.CheckRunner
 
   import QueryCanary.AccountsFixtures, only: [team_fixture: 1, user_scope_fixture: 0]
   import QueryCanary.ChecksFixtures
@@ -194,6 +195,34 @@ defmodule QueryCanary.ChecksTest do
       assert result.success == true
       assert_receive {:query_called, "SELECT 1", [], opts}
       assert Keyword.fetch!(opts, :timeout) == 30_000
+    end
+
+    test "run_check/1 persists failed query results" do
+      scope = user_scope_fixture()
+      server = server_fixture(scope)
+      check = check_fixture(scope, %{server_id: server.id, query: "SELECT count(*) FROM users"})
+
+      {:ok, pid} =
+        QueryCanary.ChecksTest.FakeConnectionServer.start_link(
+          server.id,
+          self(),
+          {:error, "permission denied for table users"}
+        )
+
+      on_exit(fn -> if Process.alive?(pid), do: GenServer.stop(pid) end)
+
+      assert {:ok, %CheckResult{} = result} = Checks.run_check(check)
+      assert result.success == false
+      assert result.result == []
+      assert result.error == "permission denied for table users"
+      assert_receive {:query_called, "SELECT count(*) FROM users", [], _opts}
+    end
+
+    test "CheckRunner returns an error when a check cannot be run" do
+      scope = user_scope_fixture()
+      check = check_fixture(scope, %{enabled: false})
+
+      assert {:error, :disabled} = CheckRunner.perform(%Oban.Job{args: %{"id" => check.id}})
     end
 
     # test "run_check/1 executes a check and saves the result" do

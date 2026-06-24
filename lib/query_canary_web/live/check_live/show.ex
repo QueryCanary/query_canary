@@ -83,16 +83,12 @@ defmodule QueryCanaryWeb.CheckLive.Show do
             <.table id="table-results" rows={@results}>
               <:col :let={result} label="Ran At">{format_datetime(result.inserted_at)}</:col>
               <:col :let={result} label="Fields">
-                {Enum.map(hd(result.result), fn {k, v} -> "#{k}=#{v}" end) |> Enum.join(" ")}
+                {format_result_fields(result)}
               </:col>
               <:col :let={result} label="Alert Type">
-                <%= if result.is_alert do %>
-                  <span class={alert_class(result.alert_type)}>
-                    {String.capitalize(to_string(result.alert_type))}
-                  </span>
-                <% else %>
-                  <span class="badge badge-success" title={result.error}>OK</span>
-                <% end %>
+                <span class={result_status_class(result)} title={result.error}>
+                  {result_status_label(result)}
+                </span>
               </:col>
               <:col :let={result} label="Duration">{result.time_taken} ms</:col>
             </.table>
@@ -144,6 +140,32 @@ defmodule QueryCanaryWeb.CheckLive.Show do
   defp alert_class(:anomaly), do: "badge badge-warning"
   defp alert_class(:diff), do: "badge badge-warning"
   defp alert_class(_), do: "badge badge-ghost"
+
+  defp format_result_fields(%CheckResult{success: false, error: error})
+       when is_binary(error) and error != "" do
+    "Failed: #{error}"
+  end
+
+  defp format_result_fields(%CheckResult{result: [row | _]}) when is_map(row) do
+    row
+    |> Enum.map(fn {k, v} -> "#{k}=#{v}" end)
+    |> Enum.join(" ")
+  end
+
+  defp format_result_fields(%CheckResult{result: []}), do: "No rows"
+  defp format_result_fields(_result), do: "No result"
+
+  defp result_status_class(%CheckResult{is_alert: true, alert_type: alert_type}),
+    do: alert_class(alert_type)
+
+  defp result_status_class(%CheckResult{success: true}), do: "badge badge-success"
+  defp result_status_class(%CheckResult{success: false}), do: "badge badge-error"
+
+  defp result_status_label(%CheckResult{is_alert: true, alert_type: alert_type}),
+    do: String.capitalize(to_string(alert_type))
+
+  defp result_status_label(%CheckResult{success: true}), do: "OK"
+  defp result_status_label(%CheckResult{success: false}), do: "Failed"
 
   # defp analysis(%{analysis: {:ok, nil}} = assigns) do
   #   ~H"""
