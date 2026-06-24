@@ -4,6 +4,9 @@ defmodule QueryCanaryWeb.CheckLiveTest do
   import Phoenix.LiveViewTest
   import QueryCanary.ChecksFixtures
   import QueryCanary.AccountsFixtures
+  import QueryCanary.ServersFixtures
+
+  alias QueryCanary.Accounts
 
   @update_attrs %{
     name: "Updated Check",
@@ -123,5 +126,47 @@ defmodule QueryCanaryWeb.CheckLiveTest do
 
       assert redirected_to =~ "/"
     end
+
+    test "can edit a team check created by another user", %{conn: conn, scope: member_scope} do
+      check = team_check_for_member(member_scope)
+
+      assert {:ok, form_live, html} = live(conn, ~p"/checks/#{check}/edit")
+
+      assert html =~ "Edit Check"
+
+      assert {:ok, index_live, _html} =
+               form_live
+               |> form("#check-form", check: @update_attrs)
+               |> render_submit()
+               |> follow_redirect(conn, ~p"/checks")
+
+      html = render(index_live)
+      assert html =~ "Check updated successfully"
+      assert html =~ "Updated Check"
+    end
+
+    test "can delete a team check created by another user from the listing", %{
+      conn: conn,
+      scope: member_scope
+    } do
+      check = team_check_for_member(member_scope)
+
+      {:ok, index_live, html} = live(conn, ~p"/checks")
+
+      assert html =~ check.name
+      assert index_live |> element("#checks-#{check.id} a", "Delete") |> render_click()
+      refute has_element?(index_live, "#checks-#{check.id}")
+    end
+  end
+
+  defp team_check_for_member(member_scope) do
+    owner_scope = user_scope_fixture()
+    team = team_fixture(owner_scope)
+
+    {:ok, _user} = Accounts.invite_user_to_team(owner_scope, team, member_scope.user.email)
+    {:ok, _team_user} = Accounts.accept_team_invite(member_scope, team)
+
+    server = server_fixture(owner_scope, %{team_id: team.id})
+    check_fixture(owner_scope, %{server_id: server.id})
   end
 end

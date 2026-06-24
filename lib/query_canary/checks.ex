@@ -97,13 +97,19 @@ defmodule QueryCanary.Checks do
   end
 
   def get_check!(%Scope{} = scope, id) do
-    Repo.get_by!(Check, id: id, user_id: scope.user.id)
-    |> Repo.preload(:server)
+    Check
+    |> where([c], c.id == ^id)
+    |> accessible_by_user(scope.user.id)
+    |> Repo.one!()
+    |> Repo.preload(server: [:team])
   end
 
   def get_check(%Scope{} = scope, id) do
-    Repo.get_by(Check, id: id, user_id: scope.user.id)
-    |> Repo.preload(:server)
+    Check
+    |> where([c], c.id == ^id)
+    |> accessible_by_user(scope.user.id)
+    |> Repo.one()
+    |> Repo.preload(server: [:team])
   end
 
   def get_check_for_system!(id) do
@@ -151,7 +157,7 @@ defmodule QueryCanary.Checks do
 
   """
   def update_check(%Scope{} = scope, %Check{} = check, attrs) do
-    true = check.user_id == scope.user.id
+    true = can_perform?(:edit, scope, check)
 
     with {:ok, check = %Check{}} <-
            check
@@ -175,7 +181,7 @@ defmodule QueryCanary.Checks do
 
   """
   def delete_check(%Scope{} = scope, %Check{} = check) do
-    true = check.user_id == scope.user.id
+    true = can_perform?(:edit, scope, check)
 
     with {:ok, check = %Check{}} <-
            Repo.delete(check) do
@@ -194,7 +200,7 @@ defmodule QueryCanary.Checks do
 
   """
   def change_check(%Scope{} = scope, %Check{} = check, attrs \\ %{}) do
-    true = check.user_id == scope.user.id
+    true = can_perform?(:edit, scope, check)
 
     Check.changeset(check, attrs, scope)
   end

@@ -30,8 +30,9 @@ defmodule QueryCanary.ChecksTest do
   alias QueryCanary.Checks
   alias QueryCanary.Checks.Check
   alias QueryCanary.Checks.CheckResult
+  alias QueryCanary.Accounts
 
-  import QueryCanary.AccountsFixtures, only: [user_scope_fixture: 0]
+  import QueryCanary.AccountsFixtures, only: [team_fixture: 1, user_scope_fixture: 0]
   import QueryCanary.ChecksFixtures
   import QueryCanary.ServersFixtures
 
@@ -53,6 +54,16 @@ defmodule QueryCanary.ChecksTest do
       other_scope = user_scope_fixture()
       assert Checks.get_check!(scope, check.id).id == check.id
       assert_raise Ecto.NoResultsError, fn -> Checks.get_check!(other_scope, check.id) end
+    end
+
+    test "get_check!/2 returns a team check for a team member" do
+      owner_scope = user_scope_fixture()
+      team = team_fixture(owner_scope)
+      member_scope = add_team_member(owner_scope, team)
+      server = server_fixture(owner_scope, %{team_id: team.id})
+      check = check_fixture(owner_scope, %{server_id: server.id})
+
+      assert Checks.get_check!(member_scope, check.id).id == check.id
     end
 
     test "create_check/2 with valid data creates a check" do
@@ -87,6 +98,32 @@ defmodule QueryCanary.ChecksTest do
       assert check.query == "some updated query"
     end
 
+    test "update_check/3 allows a team member to update a check they did not create" do
+      owner_scope = user_scope_fixture()
+      team = team_fixture(owner_scope)
+      member_scope = add_team_member(owner_scope, team)
+      server = server_fixture(owner_scope, %{team_id: team.id})
+      check = check_fixture(owner_scope, %{server_id: server.id})
+
+      assert {:ok, %Check{} = check} =
+               Checks.update_check(member_scope, check, %{query: "some updated query"})
+
+      assert check.query == "some updated query"
+      assert check.user_id == owner_scope.user.id
+    end
+
+    test "update_check/3 rejects changing a check's server" do
+      scope = user_scope_fixture()
+      other_scope = user_scope_fixture()
+      check = check_fixture(scope)
+      other_server = server_fixture(other_scope)
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Checks.update_check(scope, check, %{server_id: other_server.id})
+
+      assert {"cannot be changed after creation", _} = changeset.errors[:server_id]
+    end
+
     test "update_check/3 with invalid scope raises" do
       scope = user_scope_fixture()
       other_scope = user_scope_fixture()
@@ -111,6 +148,17 @@ defmodule QueryCanary.ChecksTest do
       assert_raise Ecto.NoResultsError, fn -> Checks.get_check!(scope, check.id) end
     end
 
+    test "delete_check/2 allows a team member to delete a check they did not create" do
+      owner_scope = user_scope_fixture()
+      team = team_fixture(owner_scope)
+      member_scope = add_team_member(owner_scope, team)
+      server = server_fixture(owner_scope, %{team_id: team.id})
+      check = check_fixture(owner_scope, %{server_id: server.id})
+
+      assert {:ok, %Check{}} = Checks.delete_check(member_scope, check)
+      assert_raise Ecto.NoResultsError, fn -> Checks.get_check!(owner_scope, check.id) end
+    end
+
     test "delete_check/2 with invalid scope raises" do
       scope = user_scope_fixture()
       other_scope = user_scope_fixture()
@@ -122,6 +170,16 @@ defmodule QueryCanary.ChecksTest do
       scope = user_scope_fixture()
       check = check_fixture(scope)
       assert %Ecto.Changeset{} = Checks.change_check(scope, check)
+    end
+
+    test "change_check/2 allows a team member to edit a check they did not create" do
+      owner_scope = user_scope_fixture()
+      team = team_fixture(owner_scope)
+      member_scope = add_team_member(owner_scope, team)
+      server = server_fixture(owner_scope, %{team_id: team.id})
+      check = check_fixture(owner_scope, %{server_id: server.id})
+
+      assert %Ecto.Changeset{} = Checks.change_check(member_scope, check)
     end
 
     test "run_check/1 gives checks a 30 second query timeout" do
@@ -175,5 +233,14 @@ defmodule QueryCanary.ChecksTest do
 
     #   assert {:ok, :notification_sent} = Checks.maybe_send_check_notification(check, result)
     # end
+  end
+
+  defp add_team_member(owner_scope, team) do
+    member_scope = user_scope_fixture()
+
+    {:ok, _user} = Accounts.invite_user_to_team(owner_scope, team, member_scope.user.email)
+    {:ok, _team_user} = Accounts.accept_team_invite(member_scope, team)
+
+    member_scope
   end
 end
