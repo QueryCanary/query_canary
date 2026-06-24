@@ -92,13 +92,21 @@ defmodule QueryCanary.MetricsTest do
       QueryCanary.Servers.create_server(scope, %{
         name: "Test PG",
         db_engine: "postgresql",
-        db_hostname: System.get_env("PG_HOST", "127.0.0.1"),
-        db_port: String.to_integer(System.get_env("PG_PORT", "55432")),
-        db_name: System.get_env("PG_DATABASE", "postgres"),
+        db_hostname: System.get_env("PG_HOST", "localhost"),
+        db_port: String.to_integer(System.get_env("PG_PORT", "5432")),
+        db_name: System.get_env("PG_DATABASE", "test_db"),
         db_username: System.get_env("PG_USER", "postgres"),
         db_password_input: System.get_env("PG_PASSWORD", "postgres"),
         db_ssl_mode: System.get_env("PG_SSL_MODE", "disable")
       })
+
+    on_exit(fn ->
+      try do
+        QueryCanary.Connections.ConnectionServer.disconnect(server.id)
+      catch
+        :exit, _ -> :ok
+      end
+    end)
 
     {:ok, metric} =
       Metrics.create_metric(%{
