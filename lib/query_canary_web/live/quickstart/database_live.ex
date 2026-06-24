@@ -92,6 +92,27 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
                     <span>ClickHouse</span>
                   </label>
 
+                  <label class={[
+                    "cursor-pointer flex flex-col items-center border rounded-lg p-4 border-base-300",
+                    if(Phoenix.HTML.Form.input_value(@form, :db_engine) == "prometheus",
+                      do: "bg-base-200 ring-2 ring-primary",
+                      else: "bg-base-100"
+                    )
+                  ]}>
+                    <input
+                      type="radio"
+                      id={Phoenix.HTML.Form.input_id(@form, :db_engine, "prometheus")}
+                      name={Phoenix.HTML.Form.input_name(@form, :db_engine)}
+                      value="prometheus"
+                      checked={Phoenix.HTML.Form.input_value(@form, :db_engine) == "prometheus"}
+                      class="hidden"
+                    />
+                    <div class="w-8 h-8 mb-2 rounded-full bg-success/15 text-success grid place-items-center font-bold">
+                      P
+                    </div>
+                    <span>Prometheus</span>
+                  </label>
+
                   <label class="flex flex-col items-center border rounded-lg p-4 border-base-300 opacity-60 relative">
                     <input type="radio" disabled class="hidden" />
                     <img

@@ -22,7 +22,7 @@ defmodule QueryCanary.Connections.ConnectionManager do
   """
   def test_connection(%Server{} = server) do
     with {:ok, _pid} <- ConnectionServer.ensure_started(server) do
-      ConnectionServer.query(server.id, "SELECT now()")
+      ConnectionServer.query(server.id, connection_test_query(server))
     else
       {:error, reason} -> {:error, reason}
       other -> other
@@ -36,14 +36,15 @@ defmodule QueryCanary.Connections.ConnectionManager do
     * server - The database server configuration
     * query - The SQL query to execute
     * params - Query parameters (optional)
+    * opts - Query options passed through to the connection adapter
 
   ## Returns
     * {:ok, results} - Query executed successfully
     * {:error, reason} - Query failed with reason
   """
-  def run_query(%Server{} = server, query, params \\ []) do
+  def run_query(%Server{} = server, query, params \\ [], opts \\ []) do
     with {:ok, _pid} <- ConnectionServer.ensure_started(server),
-         reply <- ConnectionServer.query(server.id, query, params) do
+         reply <- ConnectionServer.query(server.id, query, params, opts) do
       reply
     end
   end
@@ -80,4 +81,9 @@ defmodule QueryCanary.Connections.ConnectionManager do
       ConnectionServer.get_database_schema(server.id)
     end
   end
+
+  defp connection_test_query(%Server{db_engine: "prometheus"}),
+    do: QueryCanary.Connections.Adapters.Prometheus.version_query()
+
+  defp connection_test_query(_server), do: "SELECT now()"
 end

@@ -27,6 +27,7 @@ import CodeMirror from "./hooks/code_mirror";
 import SQLEditor from "./hooks/sql_editor";
 import CheckChart from "./hooks/check_chart";
 import HomeChart from "./hooks/home_chart";
+import ReportMetricDrag from "./hooks/report_metric_drag";
 import "prismjs";
 import "prismjs/components/prism-sql";
 
@@ -35,6 +36,7 @@ Hooks.CodeMirror = CodeMirror;
 Hooks.SQLEditor = SQLEditor;
 Hooks.CheckChart = CheckChart;
 Hooks.HomeChart = HomeChart;
+Hooks.ReportMetricDrag = ReportMetricDrag;
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
@@ -94,4 +96,3 @@ if (process.env.NODE_ENV === "development") {
     window.liveReloader = reloader
   })
 }
-

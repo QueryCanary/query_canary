@@ -7,7 +7,7 @@ defmodule QueryCanary.Connections.Adapter do
   """
 
   @callback connect(map) :: {:ok, term} | {:error, term}
-  @callback query(term, String.t(), list) :: {:ok, term} | {:error, term}
+  @callback query(term, String.t(), list, keyword) :: {:ok, term} | {:error, term}
   @callback list_tables(term) :: {:ok, list} | {:error, term}
   @callback get_table_schema(term, String.t()) :: {:ok, term} | {:error, term}
   @callback get_database_schema(term, String.t()) :: {:ok, term} | {:error, term}

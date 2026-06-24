@@ -40,5 +40,21 @@ defmodule QueryCanary.Connections.Adapters.ClickHouseTest do
       {:ok, result} = ClickHouse.query(conn, "SELECT sum(value) FROM numbers")
       assert Enum.any?(result.rows, fn row -> Map.has_key?(row, "sum(value)") end)
     end
+
+    test "rewrites postgres-style placeholders for query params" do
+      {:ok, conn} = ClickHouse.connect(@conn_details)
+
+      from_ts = DateTime.utc_now() |> DateTime.add(-1, :day) |> DateTime.truncate(:second)
+      to_ts = DateTime.utc_now() |> DateTime.add(1, :day) |> DateTime.truncate(:second)
+
+      {:ok, result} =
+        ClickHouse.query(
+          conn,
+          "SELECT 1 AS value WHERE now() >= $1 AND now() <= $2",
+          [from_ts, to_ts]
+        )
+
+      assert [%{"value" => 1}] = result.rows
+    end
   end
 end

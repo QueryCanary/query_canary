@@ -74,15 +74,18 @@ config :logger, :default_formatter,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+config :elixir, :time_zone_database, Tzdata.TimeZoneDatabase
+
 config :query_canary, Oban,
   engine: Oban.Engines.Basic,
-  queues: [default: 10, checks: 10],
+  queues: [default: 10, checks: 10, metric_backfill: 1],
   repo: QueryCanary.Repo,
   plugins: [
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
     {Oban.Plugins.Cron,
      crontab: [
-       {"* * * * *", QueryCanary.Jobs.CheckScheduler}
+       {"* * * * *", QueryCanary.Jobs.CheckScheduler},
+       {"* * * * *", QueryCanary.Jobs.MetricScheduler}
      ]},
     Oban.Plugins.Lifeline
   ]

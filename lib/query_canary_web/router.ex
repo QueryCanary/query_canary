@@ -76,6 +76,17 @@ defmodule QueryCanaryWeb.Router do
       live "/teams/:id", TeamLive.Show, :show
       live "/teams/:id/edit", TeamLive.Form, :edit
       live "/teams/:id/accept", TeamLive.Show, :accept
+
+      live "/metrics", MetricLive.Index, :index
+      live "/metrics/new", MetricLive.Form, :new
+      live "/metrics/:id/edit", MetricLive.Form, :edit
+      live "/metrics/:id", MetricLive.Show, :show
+      live "/metrics/:id/backfill", MetricLive.Backfill, :backfill
+
+      live "/reports", ReportLive.Index, :index
+      live "/reports/new", ReportLive.Form, :new
+      live "/reports/:id/edit", ReportLive.Form, :edit
+      live "/reports/:id", ReportLive.Show, :show
     end
 
     post "/users/update-password", UserSessionController, :update_password

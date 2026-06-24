@@ -11,6 +11,7 @@ QueryCanary is a lightweight tool for monitoring your production data using SQL.
 - ✅ Schedule checks using flexible cron expressions
 - ✅ Get alerts via email or Slack when values drift or break
 - ✅ See historical trends and chart results over time
+- ✅ Build custom reports that group metrics from multiple data sources
 - ✅ Catch issues like:
   - Low signups
   - Missing prices

@@ -14,6 +14,8 @@ defmodule QueryCanary.Checks do
   alias QueryCanary.Connections.ConnectionManager
   alias QueryCanary.Checks.CheckNotifier
 
+  @check_query_timeout 30_000
+
   @doc """
   Subscribes to scoped notifications about any check changes.
 
@@ -220,14 +222,16 @@ defmodule QueryCanary.Checks do
     * {:ok, %CheckResult{}} - Check completed and result saved
     * {:error, reason} - Check failed to run or save
   """
-  def run_check(%Check{} = check) do
+  def run_check(%Check{enabled: true} = check) do
     check = Repo.preload(check, :server)
     start_time = System.monotonic_time(:millisecond)
 
     # Run the query using the ConnectionManager
     result =
       try do
-        case ConnectionManager.run_query(check.server, check.query) do
+        case ConnectionManager.run_query(check.server, check.query, [],
+               timeout: @check_query_timeout
+             ) do
           {:ok, %{rows: rows}} ->
             # Calculate time taken
             end_time = System.monotonic_time(:millisecond)
@@ -297,6 +301,10 @@ defmodule QueryCanary.Checks do
       {:error, _} = error ->
         error
     end
+  end
+
+  def run_check(_) do
+    {:error, :disabled}
   end
 
   @doc """

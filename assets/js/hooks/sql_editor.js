@@ -10,8 +10,19 @@ import {
 const SQLEditor = {
   mounted() {
     const editorContainer = this.el;
-    const inputField = document.getElementById(`${this.el.id.replace('-editor', '')}-input`);
-    const schemaScript = document.getElementById(`${this.el.id.replace('-editor', '')}-schema`);
+    const baseId = this.el.id.replace(/-editor$/, "");
+    const inputField = document.getElementById(`${baseId}-input`);
+    const schemaScript = document.getElementById(`${baseId}-schema`);
+
+    if (!inputField || !schemaScript) {
+      console.error("SQL editor failed to find required elements", {
+        editorId: this.el.id,
+        baseId,
+        hasInput: !!inputField,
+        hasSchema: !!schemaScript
+      });
+      return;
+    }
     
     // Parse the schema from the script tag
     let schemaData = {};
@@ -20,6 +31,8 @@ const SQLEditor = {
     } catch (e) {
       console.error("Failed to parse SQL schema:", e);
     }
+
+    const readOnly = this.el.dataset.readOnly === "true";
 
     // TODO: Move this to Elixir
     let dialect;
@@ -46,10 +59,12 @@ const SQLEditor = {
         doc: inputField.value,
         extensions: [
           basicSetup,
+          EditorState.readOnly.of(readOnly),
+          EditorView.editable.of(!readOnly),
           keymap.of([{ key: "Tab", run: acceptCompletion }, indentWithTab]),
           sqlLang,
           EditorView.updateListener.of(update => {
-            if (update.docChanged) {
+            if (update.docChanged && !readOnly) {
                 // Update the hidden input with the current editor content
                 inputField.value = update.state.doc.toString();
                 // Trigger an input event to notify LiveView of the change

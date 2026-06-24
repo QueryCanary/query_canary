@@ -16,6 +16,8 @@ defmodule QueryCanary.Connections.ConnectionServer do
   alias QueryCanary.Connections.SSHTunnel
 
   @type server_id :: any
+  @default_call_timeout 5_000
+  @call_timeout_buffer 1_000
 
   # Public API
   def start_link(opts) do
@@ -31,8 +33,12 @@ defmodule QueryCanary.Connections.ConnectionServer do
     end
   end
 
-  def query(server_id, sql, params \\ []) do
-    GenServer.call(via(server_id), {:query, sql, params})
+  def query(server_id, sql, params \\ [], opts \\ []) do
+    GenServer.call(
+      via(server_id),
+      {:query, sql, params, adapter_query_opts(opts)},
+      call_timeout(opts)
+    )
   end
 
   def list_tables(server_id), do: GenServer.call(via(server_id), :list_tables)
@@ -116,13 +122,13 @@ defmodule QueryCanary.Connections.ConnectionServer do
     {:reply, :ok, %{state | status: :disconnected, adapter_conn: nil, tunnel_ref: nil}}
   end
 
-  def handle_call({:query, _sql, _params}, _from, %{status: status} = state)
+  def handle_call({:query, _sql, _params, _opts}, _from, %{status: status} = state)
       when status != :connected do
     {:reply, {:error, :not_connected}, state}
   end
 
-  def handle_call({:query, sql, params}, _from, state) do
-    reply = state.adapter.query(state.adapter_conn, sql, params)
+  def handle_call({:query, sql, params, opts}, _from, state) do
+    reply = state.adapter.query(state.adapter_conn, sql, params, opts)
     {:reply, reply, state}
   end
 
@@ -246,8 +252,24 @@ defmodule QueryCanary.Connections.ConnectionServer do
   defp adapter_for(%Server{db_engine: "clickhouse"}),
     do: QueryCanary.Connections.Adapters.ClickHouse
 
+  defp adapter_for(%Server{db_engine: "prometheus"}),
+    do: QueryCanary.Connections.Adapters.Prometheus
+
   defp adapter_for(%Server{db_engine: other}), do: raise("Unsupported database engine: #{other}")
 
   defp via(server_id),
     do: {:via, Registry, {QueryCanary.ConnectionRegistry, {:server, server_id}}}
+
+  defp adapter_query_opts(opts), do: Keyword.delete(opts, :call_timeout)
+
+  defp call_timeout(opts) do
+    case Keyword.fetch(opts, :call_timeout) do
+      {:ok, timeout} -> timeout
+      :error -> query_call_timeout(Keyword.get(opts, :timeout))
+    end
+  end
+
+  defp query_call_timeout(nil), do: @default_call_timeout
+  defp query_call_timeout(:infinity), do: :infinity
+  defp query_call_timeout(timeout) when is_integer(timeout), do: timeout + @call_timeout_buffer
 end
