@@ -38,7 +38,26 @@ mix phx.server
 
 Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
 
-### Contributing
+## Admin dashboards
+
+Phoenix LiveDashboard (`/admin/dashboard`) and Oban Web (`/admin/oban`) are available
+in every environment to logged-in users with `users.is_admin` set to `true`.
+Team admin roles do not grant site admin access.
+
+Run `mix ecto.migrate` when upgrading. Existing and new users are non-admins by
+default. To grant access, use a trusted IEx console (`iex -S mix`, or a remote
+console for a running release):
+
+```elixir
+QueryCanary.Accounts.get_user_by_email("admin@example.com")
+|> Ecto.Changeset.change(is_admin: true)
+|> QueryCanary.Repo.update!()
+```
+
+Use `is_admin: false` to revoke access. The flag cannot be changed through
+registration or account settings.
+
+## Contributing
 1. [Fork it!](https://github.com/QueryCanary/query_canary/fork)
 2. Create your feature branch (`git checkout -b feature/my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)

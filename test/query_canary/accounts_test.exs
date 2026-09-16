@@ -84,6 +84,14 @@ defmodule QueryCanary.AccountsTest do
       assert is_nil(user.hashed_password)
       assert is_nil(user.confirmed_at)
       assert is_nil(user.password)
+      refute user.is_admin
+    end
+
+    test "cannot grant admin access through registration" do
+      {:ok, user} = Accounts.register_user(valid_user_attributes(is_admin: true))
+
+      refute user.is_admin
+      refute Repo.reload!(user).is_admin
     end
   end
 
@@ -110,6 +118,19 @@ defmodule QueryCanary.AccountsTest do
     test "returns a user changeset" do
       assert %Ecto.Changeset{} = changeset = Accounts.change_user_email(%User{})
       assert changeset.required == [:email]
+    end
+
+    test "cannot grant admin access through account settings" do
+      user = user_fixture()
+
+      email_changeset =
+        User.email_changeset(user, %{email: unique_user_email(), is_admin: true})
+
+      password_changeset =
+        User.password_changeset(user, %{password: "a valid new password", is_admin: true})
+
+      refute Ecto.Changeset.apply_changes(email_changeset).is_admin
+      refute Ecto.Changeset.apply_changes(password_changeset).is_admin
     end
   end
 

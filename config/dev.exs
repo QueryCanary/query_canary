@@ -63,7 +63,7 @@ config :query_canary, QueryCanaryWeb.Endpoint,
     ]
   ]
 
-# Enable dev routes for dashboard and mailbox
+# Enable dev routes for the mailbox preview
 config :query_canary, dev_routes: true
 
 # Do not include metadata nor timestamps in development logs

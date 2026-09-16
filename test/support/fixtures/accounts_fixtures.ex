@@ -40,6 +40,13 @@ defmodule QueryCanary.AccountsFixtures do
     user
   end
 
+  def admin_fixture(attrs \\ %{}) do
+    attrs
+    |> user_fixture()
+    |> Ecto.Changeset.change(is_admin: true)
+    |> QueryCanary.Repo.update!()
+  end
+
   def user_scope_fixture do
     user = user_fixture()
     user_scope_fixture(user)

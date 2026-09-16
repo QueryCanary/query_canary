@@ -196,6 +196,8 @@ defmodule QueryCanaryWeb.UserAuth do
       on user_token.
       Redirects to login page if there's no logged user.
 
+    * `:require_admin` - Requires an authenticated site administrator.
+
   ## Examples
 
   Use the `on_mount` lifecycle macro in LiveViews to mount or authenticate
@@ -230,6 +232,22 @@ defmodule QueryCanaryWeb.UserAuth do
         |> Phoenix.LiveView.redirect(to: ~p"/users/register")
 
       {:halt, socket}
+    end
+  end
+
+  def on_mount(:require_admin, params, session, socket) do
+    case on_mount(:require_authenticated, params, session, socket) do
+      {:cont, %{assigns: %{current_scope: %Scope{user: %Accounts.User{is_admin: true}}}} = socket} ->
+        {:cont, socket}
+
+      {:cont, socket} ->
+        {:halt,
+         socket
+         |> Phoenix.LiveView.put_flash(:error, "You must be an admin to access this page.")
+         |> Phoenix.LiveView.redirect(to: ~p"/")}
+
+      {:halt, socket} ->
+        {:halt, socket}
     end
   end
 
@@ -279,6 +297,27 @@ defmodule QueryCanaryWeb.UserAuth do
       |> maybe_store_return_to()
       |> redirect(to: ~p"/users/register")
       |> halt()
+    end
+  end
+
+  @doc """
+  Plug for routes that require an authenticated site administrator.
+  """
+  def require_admin_user(conn, opts) do
+    conn = require_authenticated_user(conn, opts)
+
+    cond do
+      conn.halted ->
+        conn
+
+      conn.assigns.current_scope.user.is_admin == true ->
+        conn
+
+      true ->
+        conn
+        |> put_flash(:error, "You must be an admin to access this page.")
+        |> redirect(to: ~p"/")
+        |> halt()
     end
   end
 
