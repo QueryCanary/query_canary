@@ -2,6 +2,7 @@ defmodule QueryCanary.ServersTest do
   use QueryCanary.DataCase
 
   alias QueryCanary.Servers
+  alias QueryCanary.Connections.ConnectionServer
 
   describe "servers" do
     alias QueryCanary.Servers.Server
@@ -93,6 +94,42 @@ defmodule QueryCanary.ServersTest do
       end
     end
 
+    test "updating a server retires its connection and reconnects with saved settings" do
+      scope = user_scope_fixture()
+      server = connection_server_fixture(scope)
+      {:ok, old_pid} = ConnectionServer.ensure_started(server)
+      assert {:ok, _} = ConnectionServer.query(server.id, "SELECT 1")
+      old_connection = :sys.get_state(old_pid).adapter_conn
+
+      assert {:ok, updated} =
+               Servers.update_server(scope, server, %{
+                 db_password_input:
+                   Application.fetch_env!(:query_canary, QueryCanary.Repo)[:password],
+                 db_ssl_mode: "allow"
+               })
+
+      refute Process.alive?(old_pid)
+      refute Process.alive?(old_connection)
+      assert [] == Registry.lookup(QueryCanary.ConnectionRegistry, {:server, server.id})
+
+      saved = Servers.get_server!(scope, updated.id)
+      {:ok, new_pid} = ConnectionServer.ensure_started(saved)
+      refute new_pid == old_pid
+      assert :sys.get_state(new_pid).server == saved
+      assert {:ok, _} = ConnectionServer.query(saved.id, "SELECT 1")
+    end
+
+    test "a failed server update leaves its persistent connection running" do
+      scope = user_scope_fixture()
+      server = connection_server_fixture(scope)
+      {:ok, pid} = ConnectionServer.ensure_started(server)
+      assert {:ok, _} = ConnectionServer.query(server.id, "SELECT 1")
+
+      assert {:error, %Ecto.Changeset{}} = Servers.update_server(scope, server, @invalid_attrs)
+      assert {:ok, ^pid} = ConnectionServer.ensure_started(server)
+      assert {:ok, _} = ConnectionServer.query(server.id, "SELECT 1")
+    end
+
     test "update_server/3 with invalid data returns error changeset" do
       scope = user_scope_fixture()
       server = server_fixture(scope)
@@ -119,5 +156,23 @@ defmodule QueryCanary.ServersTest do
       server = server_fixture(scope)
       assert %Ecto.Changeset{} = Servers.change_server(scope, server)
     end
+  end
+
+  defp connection_server_fixture(scope) do
+    config = Application.fetch_env!(:query_canary, QueryCanary.Repo)
+
+    server =
+      QueryCanary.ServersFixtures.server_fixture(scope, %{
+        db_engine: "postgresql",
+        db_hostname: "127.0.0.1",
+        db_port: Keyword.get(config, :port, 5432),
+        db_name: Keyword.fetch!(config, :database),
+        db_username: Keyword.fetch!(config, :username),
+        db_password_input: Keyword.fetch!(config, :password),
+        db_ssl_mode: "disable"
+      })
+
+    on_exit(fn -> ConnectionServer.invalidate(server.id) end)
+    server
   end
 end

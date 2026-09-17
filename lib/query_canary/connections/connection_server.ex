@@ -47,6 +47,26 @@ defmodule QueryCanary.Connections.ConnectionServer do
   def disconnect(server_id), do: GenServer.call(via(server_id), :disconnect)
   def refresh(server_id), do: GenServer.cast(via(server_id), :refresh)
 
+  @doc """
+  Retires a cached connection so the next use starts with the saved configuration.
+
+  A normal stop runs connection/tunnel cleanup and does not restart this transient
+  child with its original settings.
+  """
+  def invalidate(server_id) do
+    case GenServer.whereis(via(server_id)) do
+      nil ->
+        :ok
+
+      pid ->
+        try do
+          GenServer.stop(pid, :normal, :infinity)
+        catch
+          :exit, {:noproc, _} -> :ok
+        end
+    end
+  end
+
   def child_spec(%Server{} = server) do
     %{
       id: {:connection_server, server.id},

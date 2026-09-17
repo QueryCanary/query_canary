@@ -120,6 +120,7 @@ defmodule QueryCanary.Servers do
            server
            |> Server.changeset(attrs, scope)
            |> Repo.update() do
+      QueryCanary.Connections.ConnectionServer.invalidate(server.id)
       broadcast(scope, {:updated, server})
       {:ok, server}
     end
