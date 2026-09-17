@@ -21,6 +21,16 @@ defmodule QueryCanaryWeb.CheckLive.Show do
           Last run: {@last_run} • Next run: {@next_run} • Schedule: {@check.schedule}
         </:subtitle>
         <:actions>
+          <.button
+            :if={
+              @can_edit? && @check.enabled && match?(%CheckResult{success: false}, @latest_analysis)
+            }
+            id="rerun-check"
+            phx-click="rerun_check"
+            phx-disable-with="Queuing…"
+          >
+            <.icon name="hero-arrow-path" /> Rerun check
+          </.button>
           <.button :if={@can_edit?} navigate={~p"/checks"}>
             <.icon name="hero-arrow-left" />
           </.button>
@@ -105,6 +115,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
   def mount(%{"id" => _id}, _session, socket) do
     # Check comes from the on_mount
     check = socket.assigns.check
+    if connected?(socket), do: Checks.subscribe_check_results(check.id)
     recent_results = Checks.get_recent_check_results(check, 48)
 
     latest_result =
@@ -134,6 +145,42 @@ defmodule QueryCanaryWeb.CheckLive.Show do
      |> assign(:next_run, next_run)
      |> assign(:chart_data, prepare_chart_data(recent_results))
      |> assign(:stats, calculate_stats(recent_results))}
+  end
+
+  @impl true
+  def handle_event("rerun_check", _params, socket) do
+    case Checks.rerun_check(socket.assigns.current_scope, socket.assigns.check.id) do
+      {:ok, %Oban.Job{conflict?: true}} ->
+        {:noreply, put_flash(socket, :info, "This check is already queued or running.")}
+
+      {:ok, _job} ->
+        {:noreply,
+         put_flash(socket, :info, "Check queued. Results will appear here when it finishes.")}
+
+      {:error, :forbidden} ->
+        {:noreply, put_flash(socket, :error, "You don't have permission to rerun this check.")}
+
+      {:error, :disabled} ->
+        {:noreply, put_flash(socket, :error, "Enable this check before rerunning it.")}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "Could not queue the check. Please try again.")}
+    end
+  end
+
+  @impl true
+  def handle_info({:check_result, %CheckResult{check_id: id}}, socket)
+      when id == socket.assigns.check.id do
+    results = Checks.get_recent_check_results(socket.assigns.check, 48)
+
+    {:noreply,
+     socket
+     |> assign(:results, results)
+     |> assign(:latest_analysis, List.first(results))
+     |> assign(:last_run, Calendar.strftime(hd(results).inserted_at, "%Y-%m-%d %H:%M:%S"))
+     |> assign(:chart_data, prepare_chart_data(results))
+     |> assign(:stats, calculate_stats(results))
+     |> clear_flash(:info)}
   end
 
   defp alert_class(:failure), do: "badge badge-error"

@@ -1,3 +1,20 @@
+defmodule QueryCanaryWeb.CheckLiveTest.Connection do
+  use GenServer
+
+  def start_link({server_id, test_pid}) do
+    GenServer.start_link(__MODULE__, test_pid,
+      name: {:via, Registry, {QueryCanary.ConnectionRegistry, {:server, server_id}}}
+    )
+  end
+
+  def init(test_pid), do: {:ok, test_pid}
+
+  def handle_call({:query, sql, [], _opts}, _from, test_pid) do
+    send(test_pid, {:ran_query, sql})
+    {:reply, {:ok, %{rows: [%{"value" => 42}]}}, test_pid}
+  end
+end
+
 defmodule QueryCanaryWeb.CheckLiveTest do
   use QueryCanaryWeb.ConnCase
 
@@ -9,6 +26,10 @@ defmodule QueryCanaryWeb.CheckLiveTest do
   alias QueryCanary.Accounts
   alias QueryCanary.Checks.CheckResult
   alias QueryCanary.Repo
+  alias QueryCanary.Checks
+  alias QueryCanary.Jobs.CheckRunner
+
+  use Oban.Testing, repo: QueryCanary.Repo
 
   @update_attrs %{
     name: "Updated Check",
@@ -95,6 +116,47 @@ defmodule QueryCanaryWeb.CheckLiveTest do
       assert html =~ "permission denied for table users"
     end
 
+    test "reruns a failed check once and refreshes its history", %{
+      conn: conn,
+      check: check,
+      scope: scope
+    } do
+      failed_result(check)
+      start_supervised!({__MODULE__.Connection, {check.server_id, self()}})
+      {:ok, view, _html} = live(conn, ~p"/checks/#{check}")
+
+      {:ok, _} = Checks.update_check(scope, check, %{query: "SELECT 42 AS value"})
+      assert view |> element("#rerun-check") |> render_click() =~ "Check queued"
+      assert view |> element("#rerun-check") |> render_click() =~ "already queued or running"
+      assert [%Oban.Job{}] = all_enqueued(worker: CheckRunner, args: %{"id" => check.id})
+
+      assert %{success: 1, failure: 0} = Oban.drain_queue(queue: :checks)
+      assert_received {:ran_query, "SELECT 42 AS value"}
+      html = render(view)
+      assert html =~ "value=42"
+      assert html =~ "original failure"
+      refute has_element?(view, "#rerun-check")
+      assert length(Checks.get_recent_check_results(check)) == 2
+    end
+
+    test "does not offer rerun without a failure", %{conn: conn, check: check} do
+      {:ok, view, _} = live(conn, ~p"/checks/#{check}")
+      refute has_element?(view, "#rerun-check")
+    end
+
+    test "rejects reruns when the check was disabled after loading", %{
+      conn: conn,
+      check: check,
+      scope: scope
+    } do
+      failed_result(check)
+      {:ok, view, _} = live(conn, ~p"/checks/#{check}")
+      {:ok, _} = Checks.update_check(scope, check, %{enabled: false})
+
+      assert view |> element("#rerun-check") |> render_click() =~ "Enable this check"
+      refute_enqueued(worker: CheckRunner)
+    end
+
     test "updates check and returns to show", %{conn: conn, check: check} do
       {:ok, show_live, _html} = live(conn, ~p"/checks/#{check}")
 
@@ -123,6 +185,26 @@ defmodule QueryCanaryWeb.CheckLiveTest do
   end
 
   describe "Permissions" do
+    test "public viewers cannot rerun a check even with a forged event", %{conn: conn} do
+      check = check_fixture(user_scope_fixture(), %{public: true})
+      failed_result(check)
+      {:ok, view, _} = live(conn, ~p"/checks/#{check}")
+
+      refute has_element?(view, "#rerun-check")
+      assert render_click(view, "rerun_check") =~ "permission to rerun"
+      refute_enqueued(worker: CheckRunner)
+      assert {:error, :forbidden} = Checks.rerun_check(nil, check.id)
+    end
+
+    test "team members can rerun a failed check", %{conn: conn, scope: scope} do
+      check = team_check_for_member(scope)
+      failed_result(check)
+      {:ok, view, _} = live(conn, ~p"/checks/#{check}")
+
+      assert view |> element("#rerun-check") |> render_click() =~ "Check queued"
+      assert_enqueued(worker: CheckRunner, args: %{"id" => check.id})
+    end
+
     test "cannot view another user's private check", %{conn: conn, scope: _scope} do
       other_scope = user_scope_fixture()
       other_check = check_fixture(other_scope)
@@ -185,5 +267,15 @@ defmodule QueryCanaryWeb.CheckLiveTest do
 
     server = server_fixture(owner_scope, %{team_id: team.id})
     check_fixture(owner_scope, %{server_id: server.id})
+  end
+
+  defp failed_result(check) do
+    Repo.insert!(%CheckResult{
+      check_id: check.id,
+      success: false,
+      result: [],
+      error: "original failure",
+      time_taken: 12
+    })
   end
 end

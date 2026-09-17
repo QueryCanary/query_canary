@@ -16,6 +16,34 @@ defmodule QueryCanary.Checks do
 
   @check_query_timeout 30_000
 
+  def subscribe_check_results(check_id) do
+    Phoenix.PubSub.subscribe(QueryCanary.PubSub, "check:#{check_id}:results")
+  end
+
+  @doc "Queues another run using the current check configuration and edit permissions."
+  def rerun_check(scope, check_id) do
+    check = get_possibly_public_check(check_id)
+
+    cond do
+      not can_perform?(:edit, scope, check) ->
+        {:error, :forbidden}
+
+      not check.enabled ->
+        {:error, :disabled}
+
+      true ->
+        %{"id" => check.id}
+        |> QueryCanary.Jobs.CheckRunner.new(
+          unique: [
+            period: :infinity,
+            keys: [:id],
+            states: [:available, :scheduled, :executing, :retryable]
+          ]
+        )
+        |> Oban.insert()
+    end
+  end
+
   @doc """
   Subscribes to scoped notifications about any check changes.
 
@@ -302,6 +330,12 @@ defmodule QueryCanary.Checks do
         # Send notification if this is an alert
         maybe_send_check_notification(check, updated_result)
 
+        Phoenix.PubSub.broadcast(
+          QueryCanary.PubSub,
+          "check:#{check.id}:results",
+          {:check_result, updated_result}
+        )
+
         {:ok, updated_result}
 
       {:error, _} = error ->
@@ -358,7 +392,7 @@ defmodule QueryCanary.Checks do
     Repo.all(
       from r in CheckResult,
         where: r.check_id == ^check_id,
-        order_by: [desc: r.inserted_at],
+        order_by: [desc: r.inserted_at, desc: r.id],
         limit: ^limit
     )
   end
