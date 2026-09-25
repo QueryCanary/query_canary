@@ -47,7 +47,7 @@ defmodule QueryCanary.Notifications.SlackTest do
     assert {:error, :invalid_response} = Slack.list_channels("test")
   end
 
-  test "messages contain plain text, do not expand mentions, and fit Slack block limits" do
+  test "messages use a compact title and chart link without expanding mentions" do
     alert = %Alert{
       title: "Alert",
       check_name: "<!channel> & <@U123>",
@@ -62,9 +62,13 @@ defmodule QueryCanary.Notifications.SlackTest do
       payload = Jason.decode!(body)
       assert payload["parse"] == "none"
       assert payload["text"] =~ "&lt;!channel&gt; &amp; &lt;@U123&gt;"
-      section = Enum.at(payload["blocks"], 1)["text"]
-      assert section["type"] == "plain_text"
-      assert String.length(section["text"]) == 3000
+      title = hd(payload["blocks"])["text"]
+      assert title["type"] == "mrkdwn"
+      assert title["verbatim"] == true
+      assert title["text"] =~ "*&lt;!channel&gt; &amp; &lt;@U123&gt; — Fri Sep 25*"
+      caption = Enum.at(payload["blocks"], 1)["text"]
+      assert caption["text"] =~ "<https://querycanary.com/checks/1|View check>"
+      assert String.length(caption["text"]) <= 3000
       Req.Test.json(conn, %{ok: true})
     end)
 
@@ -125,8 +129,28 @@ defmodule QueryCanary.Notifications.SlackTest do
       assert payload["channel"] == "C12345678"
       assert payload["text"] =~ "Current value: 150"
       assert payload["text"] =~ "Change: 50.0%"
-      fields = Enum.find(payload["blocks"], &Map.has_key?(&1, "fields"))["fields"]
-      assert %{"type" => "plain_text", "text" => "Current value\n150"} in fields
+
+      assert hd(payload["blocks"])["text"]["text"] ==
+               "*Orders — Fri Sep 25*\nSignificant Change Detected"
+
+      table = Enum.find(payload["blocks"], &(&1["type"] == "table"))
+
+      assert Enum.map(hd(table["rows"]), fn cell ->
+               assert cell["type"] == "rich_text"
+               text = cell["elements"] |> hd() |> Map.fetch!("elements") |> hd()
+               assert text["style"] == %{"bold" => true}
+               text["text"]
+             end) == ["Previous value", "Current value", "Change"]
+
+      assert Enum.at(table["rows"], 1) == [
+               %{"type" => "raw_text", "text" => "100"},
+               %{"type" => "raw_text", "text" => "150"},
+               %{"type" => "raw_text", "text" => "50.0%"}
+             ]
+
+      assert Enum.at(payload["blocks"], 2)["text"]["text"] ==
+               "<https://querycanary.com/checks/1|Recent results> (Value changed)"
+
       image = Enum.find(payload["blocks"], &(&1["type"] == "image"))
       assert image["slack_file"] == %{"id" => "F12345678"}
       refute Map.has_key?(image, "image_url")
@@ -134,6 +158,26 @@ defmodule QueryCanary.Notifications.SlackTest do
     end)
 
     assert :ok = Slack.deliver("secret-token", "C12345678", alert)
+  end
+
+  test "a rejected table falls back to detail fields in the same message" do
+    Req.Test.expect(Slack, fn conn ->
+      {:ok, body, conn} = Plug.Conn.read_body(conn)
+      payload = Jason.decode!(body)
+      assert Enum.any?(payload["blocks"], &(&1["type"] == "table"))
+      Req.Test.json(conn, %{ok: false, error: "invalid_blocks"})
+    end)
+
+    Req.Test.expect(Slack, fn conn ->
+      {:ok, body, conn} = Plug.Conn.read_body(conn)
+      payload = Jason.decode!(body)
+      refute Enum.any?(payload["blocks"], &(&1["type"] == "table"))
+      fields = Enum.find(payload["blocks"], &Map.has_key?(&1, "fields"))["fields"]
+      assert %{"type" => "plain_text", "text" => "Current value\n150"} in fields
+      Req.Test.json(conn, %{ok: true})
+    end)
+
+    assert :ok = Slack.deliver("test", "C12345678", %{chart_alert() | chart: nil})
   end
 
   test "older installs and failed image uploads still deliver the detailed alert" do
@@ -307,7 +351,11 @@ defmodule QueryCanary.Notifications.SlackTest do
       )
 
       assert {:error, {:invalid_blocks, :invalid_format}} =
-               Slack.deliver("secret-token", "C12345678", %{chart_alert() | chart: nil})
+               Slack.deliver("secret-token", "C12345678", %{
+                 chart_alert()
+                 | chart: nil,
+                   details: []
+               })
     end
   end
 

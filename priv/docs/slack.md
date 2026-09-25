@@ -9,6 +9,9 @@ Each check has separate toggles for email and Slack notifications.
 Alerts include the values that triggered the alert: previous and current values
 and percentage change, or the expected range and z-score for anomalies. Status
 and structure changes include their relevant details too.
+The message shows the check and date first, then a compact table of short values
+and a link to the result history above the chart. Longer details use text fields
+so their values stay readable.
 
 Each alert includes the same **Result History** chart you see on the check page:
 the same values, curves, highlighted alerts, average, and anomaly thresholds.

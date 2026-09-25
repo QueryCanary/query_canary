@@ -86,6 +86,8 @@ defmodule QueryCanary.Notifications.Slack do
   def deliver(token, channel_id, alert) do
     details = Enum.map_join(alert.details, "\n", fn {label, value} -> "#{label}: #{value}" end)
     chart_blocks = chart_blocks(token, alert.chart)
+    day = Calendar.strftime(alert.occurred_at, "%a %b ") <> to_string(alert.occurred_at.day)
+    chart_label = if alert.chart, do: alert.chart.title, else: "View check"
 
     payload = %{
       channel: channel_id,
@@ -103,29 +105,45 @@ defmodule QueryCanary.Notifications.Slack do
       unfurl_media: false,
       blocks:
         [
-          %{type: "header", text: plain(alert.title, 150)},
-          %{type: "section", text: plain("#{alert.check_name}\n#{alert.summary}", 3000)}
+          %{
+            type: "section",
+            text:
+              mrkdwn(
+                "*#{escape(String.slice(alert.check_name, 0, 150))} — #{day}*\n#{escape(alert.title)}",
+                3000
+              )
+          }
         ] ++
-          detail_blocks(alert.details) ++
+          table_blocks(alert.details) ++
+          [
+            %{
+              type: "section",
+              text:
+                mrkdwn(
+                  "<#{alert.url}|#{escape(String.slice(chart_label, 0, 150))}> " <>
+                    "(#{escape(String.slice(alert.summary, 0, 500))})",
+                  3000
+                )
+            }
+          ] ++
           chart_blocks ++
           [
             %{
               type: "context",
-              elements: [plain("#{alert.server_name} · #{alert.occurred_at} UTC", 2000)]
-            },
-            %{
-              type: "actions",
               elements: [
-                %{type: "button", text: plain("View check", 75), url: alert.url}
+                plain(
+                  "#{alert.server_name} · #{Calendar.strftime(alert.occurred_at, "%Y-%m-%d %H:%M UTC")}",
+                  2000
+                )
               ]
             }
           ]
     }
 
-    post_message(token, payload, @image_retry_delays)
+    post_message(token, payload, @image_retry_delays, alert.details)
   end
 
-  defp post_message(token, payload, delays) do
+  defp post_message(token, payload, delays, details) do
     case request("chat.postMessage", auth: {:bearer, token}, json: payload) do
       {:ok, _} ->
         :ok
@@ -138,7 +156,7 @@ defmodule QueryCanary.Notifications.Slack do
               # Completing an upload can succeed before Slack can embed the image.
               # Retry the SAME file only after an explicit rejection, never an ambiguous timeout.
               Process.sleep(delay)
-              post_message(token, payload, remaining)
+              post_message(token, payload, remaining, details)
 
             [] ->
               Logger.warning(
@@ -151,14 +169,48 @@ defmodule QueryCanary.Notifications.Slack do
                   block -> [block]
                 end)
 
-              post_message(token, %{payload | blocks: blocks}, [])
+              post_message(token, %{payload | blocks: blocks}, [], details)
           end
+        else
+          error
+        end
+
+      {:error, {:invalid_blocks, :invalid_format}} = error ->
+        if Enum.any?(payload.blocks, &(&1.type == "table")) do
+          blocks =
+            Enum.flat_map(payload.blocks, fn
+              %{type: "table"} -> detail_blocks(details)
+              block -> [block]
+            end)
+
+          post_message(token, %{payload | blocks: blocks}, delays, details)
         else
           error
         end
 
       {:error, _} = error ->
         error
+    end
+  end
+
+  defp table_blocks([]), do: []
+
+  defp table_blocks(details) when length(details) > 5, do: detail_blocks(details)
+
+  defp table_blocks(details) do
+    if Enum.any?(details, fn {_, value} -> String.length(value) > 120 end) do
+      detail_blocks(details)
+    else
+      [
+        %{
+          type: "table",
+          rows: [
+            Enum.map(details, fn {label, _} -> header_cell(label) end),
+            Enum.map(details, fn {_, value} -> raw_text(value, 120) end)
+          ],
+          column_settings: Enum.map(details, fn _ -> %{is_wrapped: true} end)
+        }
+      ]
     end
   end
 
@@ -252,6 +304,27 @@ defmodule QueryCanary.Notifications.Slack do
   end
 
   defp plain(text, limit), do: %{type: "plain_text", text: String.slice(text, 0, limit)}
+
+  defp mrkdwn(text, limit),
+    do: %{type: "mrkdwn", text: String.slice(text, 0, limit), verbatim: true}
+
+  defp raw_text(text, limit),
+    do: %{type: "raw_text", text: text |> String.slice(0, limit) |> empty_cell()}
+
+  defp header_cell(label) do
+    %{
+      type: "rich_text",
+      elements: [
+        %{
+          type: "rich_text_section",
+          elements: [%{type: "text", text: String.slice(label, 0, 80), style: %{bold: true}}]
+        }
+      ]
+    }
+  end
+
+  defp empty_cell(""), do: "—"
+  defp empty_cell(text), do: text
 
   defp escape(text),
     do:
