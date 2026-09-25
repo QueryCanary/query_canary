@@ -130,4 +130,8 @@ if config_env() == :prod do
     environment_name: :prod,
     enable_source_code_context: true,
     root_source_code_paths: [File.cwd!()]
+
+  config :query_canary, :slack,
+    client_id: System.get_env("SLACK_CLIENT_ID"),
+    client_secret: System.get_env("SLACK_CLIENT_SECRET")
 end

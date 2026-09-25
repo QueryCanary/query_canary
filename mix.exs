@@ -97,13 +97,15 @@ defmodule QueryCanary.MixProject do
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "assets.setup": [
+        "cmd --cd assets npm ci",
         "tailwind.install --if-missing",
         "esbuild.install --if-missing"
       ],
-      "assets.build": ["tailwind query_canary", "esbuild query_canary"],
+      "assets.build": ["tailwind query_canary", "esbuild query_canary", "assets.chart_renderer"],
       "assets.deploy": [
         "tailwind query_canary --minify",
         "esbuild query_canary --minify",
+        "assets.chart_renderer",
         "phx.digest"
       ]
     ]

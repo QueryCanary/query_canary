@@ -23,6 +23,7 @@ defmodule QueryCanaryWeb.DocsLive do
         <ul class="menu bg-base-200 rounded-box w-full md:w-56">
           <li class="menu-title">Documentation</li>
           <li><.link navigate={~p"/docs/overview"}>Overview</.link></li>
+          <li><.link navigate={~p"/docs/slack"}>Slack alerts</.link></li>
           <li>
             <a>Servers</a>
             <ul>

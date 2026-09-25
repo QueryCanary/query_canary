@@ -3,6 +3,8 @@ defmodule QueryCanaryWeb.CheckLive.Form do
 
   alias QueryCanary.Checks
   alias QueryCanary.Checks.Check
+  alias QueryCanaryWeb.NotificationComponents
+  import QueryCanaryWeb.NotificationComponents, only: [notification_fields: 1]
 
   on_mount {QueryCanaryWeb.CheckAuth, :edit}
 
@@ -26,6 +28,14 @@ defmodule QueryCanaryWeb.CheckLive.Form do
           server={@check.server}
           input_name={@form[:query].name}
           value={@form[:query].value}
+        />
+        <.notification_fields
+          form={@form}
+          settings={@notification_settings}
+          team_id={@check.server.team_id}
+          email_destination={
+            if @check.server.team_id, do: "All active team members", else: @current_scope.user.email
+          }
         />
         <footer>
           <.button phx-disable-with="Saving..." variant="primary">Save Check</.button>
@@ -53,6 +63,14 @@ defmodule QueryCanaryWeb.CheckLive.Form do
     socket
     |> assign(:page_title, "Edit Check")
     |> assign(:check, check)
+    |> assign(
+      :notification_settings,
+      NotificationComponents.settings(
+        socket.assigns.current_scope,
+        check.server,
+        connected?(socket)
+      )
+    )
     |> assign(:form, to_form(Checks.change_check(socket.assigns.current_scope, check)))
   end
 

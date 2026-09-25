@@ -1,0 +1,24 @@
+{
+  "display_information": {
+    "name": "QueryCanary",
+    "description": "SQL check alerts in your team's channels",
+    "background_color": "#333333"
+  },
+  "features": {
+    "bot_user": {
+      "display_name": "QueryCanary",
+      "always_online": false
+    }
+  },
+  "oauth_config": {
+    "redirect_urls": ["https://querycanary.com/integrations/slack/callback"],
+    "scopes": {
+      "bot": ["chat:write", "channels:read", "groups:read", "files:write"]
+    }
+  },
+  "settings": {
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": false,
+    "token_rotation_enabled": false
+  }
+}

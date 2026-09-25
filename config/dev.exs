@@ -1,5 +1,10 @@
 import Config
 
+# Read the shared source directly so chart edits affect the site and alerts together.
+config :query_canary,
+       :chart_renderer_script,
+       Path.expand("../assets/js/charts/render_check_chart.mjs", __DIR__)
+
 # Configure your database
 config :query_canary, QueryCanary.Repo,
   username: "postgres",

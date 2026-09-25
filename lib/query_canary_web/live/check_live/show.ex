@@ -2,7 +2,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
   use QueryCanaryWeb, :live_view
 
   alias QueryCanary.Checks
-  alias QueryCanary.Checks.CheckResult
+  alias QueryCanary.Checks.{ChartData, CheckResult}
 
   import QueryCanaryWeb.Components.CheckAnalysis
 
@@ -62,12 +62,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
               id="results-chart"
               class="w-full h-64"
               phx-hook="CheckChart"
-              data-labels={Jason.encode!(@chart_data.labels)}
-              data-values={Jason.encode!(@chart_data.values)}
-              data-success={Jason.encode!(@chart_data.success)}
-              data-average={Jason.encode!(@chart_data.average)}
-              data-alert-threshold={Jason.encode!(@chart_data.alert_threshold)}
-              data-alert-type={@chart_data.alert_type}
+              data-chart={Jason.encode!(@chart_data)}
             >
             </canvas>
 
@@ -143,7 +138,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
      |> assign(:results, recent_results)
      |> assign(:last_run, last_run)
      |> assign(:next_run, next_run)
-     |> assign(:chart_data, prepare_chart_data(recent_results))
+     |> assign(:chart_data, ChartData.from_results(recent_results))
      |> assign(:stats, calculate_stats(recent_results))}
   end
 
@@ -178,7 +173,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
      |> assign(:results, results)
      |> assign(:latest_analysis, List.first(results))
      |> assign(:last_run, Calendar.strftime(hd(results).inserted_at, "%Y-%m-%d %H:%M:%S"))
-     |> assign(:chart_data, prepare_chart_data(results))
+     |> assign(:chart_data, ChartData.from_results(results))
      |> assign(:stats, calculate_stats(results))
      |> clear_flash(:info)}
   end
@@ -365,90 +360,6 @@ defmodule QueryCanaryWeb.CheckLive.Show do
     Calendar.strftime(datetime, "%Y-%m-%d %H:%M")
   end
 
-  defp extract_primary_value(nil), do: nil
-  defp extract_primary_value([]), do: nil
-
-  defp extract_primary_value([row | _]) when is_map(row) do
-    # Try to get the first numeric value
-    Map.values(row)
-    |> Enum.find(fn v -> is_number(v) end)
-    |> case do
-      nil -> Map.values(row) |> List.first()
-      val -> val
-    end
-  end
-
-  defp extract_primary_value(other), do: other
-
-  # Prepare chart data from check results
-  defp prepare_chart_data([]), do: %{}
-
-  defp prepare_chart_data(results) do
-    # Reverse results to get chronological order (oldest to newest)
-    chronological_results = Enum.reverse(results)
-    latest_result = hd(results)
-
-    periodicity = guess_nearest_periodicity(results)
-
-    labels =
-      Enum.map(chronological_results, fn result ->
-        # TODO: Be smarter, only show format based on specificity of cron schedule
-        Calendar.strftime(result.inserted_at, periodicity)
-      end)
-
-    values =
-      Enum.map(chronological_results, fn result ->
-        extract_primary_value(result.result)
-      end)
-
-    success =
-      Enum.map(chronological_results, fn result ->
-        if result.is_alert, do: 0, else: 1
-      end)
-
-    # Calculate average for reference line
-    average =
-      case Enum.filter(values, &is_number/1) do
-        [] -> nil
-        nums -> Enum.sum(nums) / length(nums)
-      end
-
-    # Set alert thresholds for anomaly detection
-    alert_threshold =
-      case latest_result do
-        %CheckResult{alert_type: :anomaly, analysis_details: details} ->
-          %{
-            upper: details["mean"] + details["std_dev"] * 3,
-            lower: details["mean"] - details["std_dev"] * 3
-          }
-
-        _ ->
-          %{upper: nil, lower: nil}
-      end
-
-    %{
-      labels: labels,
-      values: values,
-      success: success,
-      average: average,
-      alert_threshold: alert_threshold,
-      alert_type: latest_result.alert_type
-    }
-  end
-
-  defp guess_nearest_periodicity([first, second | _results]) do
-    diff = DateTime.diff(first.inserted_at, second.inserted_at)
-
-    cond do
-      diff <= 60 -> "%Y-%m-%d %H:%M"
-      diff <= 3600 -> "%Y-%m-%d %H"
-      diff <= 86400 -> "%Y-%m-%d"
-      true -> "%Y-%m-%d %H:%M:%S"
-    end
-  end
-
-  defp guess_nearest_periodicity(_), do: "%Y-%m-%d %H:%M:%S"
-
   # Calculate basic statistics
   defp calculate_stats(results) do
     success_count = Enum.count(results, & &1.success)
@@ -467,7 +378,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
     # Extract numeric values for average calculation
     numeric_values =
       results
-      |> Enum.map(fn r -> extract_primary_value(r.result) end)
+      |> Enum.map(&ChartData.value/1)
       |> Enum.filter(&is_number/1)
 
     avg_value =

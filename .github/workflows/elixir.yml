@@ -72,6 +72,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Set up Node for chart rendering
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: assets/package-lock.json
+
+      - name: Install chart dependencies
+        run: npm ci --prefix assets
+
+      - name: Test shared chart definition
+        run: npm test --prefix assets
+
       - name: Cache deps
         id: cache-deps
         uses: actions/cache@v3

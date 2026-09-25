@@ -26,7 +26,7 @@ defmodule QueryCanary.Checks.CheckNotifier do
         %CheckResult{} = check_result,
         url
       ) do
-    if check_result.is_alert do
+    if check_result.is_alert and QueryCanary.Notifications.enabled?(check, "email") do
       email =
         new()
         |> to(user.email)
@@ -46,8 +46,8 @@ defmodule QueryCanary.Checks.CheckNotifier do
           {:error, reason}
       end
     else
-      Logger.debug("Skipping email for non-alert check result #{check_result.id}")
-      {:ok, :no_alert}
+      Logger.debug("Skipping email notification for check result #{check_result.id}")
+      {:ok, if(check_result.is_alert, do: :notifications_disabled, else: :no_alert)}
     end
   end
 
@@ -171,124 +171,33 @@ defmodule QueryCanary.Checks.CheckNotifier do
     """
   end
 
-  # Helper to render alert details as HTML tables (email-friendly approach)
-  defp render_alert_details_table(%{alert_type: :diff, analysis_details: details})
-       when is_map(details) do
-    """
-    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 15px;">
-      <tr>
-        <td width="49%" style="padding: 10px; background-color: #f3f4f6; border-radius: 6px;">
-          <table border="0" cellpadding="0" cellspacing="0" width="100%">
-            <tr>
-              <td style="font-size: 12px; font-weight: 600; margin-bottom: 5px; color: #4b5563;">
-                Previous Value:
-              </td>
-            </tr>
-            <tr>
-              <td style="font-family: monospace; font-size: 14px; word-break: break-all;">
-                #{format_value(details.previous_value)}
-              </td>
-            </tr>
-          </table>
-        </td>
-        <td width="2%"></td>
-        <td width="49%" style="padding: 10px; background-color: #f3f4f6; border-radius: 6px;">
-          <table border="0" cellpadding="0" cellspacing="0" width="100%">
-            <tr>
-              <td style="font-size: 12px; font-weight: 600; margin-bottom: 5px; color: #4b5563;">
-                Current Value:
-              </td>
-            </tr>
-            <tr>
-              <td style="font-family: monospace; font-size: 14px; word-break: break-all;">
-                #{format_value(details.current_value)}
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-    """
+  # Share analysis formatting with chat providers. Persisted JSON uses string keys.
+  defp render_alert_details_table(result) do
+    rows =
+      result
+      |> QueryCanary.Notifications.Alert.details()
+      |> Enum.map_join(fn {label, value} ->
+        label = label |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
+        value = value |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
+
+        """
+        <tr>
+          <th align="left" style="padding: 8px; font-size: 12px; color: #4b5563;">#{label}</th>
+          <td style="padding: 8px; font-family: monospace; word-break: break-all;">#{value}</td>
+        </tr>
+        """
+      end)
+
+    if rows == "",
+      do: "",
+      else:
+        ~s(<table width="100%" style="margin-top: 15px; background-color: #f3f4f6;">#{rows}</table>)
   end
 
-  defp render_alert_details_table(%{alert_type: :anomaly, analysis_details: details})
-       when is_map(details) do
-    """
-    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 15px;">
-      <tr>
-        <td width="32%" style="padding: 10px; background-color: #f3f4f6; border-radius: 6px; text-align: center;">
-          <table border="0" cellpadding="0" cellspacing="0" width="100%">
-            <tr>
-              <td style="font-size: 12px; font-weight: 600; color: #4b5563; text-align: center;">
-                Current Value
-              </td>
-            </tr>
-            <tr>
-              <td style="font-size: 16px; font-weight: 600; margin-top: 5px; text-align: center;">
-                #{format_number(details.current_value)}
-              </td>
-            </tr>
-          </table>
-        </td>
-        <td width="2%"></td>
-        <td width="32%" style="padding: 10px; background-color: #f3f4f6; border-radius: 6px; text-align: center;">
-          <table border="0" cellpadding="0" cellspacing="0" width="100%">
-            <tr>
-              <td style="font-size: 12px; font-weight: 600; color: #4b5563; text-align: center;">
-                Expected Range
-              </td>
-            </tr>
-            <tr>
-              <td style="font-size: 16px; font-weight: 600; margin-top: 5px; text-align: center;">
-                #{format_number(details.mean - details.std_dev)} -
-                #{format_number(details.mean + details.std_dev)}
-              </td>
-            </tr>
-          </table>
-        </td>
-        <td width="2%"></td>
-        <td width="32%" style="padding: 10px; background-color: #f3f4f6; border-radius: 6px; text-align: center;">
-          <table border="0" cellpadding="0" cellspacing="0" width="100%">
-            <tr>
-              <td style="font-size: 12px; font-weight: 600; color: #4b5563; text-align: center;">
-                Z-Score
-              </td>
-            </tr>
-            <tr>
-              <td style="font-size: 16px; font-weight: 600; margin-top: 5px; text-align: center;">
-                #{format_number(details.z_score)}
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-    """
-  end
-
-  defp render_alert_details_table(_) do
-    ""
-  end
-
-  # Helper to render alert details based on the alert type (text version)
-  defp text_alert_details(%{alert_type: :diff, analysis_details: details}) when is_map(details) do
-    """
-    Previous Value: #{format_value(details.previous_value)}
-    Current Value: #{format_value(details.current_value)}
-    """
-  end
-
-  defp text_alert_details(%{alert_type: :anomaly, analysis_details: details})
-       when is_map(details) do
-    """
-    Current Value: #{format_number(details.current_value)}
-    Expected Range: #{format_number(details.mean - details.std_dev)} - #{format_number(details.mean + details.std_dev)}
-    Z-Score: #{format_number(details.z_score)}
-    """
-  end
-
-  defp text_alert_details(_) do
-    ""
+  defp text_alert_details(result) do
+    result
+    |> QueryCanary.Notifications.Alert.details()
+    |> Enum.map_join("\n", fn {label, value} -> "#{label}: #{value}" end)
   end
 
   # Helper functions
@@ -307,15 +216,6 @@ defmodule QueryCanary.Checks.CheckNotifier do
   defp alert_type_title(:diff), do: "Significant Change Detected"
   defp alert_type_title(:failure), do: "Check Failed"
   defp alert_type_title(_), do: "Alert"
-
-  defp format_value(value) when is_binary(value), do: value
-  defp format_value(value) when is_number(value), do: "#{value}"
-  defp format_value(nil), do: "N/A"
-  defp format_value(value), do: inspect(value)
-
-  defp format_number(nil), do: "N/A"
-  defp format_number(num) when is_float(num), do: :erlang.float_to_binary(num, decimals: 2)
-  defp format_number(num), do: to_string(num)
 
   defp format_datetime(%DateTime{} = dt) do
     Calendar.strftime(dt, "%B %d, %Y at %H:%M:%S UTC")

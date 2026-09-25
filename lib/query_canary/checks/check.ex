@@ -13,6 +13,8 @@ defmodule QueryCanary.Checks.Check do
     field :query, :string
     field :expectation, :map
     field :public, :boolean, default: false
+    field :notification_channels, :map, virtual: true
+    field :notification_preferences, :map, default: %{}
 
     belongs_to :server, QueryCanary.Servers.Server
     belongs_to :user, QueryCanary.Accounts.User
@@ -25,13 +27,60 @@ defmodule QueryCanary.Checks.Check do
   @doc false
   def changeset(check, attrs, user_scope) do
     check
-    |> cast(attrs, [:name, :schedule, :enabled, :query, :server_id, :public])
-    |> validate_required([:name, :schedule, :enabled, :query, :server_id])
+    |> cast(attrs, [
+      :name,
+      :schedule,
+      :enabled,
+      :query,
+      :server_id,
+      :public,
+      :notification_channels,
+      :notification_preferences
+    ])
+    |> validate_required([
+      :name,
+      :schedule,
+      :enabled,
+      :query,
+      :server_id,
+      :notification_preferences
+    ])
     |> validate_cron_expression(:schedule)
     |> foreign_key_constraint(:server_id)
     |> validate_server_id_unchanged()
     |> validate_server_access(user_scope)
     |> put_user_id_on_insert(user_scope)
+    |> cast_notification_preferences()
+    |> QueryCanary.Notifications.validate_preferences_access(user_scope)
+    |> QueryCanary.Notifications.validate_channels(user_scope)
+  end
+
+  defp cast_notification_preferences(changeset) do
+    case get_change(changeset, :notification_preferences) do
+      preferences when is_map(preferences) ->
+        providers = ["email" | Map.keys(QueryCanary.Notifications.providers())]
+
+        Enum.reduce(preferences, {changeset, changeset.data.notification_preferences}, fn
+          {provider, value}, {cs, preferences} ->
+            case {provider in providers, Ecto.Type.cast(:boolean, value)} do
+              {true, {:ok, enabled}} when is_boolean(enabled) ->
+                {cs, Map.put(preferences, provider, enabled)}
+
+              _ ->
+                {add_error(
+                   cs,
+                   :notification_preferences,
+                   "must contain supported notification types with on or off values"
+                 ), preferences}
+            end
+        end)
+        |> then(fn {cs, preferences} ->
+          put_change(cs, :notification_preferences, preferences)
+        end)
+
+      _ ->
+        changeset
+    end
   end
 
   defp validate_cron_expression(changeset, field) do

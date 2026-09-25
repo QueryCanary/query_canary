@@ -13,6 +13,7 @@ defmodule QueryCanary.Checks do
   alias QueryCanary.Accounts
   alias QueryCanary.Connections.ConnectionManager
   alias QueryCanary.Checks.CheckNotifier
+  alias QueryCanary.Notifications
 
   @check_query_timeout 30_000
 
@@ -166,7 +167,7 @@ defmodule QueryCanary.Checks do
     with {:ok, check = %Check{}} <-
            %Check{}
            |> Check.changeset(attrs, scope)
-           |> Repo.insert() do
+           |> Notifications.save_check(scope) do
       broadcast(scope, {:created, check})
       {:ok, check}
     end
@@ -188,9 +189,9 @@ defmodule QueryCanary.Checks do
     true = can_perform?(:edit, scope, check)
 
     with {:ok, check = %Check{}} <-
-           check
+           %{check | notification_channels: nil}
            |> Check.changeset(attrs, scope)
-           |> Repo.update() do
+           |> Notifications.save_check(scope) do
       broadcast(scope, {:updated, check})
       {:ok, check}
     end
@@ -230,6 +231,7 @@ defmodule QueryCanary.Checks do
   def change_check(%Scope{} = scope, %Check{} = check, attrs \\ %{}) do
     true = can_perform?(:edit, scope, check)
 
+    check = %{check | notification_channels: Notifications.channels_for_check(check)}
     Check.changeset(check, attrs, scope)
   end
 
@@ -397,6 +399,19 @@ defmodule QueryCanary.Checks do
     )
   end
 
+  @doc "Recent history ending at an alert, so delayed delivery cannot include later runs."
+  def get_results_through(%CheckResult{} = result, limit \\ 48) do
+    Repo.all(
+      from r in CheckResult,
+        where: r.check_id == ^result.check_id,
+        where:
+          r.inserted_at < ^result.inserted_at or
+            (r.inserted_at == ^result.inserted_at and r.id <= ^result.id),
+        order_by: [desc: r.inserted_at, desc: r.id],
+        limit: ^limit
+    )
+  end
+
   @doc """
   Returns the list of checks with their status information.
   This includes the last result, last run time, and alert status.
@@ -456,42 +471,51 @@ defmodule QueryCanary.Checks do
   ## Returns
     * {:ok, :notification_sent} - Notification was sent
     * {:ok, :no_alert} - No alert detected, no notification needed
+    * {:ok, :notifications_disabled} - Email is off and no chat delivery is enabled
     * {:error, reason} - Error sending notification
   """
   def maybe_send_check_notification(%Check{} = check, %CheckResult{} = check_result) do
     if check_result.is_alert do
-      # Only send notifications for actual alerts
-      check = Repo.preload(check, server: [:team])
+      # Respect settings changed while the query was running.
+      check = Repo.get!(Check, check.id) |> Repo.preload(server: [:team])
 
       url = QueryCanaryWeb.Endpoint.url() <> "/checks/#{check.id}"
 
-      if check.server.team_id do
-        # Check belongs to a team, notify all team members
-        team_members =
-          Repo.all(
-            from tu in TeamUser,
-              join: u in User,
-              on: tu.user_id == u.id,
-              where: tu.team_id == ^check.server.team_id and tu.role != :invited,
-              select: u
-          )
+      # Queue chat once per destination, independently of the number of email recipients.
+      chat_delivery = Notifications.enqueue_alert(check, check_result)
+      email_enabled = Notifications.enabled?(check, "email")
 
-        Enum.each(team_members, fn user ->
-          CheckNotifier.deliver_check_alert_notification(user, check, check_result, url)
-        end)
+      if email_enabled do
+        deliver_check_emails(check, check_result, url)
+      end
 
-        {:ok, :notification_sent}
-      else
-        # Check does not belong to a team, notify the individual user
-        user = Repo.get!(User, check.user_id)
-
-        CheckNotifier.deliver_check_alert_notification(user, check, check_result, url)
-
-        {:ok, :notification_sent}
+      case chat_delivery do
+        {:ok, []} when not email_enabled -> {:ok, :notifications_disabled}
+        {:ok, _} -> {:ok, :notification_sent}
+        {:error, _} = error -> error
       end
     else
       {:ok, :no_alert}
     end
+  end
+
+  defp deliver_check_emails(check, check_result, url) do
+    users =
+      if check.server.team_id do
+        Repo.all(
+          from tu in TeamUser,
+            join: u in User,
+            on: tu.user_id == u.id,
+            where: tu.team_id == ^check.server.team_id and tu.role != :invited,
+            select: u
+        )
+      else
+        [Repo.get!(User, check.user_id)]
+      end
+
+    Enum.each(users, fn user ->
+      CheckNotifier.deliver_check_alert_notification(user, check, check_result, url)
+    end)
   end
 
   defp accessible_by_user(query, user_id) do

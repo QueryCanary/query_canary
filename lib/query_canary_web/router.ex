@@ -55,6 +55,9 @@ defmodule QueryCanaryWeb.Router do
   scope "/", QueryCanaryWeb do
     pipe_through [:browser, :require_authenticated_user]
 
+    post "/teams/:team_id/integrations/slack", SlackIntegrationController, :connect
+    get "/integrations/slack/callback", SlackIntegrationController, :callback
+
     live_session :require_authenticated_user,
       on_mount: [{QueryCanaryWeb.UserAuth, :require_authenticated}] do
       live "/users/settings", UserLive.Settings, :edit

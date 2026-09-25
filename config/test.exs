@@ -1,5 +1,9 @@
 import Config
 
+config :query_canary,
+       :chart_renderer_script,
+       Path.expand("../assets/js/charts/render_check_chart.mjs", __DIR__)
+
 # Only in tests, remove the complexity from the password hashing algorithm
 config :bcrypt_elixir, :log_rounds, 1
 
@@ -40,3 +44,5 @@ config :phoenix_live_view,
   enable_expensive_runtime_checks: true
 
 config :query_canary, Oban, testing: :manual
+
+config :query_canary, :slack_req_options, plug: {Req.Test, QueryCanary.Notifications.Slack}

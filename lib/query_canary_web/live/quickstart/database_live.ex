@@ -1,6 +1,7 @@
 defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
   use QueryCanaryWeb, :live_view
 
+  alias QueryCanary.Accounts
   alias QueryCanary.Servers
   alias QueryCanary.Servers.Server
   alias QueryCanary.Connections.SSHKeygen
@@ -169,6 +170,14 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
           <div class="md:col-span-3">
             <.input field={@form[:name]} type="text" label="Friendly Name" autofocus />
           </div>
+          <div class="md:col-span-3">
+            <.input
+              field={@form[:team_id]}
+              type="select"
+              options={[{"Personal", nil}] ++ Enum.map(@teams, &{&1.name, &1.id})}
+              label="Team"
+            />
+          </div>
           <div class="md:col-span-2">
             <.input field={@form[:db_hostname]} type="text" label="Hostname" />
           </div>
@@ -268,6 +277,7 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
     {:ok,
      socket
      |> assign(:page_title, "QueryCanary Quickstart")
+     |> assign(:teams, Accounts.list_teams(socket.assigns.current_scope))
      |> assign(:server, server)
      |> assign(:connection_error, nil)
      |> assign(:ssh_public_key, public_key)

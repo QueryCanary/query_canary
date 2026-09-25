@@ -53,6 +53,11 @@ config :esbuild,
       ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/*),
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
+  ],
+  chart_renderer: [
+    args:
+      ~w(js/charts/render_check_chart.mjs --bundle --platform=node --format=cjs --external:@napi-rs/canvas --outfile=../priv/chart_renderer/render.cjs),
+    cd: Path.expand("../assets", __DIR__)
   ]
 
 # Configure tailwind (the version is required)
@@ -73,12 +78,13 @@ config :logger, :default_formatter,
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
+config :phoenix, :filter_parameters, ["password", "token", "secret", "code", "state"]
 
 config :elixir, :time_zone_database, Tzdata.TimeZoneDatabase
 
 config :query_canary, Oban,
   engine: Oban.Engines.Basic,
-  queues: [default: 10, checks: 10, metric_backfill: 1],
+  queues: [default: 10, checks: 10, metric_backfill: 1, notifications: 5],
   repo: QueryCanary.Repo,
   plugins: [
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},

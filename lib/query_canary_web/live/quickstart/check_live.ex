@@ -6,6 +6,8 @@ defmodule QueryCanaryWeb.Quickstart.CheckLive do
   alias QueryCanary.Servers
   alias QueryCanary.Checks
   alias QueryCanary.Checks.Check
+  alias QueryCanaryWeb.NotificationComponents
+  import QueryCanaryWeb.NotificationComponents, only: [notification_fields: 1]
 
   def render(assigns) do
     ~H"""
@@ -59,6 +61,14 @@ defmodule QueryCanaryWeb.Quickstart.CheckLive do
               </ul>
             </div>
           </div>
+          <.notification_fields
+            form={@form}
+            settings={@notification_settings}
+            team_id={@server.team_id}
+            email_destination={
+              if @server.team_id, do: "All active team members", else: @current_scope.user.email
+            }
+          />
           <div>
             <.button phx-disable-with="Running..." variant="success">
               Run Query & Preview Results
@@ -89,6 +99,10 @@ defmodule QueryCanaryWeb.Quickstart.CheckLive do
      socket
      |> assign(:server, server)
      |> assign(:check, check)
+     |> assign(
+       :notification_settings,
+       NotificationComponents.settings(socket.assigns.current_scope, server, connected?(socket))
+     )
      |> assign(:result, nil)
      |> assign(
        :next_schedule,

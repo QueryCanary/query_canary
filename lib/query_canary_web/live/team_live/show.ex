@@ -2,6 +2,7 @@ defmodule QueryCanaryWeb.TeamLive.Show do
   use QueryCanaryWeb, :live_view
 
   alias QueryCanary.Accounts
+  alias QueryCanary.Notifications
 
   @impl true
   def render(assigns) do
@@ -98,6 +99,43 @@ defmodule QueryCanaryWeb.TeamLive.Show do
           </div>
         </div>
       </div>
+
+      <section id="team-integrations" class="card bg-base-200 p-6 mt-8 space-y-3">
+        <h2 class="text-lg font-semibold">Alert integrations</h2>
+        <p>Connect one Slack workspace for your team, then choose a channel for each check.</p>
+        <p :if={@slack_integration} id="slack-connection">
+          Slack connected to <strong>{@slack_integration.name}</strong>
+        </p>
+        <div :if={Notifications.admin?(@current_scope, @team.id)} class="flex gap-3 items-center">
+          <.form
+            :if={@slack_configured}
+            for={%{}}
+            action={~p"/teams/#{@team}/integrations/slack"}
+            method="post"
+          >
+            <.button variant="primary">
+              {if @slack_integration, do: "Reconnect Slack", else: "Connect Slack"}
+            </.button>
+          </.form>
+          <.button
+            :if={@slack_integration}
+            phx-click="disconnect_slack"
+            data-confirm="Disconnect Slack and remove Slack channels from this team's checks? Email notification settings will stay the same."
+          >
+            Disconnect Slack
+          </.button>
+        </div>
+        <p :if={!@slack_configured} class="text-sm opacity-70">
+          Slack is not configured for this installation. Contact your QueryCanary administrator.
+        </p>
+        <p :if={!Notifications.admin?(@current_scope, @team.id)} class="text-sm opacity-70">
+          A team admin can manage this connection.
+        </p>
+        <p :if={@slack_integration} class="text-sm opacity-70">
+          Invite the QueryCanary bot to your alert channels, then select a channel when creating or editing a check.
+          Connecting a different workspace clears the previous channel selections.
+        </p>
+      </section>
       
     <!-- Team Members -->
       <div class="mt-8 space-y-4">
@@ -145,6 +183,14 @@ defmodule QueryCanaryWeb.TeamLive.Show do
      socket
      |> assign(:page_title, "Show Team")
      |> assign(:team, team)
+     |> assign(
+       :slack_integration,
+       Enum.find(
+         Notifications.list_integrations(socket.assigns.current_scope, team.id),
+         &(&1.provider == "slack")
+       )
+     )
+     |> assign(:slack_configured, QueryCanary.Notifications.Slack.configured?())
      |> assign(:invite_form, to_form(%{}))
      |> assign(:users, Accounts.list_team_users(socket.assigns.current_scope, team))}
   end
@@ -227,6 +273,19 @@ defmodule QueryCanaryWeb.TeamLive.Show do
   end
 
   @impl true
+  def handle_event("disconnect_slack", _, socket) do
+    case Notifications.disconnect(socket.assigns.current_scope, socket.assigns.team.id, "slack") do
+      {:ok, _} ->
+        {:noreply,
+         socket
+         |> assign(:slack_integration, nil)
+         |> put_flash(:info, "Slack disconnected. Email notification settings were kept.")}
+
+      {:error, :forbidden} ->
+        {:noreply, put_flash(socket, :error, "Only team admins can disconnect Slack.")}
+    end
+  end
+
   def handle_event("invite_user", %{"email" => email}, socket) do
     existing_user = Accounts.get_user_by_email(email)
 
