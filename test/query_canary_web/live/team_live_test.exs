@@ -1,6 +1,8 @@
 defmodule QueryCanaryWeb.TeamLiveTest do
   use QueryCanaryWeb.ConnCase
 
+  alias QueryCanary.Accounts
+
   import Phoenix.LiveViewTest
   import QueryCanary.AccountsFixtures
 
@@ -120,6 +122,56 @@ defmodule QueryCanaryWeb.TeamLiveTest do
       html = render(show_live)
       assert html =~ "Team updated successfully"
       assert html =~ "some updated name"
+    end
+
+    test "admin changes an accepted member's role", %{conn: conn, scope: scope, team: team} do
+      member = user_scope_fixture()
+      {:ok, _} = Accounts.invite_user_to_team(scope, team, member.user.email)
+      {:ok, _} = Accounts.accept_team_invite(member, team)
+
+      {:ok, view, _} = live(conn, ~p"/teams/#{team}")
+
+      assert view
+             |> form("#role-form-#{member.user.id}", membership: %{role: "admin"})
+             |> render_submit() =~ "Role updated."
+
+      assert Accounts.user_has_access_to_team?(member.user.id, team.id, :admin)
+
+      assert view
+             |> form("#role-form-#{member.user.id}", membership: %{role: "member"})
+             |> render_submit() =~ "Role updated."
+
+      assert Accounts.user_has_access_to_team?(member.user.id, team.id, :member)
+    end
+
+    test "last admin sees why they cannot demote themselves", %{
+      conn: conn,
+      scope: scope,
+      team: team
+    } do
+      {:ok, view, _} = live(conn, ~p"/teams/#{team}")
+
+      assert view
+             |> form("#role-form-#{scope.user.id}", membership: %{role: "member"})
+             |> render_submit() =~ "A team must have at least one admin."
+
+      assert Accounts.user_has_access_to_team?(scope.user.id, team.id, :admin)
+    end
+
+    test "member cannot change roles through a forged event", %{scope: scope, team: team} do
+      member = user_scope_fixture()
+      {:ok, _} = Accounts.invite_user_to_team(scope, team, member.user.email)
+      {:ok, _} = Accounts.accept_team_invite(member, team)
+      conn = build_conn() |> log_in_user(member.user)
+
+      {:ok, view, _} = live(conn, ~p"/teams/#{team}")
+      refute has_element?(view, "#role-form-#{scope.user.id}")
+
+      assert render_hook(view, "change_role", %{
+               "membership" => %{"user_id" => scope.user.id, "role" => "member"}
+             }) =~ "Only team admins can change roles."
+
+      assert Accounts.user_has_access_to_team?(scope.user.id, team.id, :admin)
     end
   end
 end

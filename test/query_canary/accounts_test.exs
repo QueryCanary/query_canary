@@ -411,6 +411,7 @@ defmodule QueryCanary.AccountsTest do
 
   describe "teams" do
     alias QueryCanary.Accounts.Team
+    alias QueryCanary.Accounts.TeamUser
 
     import QueryCanary.AccountsFixtures, only: [user_scope_fixture: 0]
     import QueryCanary.AccountsFixtures
@@ -492,6 +493,57 @@ defmodule QueryCanary.AccountsTest do
       scope = user_scope_fixture()
       team = team_fixture(scope)
       assert %Ecto.Changeset{} = Accounts.change_team(scope, team)
+    end
+
+    test "admins can promote and demote accepted members" do
+      scope = user_scope_fixture()
+      team = team_fixture(scope)
+      member = user_scope_fixture()
+      {:ok, _} = Accounts.invite_user_to_team(scope, team, member.user.email)
+      {:ok, _} = Accounts.accept_team_invite(member, team)
+
+      assert {:ok, %TeamUser{role: :admin}} =
+               Accounts.update_team_user_role(scope, team, member.user.id, "admin")
+
+      assert {:ok, %TeamUser{role: :member}} =
+               Accounts.update_team_user_role(scope, team, member.user.id, :member)
+    end
+
+    test "role changes require a team admin and an accepted user in that team" do
+      scope = user_scope_fixture()
+      team = team_fixture(scope)
+      member = user_scope_fixture()
+      outsider = user_scope_fixture()
+      {:ok, _} = Accounts.invite_user_to_team(scope, team, member.user.email)
+
+      assert {:error, :invited} =
+               Accounts.update_team_user_role(scope, team, member.user.id, :admin)
+
+      {:ok, _} = Accounts.accept_team_invite(member, team)
+
+      assert {:error, :forbidden} =
+               Accounts.update_team_user_role(member, team, scope.user.id, :member)
+
+      assert {:error, :forbidden} =
+               Accounts.update_team_user_role(outsider, team, member.user.id, :admin)
+
+      assert {:error, :not_found} =
+               Accounts.update_team_user_role(scope, team, outsider.user.id, :admin)
+
+      assert {:error, :invalid_role} =
+               Accounts.update_team_user_role(scope, team, member.user.id, "invited")
+
+      assert Accounts.user_has_access_to_team?(member.user.id, team.id, :member)
+    end
+
+    test "the last admin cannot be demoted" do
+      scope = user_scope_fixture()
+      team = team_fixture(scope)
+
+      assert {:error, :last_admin} =
+               Accounts.update_team_user_role(scope, team, scope.user.id, :member)
+
+      assert Accounts.user_has_access_to_team?(scope.user.id, team.id, :admin)
     end
   end
 end

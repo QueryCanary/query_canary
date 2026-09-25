@@ -143,9 +143,28 @@ defmodule QueryCanaryWeb.TeamLive.Show do
         <.table id="users" rows={@users}>
           <:col :let={{user, _role}} label="Email">{user.email}</:col>
           <:col :let={{_user, role}} label="Role">{String.capitalize(to_string(role))}</:col>
-          <:action :let={{user, _role}}>
+          <:action :let={{user, role}}>
+            <.form
+              :if={@is_admin and role != :invited}
+              for={%{}}
+              as={:membership}
+              id={"role-form-#{user.id}"}
+              phx-submit="change_role"
+              class="flex items-center gap-2"
+            >
+              <input type="hidden" name="membership[user_id]" value={user.id} />
+              <select
+                name="membership[role]"
+                aria-label={"Role for #{user.email}"}
+                class="select select-bordered select-sm"
+              >
+                <option value="member" selected={role == :member}>Member</option>
+                <option value="admin" selected={role == :admin}>Admin</option>
+              </select>
+              <.button type="submit">Save role</.button>
+            </.form>
             <.link
-              :if={Accounts.user_has_access_to_team?(@current_scope.user.id, @team.id, :admin)}
+              :if={@is_admin}
               phx-click={JS.push("remove_user", value: %{id: user.id}) |> hide("##{user.id}")}
               data-confirm="Are you sure?"
               class="text-error"
@@ -179,10 +198,14 @@ defmodule QueryCanaryWeb.TeamLive.Show do
 
     team = Accounts.get_team!(socket.assigns.current_scope, id)
 
+    is_admin =
+      Accounts.user_has_access_to_team?(socket.assigns.current_scope.user.id, team.id, :admin)
+
     {:ok,
      socket
      |> assign(:page_title, "Show Team")
      |> assign(:team, team)
+     |> assign(:is_admin, is_admin)
      |> assign(
        :slack_integration,
        Enum.find(
@@ -331,6 +354,48 @@ defmodule QueryCanaryWeb.TeamLive.Show do
 
       {:error, reason} ->
         {:noreply, put_flash(socket, :error, "Failed to remove user: #{reason}")}
+    end
+  end
+
+  def handle_event(
+        "change_role",
+        %{"membership" => %{"user_id" => user_id, "role" => role}},
+        socket
+      ) do
+    case Accounts.update_team_user_role(
+           socket.assigns.current_scope,
+           socket.assigns.team,
+           user_id,
+           role
+         ) do
+      {:ok, _team_user} ->
+        {:noreply,
+         socket
+         |> assign(
+           :users,
+           Accounts.list_team_users(socket.assigns.current_scope, socket.assigns.team)
+         )
+         |> assign(
+           :is_admin,
+           Accounts.user_has_access_to_team?(
+             socket.assigns.current_scope.user.id,
+             socket.assigns.team.id,
+             :admin
+           )
+         )
+         |> put_flash(:info, "Role updated.")}
+
+      {:error, reason} ->
+        message =
+          case reason do
+            :forbidden -> "Only team admins can change roles."
+            :not_found -> "User not found in team."
+            :invited -> "Invited users must accept before their role can be changed."
+            :last_admin -> "A team must have at least one admin."
+            :invalid_role -> "Invalid role."
+          end
+
+        {:noreply, put_flash(socket, :error, message)}
     end
   end
 

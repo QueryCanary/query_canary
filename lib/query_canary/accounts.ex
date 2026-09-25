@@ -603,6 +603,48 @@ defmodule QueryCanary.Accounts do
     end
   end
 
+  @doc """
+  Changes an accepted team user's role. The team must retain an admin.
+  """
+  def update_team_user_role(%Scope{} = scope, %Team{} = team, user_id, role)
+      when role in [:admin, :member, "admin", "member"] do
+    role = if is_binary(role), do: String.to_existing_atom(role), else: role
+
+    Repo.transaction(fn ->
+      cond do
+        not user_has_access_to_team?(scope.user.id, team.id, :admin) ->
+          Repo.rollback(:forbidden)
+
+        true ->
+          case Repo.get_by(TeamUser, team_id: team.id, user_id: user_id) do
+            nil ->
+              Repo.rollback(:not_found)
+
+            %TeamUser{role: :invited} ->
+              Repo.rollback(:invited)
+
+            %TeamUser{role: :admin} = team_user when role == :member ->
+              admin_count =
+                Repo.aggregate(
+                  from(tu in TeamUser,
+                    where: tu.team_id == ^team.id and tu.role == :admin
+                  ),
+                  :count
+                )
+
+              if admin_count <= 1, do: Repo.rollback(:last_admin)
+              team_user |> TeamUser.changeset(%{role: role}) |> Repo.update!()
+
+            %TeamUser{} = team_user ->
+              team_user |> TeamUser.changeset(%{role: role}) |> Repo.update!()
+          end
+      end
+    end)
+  end
+
+  def update_team_user_role(%Scope{}, %Team{}, _user_id, _role),
+    do: {:error, :invalid_role}
+
   def accept_team_invite(%Scope{} = scope, %Team{} = team) do
     Repo.get_by(TeamUser, team_id: team.id, user_id: scope.user.id)
     |> TeamUser.changeset(%{role: :member})
