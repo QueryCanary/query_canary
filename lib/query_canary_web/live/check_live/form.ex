@@ -4,7 +4,9 @@ defmodule QueryCanaryWeb.CheckLive.Form do
   alias QueryCanary.Checks
   alias QueryCanary.Checks.Check
   alias QueryCanaryWeb.NotificationComponents
+  alias QueryCanaryWeb.ScheduleForm
   import QueryCanaryWeb.NotificationComponents, only: [notification_fields: 1]
+  import QueryCanaryWeb.Components.SchedulePicker, only: [schedule_picker: 1]
 
   on_mount {QueryCanaryWeb.CheckAuth, :edit}
 
@@ -21,7 +23,12 @@ defmodule QueryCanaryWeb.CheckLive.Form do
         <.input field={@form[:name]} type="text" label="Name" />
         <.input field={@form[:enabled]} type="checkbox" label="Enabled" />
         <.input field={@form[:public]} type="checkbox" label="Publicly Viewable?" />
-        <.input field={@form[:schedule]} type="text" label="Cron Schedule" />
+        <.schedule_picker
+          form={@form}
+          ui={@schedule_ui}
+          next_runs={@next_runs}
+          auto_timezone={@auto_timezone}
+        />
         <.live_component
           module={QueryCanaryWeb.Components.SQLEditor}
           id="check-sql-editor"
@@ -63,6 +70,9 @@ defmodule QueryCanaryWeb.CheckLive.Form do
     socket
     |> assign(:page_title, "Edit Check")
     |> assign(:check, check)
+    |> assign(:schedule_ui, ScheduleForm.initial_ui(check))
+    |> assign(:next_runs, QueryCanary.Checks.Schedule.next_runs(check.schedule, check.timezone))
+    |> assign(:auto_timezone, false)
     |> assign(
       :notification_settings,
       NotificationComponents.settings(
@@ -75,24 +85,76 @@ defmodule QueryCanaryWeb.CheckLive.Form do
   end
 
   defp apply_action(socket, :new, _params) do
-    check = %Check{user_id: socket.assigns.current_scope.user.id}
+    check = %Check{user_id: socket.assigns.current_scope.user.id, schedule: "0 8 * * *"}
 
     socket
     |> assign(:page_title, "New Check")
     |> assign(:check, check)
+    |> assign(:schedule_ui, ScheduleForm.initial_ui(check))
+    |> assign(:next_runs, QueryCanary.Checks.Schedule.next_runs(check.schedule, check.timezone))
+    |> assign(:auto_timezone, true)
     |> assign(:form, to_form(Checks.change_check(socket.assigns.current_scope, check)))
   end
 
   @impl true
-  def handle_event("validate", %{"check" => check_params}, socket) do
+  def handle_event("validate", %{"check" => check_params} = params, socket) do
+    {check_params, ui, error} =
+      ScheduleForm.prepare(
+        check_params,
+        params["schedule_ui"],
+        socket.assigns.schedule_ui,
+        socket.assigns.form[:schedule].value
+      )
+
     changeset =
       Checks.change_check(socket.assigns.current_scope, socket.assigns.check, check_params)
+      |> ScheduleForm.add_schedule_error(error)
 
-    {:noreply, assign(socket, form: to_form(changeset, action: :validate))}
+    {:noreply,
+     assign(socket,
+       form: to_form(changeset, action: :validate),
+       schedule_ui: ui,
+       next_runs: ScheduleForm.next_runs(changeset),
+       auto_timezone: false
+     )}
   end
 
-  def handle_event("save", %{"check" => check_params}, socket) do
-    save_check(socket, socket.assigns.live_action, check_params)
+  def handle_event("save", %{"check" => check_params} = params, socket) do
+    {check_params, ui, error} =
+      ScheduleForm.prepare(
+        check_params,
+        params["schedule_ui"],
+        socket.assigns.schedule_ui,
+        socket.assigns.form[:schedule].value
+      )
+
+    socket = assign(socket, schedule_ui: ui, auto_timezone: false)
+
+    if error do
+      changeset =
+        Checks.change_check(socket.assigns.current_scope, socket.assigns.check, check_params)
+        |> ScheduleForm.add_schedule_error(error)
+
+      {:noreply, assign(socket, form: to_form(changeset), next_runs: [])}
+    else
+      save_check(socket, socket.assigns.live_action, check_params)
+    end
+  end
+
+  def handle_event("detect_timezone", %{"timezone" => timezone}, socket) do
+    if socket.assigns.auto_timezone and
+         match?({:ok, _}, DateTime.shift_zone(DateTime.utc_now(), timezone)) do
+      changeset = Ecto.Changeset.put_change(socket.assigns.form.source, :timezone, timezone)
+
+      {:noreply,
+       assign(socket,
+         form: to_form(changeset),
+         next_runs: ScheduleForm.next_runs(changeset),
+         auto_timezone: false
+       )}
+    else
+      {:noreply, socket}
+    end
   end
 
   defp save_check(socket, :edit, check_params) do
@@ -106,7 +168,8 @@ defmodule QueryCanaryWeb.CheckLive.Form do
          )}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
+        {:noreply,
+         assign(socket, form: to_form(changeset), next_runs: ScheduleForm.next_runs(changeset))}
     end
   end
 
@@ -121,7 +184,8 @@ defmodule QueryCanaryWeb.CheckLive.Form do
          )}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
+        {:noreply,
+         assign(socket, form: to_form(changeset), next_runs: ScheduleForm.next_runs(changeset))}
     end
   end
 

@@ -33,10 +33,9 @@ defmodule QueryCanaryWeb.CheckLiveTest do
 
   @update_attrs %{
     name: "Updated Check",
-    enabled: false,
-    schedule: "0 0 * * *"
+    enabled: false
   }
-  @invalid_attrs %{name: "", schedule: ""}
+  @invalid_attrs %{name: ""}
 
   setup :register_and_log_in_user
 
@@ -181,6 +180,47 @@ defmodule QueryCanaryWeb.CheckLiveTest do
       html = render(show_live)
       assert html =~ "Check updated successfully"
       assert html =~ "Updated Check"
+    end
+  end
+
+  describe "Scheduling" do
+    setup [:create_check]
+
+    test "sets a weekday time and timezone without typing cron", %{
+      conn: conn,
+      check: check,
+      scope: scope
+    } do
+      {:ok, view, _} = live(conn, ~p"/checks/#{check}/edit")
+
+      view
+      |> form("#check-form", schedule_ui: %{kind: "weekdays"})
+      |> render_change()
+
+      html =
+        view
+        |> form("#check-form",
+          schedule_ui: %{time: "09:30"},
+          check: %{timezone: "America/New_York"}
+        )
+        |> render_change()
+
+      assert html =~ "Weekdays at 9:30 AM (America/New_York)"
+      assert html =~ "Next three runs"
+
+      view |> form("#check-form") |> render_submit()
+      saved = Checks.get_check!(scope, check.id)
+      assert saved.schedule == "30 9 * * 1-5"
+      assert saved.timezone == "America/New_York"
+    end
+
+    test "keeps an unusual cron expression editable", %{conn: conn, scope: scope, check: check} do
+      {:ok, check} = Checks.update_check(scope, check, %{schedule: "7 13 * * 2,4"})
+      {:ok, view, _} = live(conn, ~p"/checks/#{check}/edit")
+      assert has_element?(view, "#schedule-kind option[selected][value='custom']")
+
+      view |> form("#check-form", check: %{schedule: "5 9 * * 1-5"}) |> render_submit()
+      assert Checks.get_check!(scope, check.id).schedule == "5 9 * * 1-5"
     end
   end
 

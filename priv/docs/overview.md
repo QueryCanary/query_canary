@@ -56,7 +56,7 @@ WHERE created_at >= CURRENT_DATE - INTERVAL '1 day';
 ```
 
 ###	3. Set a schedule
-QueryCanary supports a full crontab syntax, so you can customize check intervals to pretty much anything you can imagine. 
+Choose a frequency such as every 15 minutes, daily, weekdays, weekly, or monthly. For calendar schedules, choose a time and time zone. The form previews the next three runs before you save. Custom five-field cron expressions are available under **Custom cron**. Existing cron schedules remain editable.
 
 ### 4. Get alerted
 When QueryCanary detects a change in your data, it'll send you or your team an email alert.

@@ -3,6 +3,7 @@ defmodule QueryCanaryWeb.CheckLive.Show do
 
   alias QueryCanary.Checks
   alias QueryCanary.Checks.{ChartData, CheckResult}
+  alias QueryCanary.Checks.Schedule
 
   import QueryCanaryWeb.Components.CheckAnalysis
 
@@ -18,7 +19,10 @@ defmodule QueryCanaryWeb.CheckLive.Show do
         </div>
         {@check.name}
         <:subtitle>
-          Last run: {@last_run} • Next run: {@next_run} • Schedule: {@check.schedule}
+          Last run: {@last_run} • Next run: {@next_run} • {Schedule.description(
+            @check.schedule,
+            @check.timezone || "Etc/UTC"
+          )}
         </:subtitle>
         <:actions>
           <.button
@@ -119,15 +123,21 @@ defmodule QueryCanaryWeb.CheckLive.Show do
         else: hd(recent_results)
 
     last_run =
-      if Enum.empty?(recent_results),
-        do: "No previous run",
-        else:
-          hd(recent_results) |> Map.get(:inserted_at) |> Calendar.strftime("%Y-%m-%d %H:%M:%S")
+      if Enum.empty?(recent_results) do
+        "No previous run"
+      else
+        recent_results
+        |> hd()
+        |> Map.get(:inserted_at)
+        |> DateTime.shift_zone!(check.timezone || "Etc/UTC")
+        |> Calendar.strftime("%Y-%m-%d %H:%M:%S %Z")
+      end
 
     next_run =
-      Crontab.CronExpression.Parser.parse!(check.schedule)
-      |> Crontab.Scheduler.get_next_run_date!()
-      |> Calendar.strftime("%Y-%m-%d %H:%M:%S")
+      case Schedule.next_runs(check.schedule, check.timezone || "Etc/UTC", DateTime.utc_now(), 1) do
+        [run] -> Calendar.strftime(run, "%Y-%m-%d %H:%M:%S %Z")
+        [] -> "Unavailable"
+      end
 
     {:ok,
      socket
