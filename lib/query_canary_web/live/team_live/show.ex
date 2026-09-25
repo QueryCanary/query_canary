@@ -142,15 +142,13 @@ defmodule QueryCanaryWeb.TeamLive.Show do
         <h2 class="text-lg font-semibold mb-4">Team Members</h2>
         <.table id="users" rows={@users}>
           <:col :let={{user, _role}} label="Email">{user.email}</:col>
-          <:col :let={{_user, role}} label="Role">{String.capitalize(to_string(role))}</:col>
-          <:action :let={{user, role}}>
+          <:col :let={{user, role}} label="Role">
             <.form
               :if={@is_admin and role != :invited}
               for={%{}}
               as={:membership}
               id={"role-form-#{user.id}"}
-              phx-submit="change_role"
-              class="flex items-center gap-2"
+              phx-change="change_role"
             >
               <input type="hidden" name="membership[user_id]" value={user.id} />
               <select
@@ -161,8 +159,12 @@ defmodule QueryCanaryWeb.TeamLive.Show do
                 <option value="member" selected={role == :member}>Member</option>
                 <option value="admin" selected={role == :admin}>Admin</option>
               </select>
-              <.button type="submit">Save role</.button>
             </.form>
+            <span :if={!@is_admin or role == :invited} class="badge badge-outline">
+              {String.capitalize(to_string(role))}
+            </span>
+          </:col>
+          <:action :let={{user, _role}}>
             <.link
               :if={@is_admin}
               phx-click={JS.push("remove_user", value: %{id: user.id}) |> hide("##{user.id}")}

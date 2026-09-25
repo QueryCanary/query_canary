@@ -133,13 +133,13 @@ defmodule QueryCanaryWeb.TeamLiveTest do
 
       assert view
              |> form("#role-form-#{member.user.id}", membership: %{role: "admin"})
-             |> render_submit() =~ "Role updated."
+             |> render_change() =~ "Role updated."
 
       assert Accounts.user_has_access_to_team?(member.user.id, team.id, :admin)
 
       assert view
              |> form("#role-form-#{member.user.id}", membership: %{role: "member"})
-             |> render_submit() =~ "Role updated."
+             |> render_change() =~ "Role updated."
 
       assert Accounts.user_has_access_to_team?(member.user.id, team.id, :member)
     end
@@ -153,7 +153,7 @@ defmodule QueryCanaryWeb.TeamLiveTest do
 
       assert view
              |> form("#role-form-#{scope.user.id}", membership: %{role: "member"})
-             |> render_submit() =~ "A team must have at least one admin."
+             |> render_change() =~ "A team must have at least one admin."
 
       assert Accounts.user_has_access_to_team?(scope.user.id, team.id, :admin)
     end
