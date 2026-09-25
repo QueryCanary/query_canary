@@ -5,6 +5,7 @@ defmodule QueryCanary.Checks.CheckNotifier do
   alias QueryCanary.Mailer
   alias QueryCanary.Checks.{Check, CheckResult}
   alias QueryCanary.Accounts.User
+  alias QueryCanary.Notifications.Chart
 
   @support_email "support@querycanary.com"
   # Brand colors
@@ -19,22 +20,32 @@ defmodule QueryCanary.Checks.CheckNotifier do
     * check - The check that triggered the alert
     * check_result - The check result with the alert
     * url - URL to the check details page
+    * chart - Optional pre-rendered chart shared by all email recipients
   """
   def deliver_check_alert_notification(
         %User{} = user,
         %Check{} = check,
         %CheckResult{} = check_result,
-        url
+        url,
+        chart \\ :render
       ) do
     if check_result.is_alert and QueryCanary.Notifications.enabled?(check, "email") do
+      chart =
+        if chart == :render,
+          do: Chart.render(check, QueryCanary.Checks.get_results_through(check_result)),
+          else: chart
+
+      chart_cid = if chart, do: chart.filename
+
       email =
         new()
         |> to(user.email)
         |> from({"QueryCanary Alerts", "alerts@querycanary.com"})
         |> reply_to({"QueryCanary Support", @support_email})
         |> subject("⚠️ Alert: #{check.name} - #{alert_type_title(check_result.alert_type)}")
-        |> html_body(check_alert_html(user, check, check_result, url))
+        |> html_body(check_alert_html(user, check, check_result, url, chart, chart_cid))
         |> text_body(check_alert_text(user, check, check_result, url))
+        |> attach_chart(chart, chart_cid)
 
       case Mailer.deliver(email) do
         {:ok, _metadata} ->
@@ -52,7 +63,7 @@ defmodule QueryCanary.Checks.CheckNotifier do
   end
 
   # HTML template for check alert emails
-  defp check_alert_html(user, check, check_result, url) do
+  defp check_alert_html(user, check, check_result, url, chart, chart_cid) do
     """
     <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
     <html xmlns="http://www.w3.org/1999/xhtml">
@@ -110,6 +121,8 @@ defmodule QueryCanary.Checks.CheckNotifier do
                       </td>
                     </tr>
 
+                    #{chart_html(chart, chart_cid)}
+
                     <tr>
                       <td style="padding-top: 20px;">
                         <p>You can view more details and the complete check history by clicking the button below:</p>
@@ -146,6 +159,35 @@ defmodule QueryCanary.Checks.CheckNotifier do
     </body>
     </html>
     """
+  end
+
+  defp chart_html(nil, _cid), do: ""
+
+  defp chart_html(chart, cid) do
+    alt = chart.alt_text |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
+
+    """
+    <tr>
+      <td style="padding-top: 20px;">
+        <p style="margin: 0 0 10px 0; font-weight: 600; color: #111827;">Result History</p>
+        <img src="cid:#{cid}" alt="#{alt}" width="560" style="display: block; width: 100%; max-width: 560px; height: auto;" />
+      </td>
+    </tr>
+    """
+  end
+
+  defp attach_chart(email, nil, _cid), do: email
+
+  defp attach_chart(email, chart, cid) do
+    attachment(
+      email,
+      Swoosh.Attachment.new({:data, chart.png},
+        filename: chart.filename,
+        content_type: "image/png",
+        type: :inline,
+        cid: cid
+      )
+    )
   end
 
   # Text template for check alert emails (fallback for email clients that don't support HTML)

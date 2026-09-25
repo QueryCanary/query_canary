@@ -14,6 +14,7 @@ defmodule QueryCanary.Checks do
   alias QueryCanary.Connections.ConnectionManager
   alias QueryCanary.Checks.CheckNotifier
   alias QueryCanary.Notifications
+  alias QueryCanary.Notifications.Chart
 
   @check_query_timeout 30_000
 
@@ -513,9 +514,13 @@ defmodule QueryCanary.Checks do
         [Repo.get!(User, check.user_id)]
       end
 
-    Enum.each(users, fn user ->
-      CheckNotifier.deliver_check_alert_notification(user, check, check_result, url)
-    end)
+    if users != [] do
+      chart = Chart.render(check, get_results_through(check_result))
+
+      Enum.each(users, fn user ->
+        CheckNotifier.deliver_check_alert_notification(user, check, check_result, url, chart)
+      end)
+    end
   end
 
   defp accessible_by_user(query, user_id) do

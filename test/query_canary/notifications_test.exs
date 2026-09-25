@@ -140,7 +140,18 @@ defmodule QueryCanary.NotificationsTest do
     assert_received {:email, %{subject: ^subject, to: [{_, ^owner_email}]} = email}
     assert email.text_body =~ "Current value: 150"
     assert email.text_body =~ "Change: 50.0%"
-    assert_received {:email, %{subject: ^subject, to: [{_, ^member_email}]}}
+    assert [chart] = email.attachments
+    assert chart.filename == "querycanary-#{ctx.check.id}-#{result.id}.png"
+    assert chart.content_type == "image/png"
+    assert chart.type == :inline
+    assert chart.cid == chart.filename
+    assert <<137, 80, 78, 71, 13, 10, 26, 10, _::binary>> = chart.data
+    assert email.html_body =~ ~s(src="cid:#{chart.cid}")
+    assert email.html_body =~ "Result History"
+
+    assert_received {:email, %{subject: ^subject, to: [{_, ^member_email}]} = member_alert}
+    assert [member_chart] = member_alert.attachments
+    assert member_chart.data == chart.data
 
     Notifications.enqueue_alert(ctx.check, result)
     assert [%{args: %{"check_result_id" => id}}] = all_enqueued(worker: DeliverNotification)
@@ -232,6 +243,26 @@ defmodule QueryCanary.NotificationsTest do
                result,
                "https://querycanary.com/checks/#{check.id}"
              )
+  end
+
+  test "email alert still sends its details when the chart is unavailable", ctx do
+    result = alert_result_fixture(ctx.check, %{analysis_details: %{"current_value" => 150}})
+    url = "https://querycanary.com/checks/#{ctx.check.id}"
+
+    assert {:ok, email} =
+             Checks.CheckNotifier.deliver_check_alert_notification(
+               ctx.scope.user,
+               ctx.check,
+               result,
+               url,
+               nil
+             )
+
+    assert email.attachments == []
+    refute email.html_body =~ "cid:"
+    assert email.html_body =~ "Current value"
+    assert email.text_body =~ "Current value: 150"
+    assert email.html_body =~ url
   end
 
   test "invalid preferences cannot erase or silently enable notification settings", ctx do

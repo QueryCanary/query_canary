@@ -67,13 +67,15 @@ Personal checks must use a team-owned server to configure chat delivery.
 
 Slack messages include the applicable analysis details (previous/current values,
 percentage change, expected range and z-score, status, or structure) and a PNG of
-the last 48 runs through the alert. The check page and Slack share
+the last 48 runs through the alert. Email alerts include the same PNG inline
+for each recipient; if chart rendering fails, the alert still sends with its
+details and check link. The check page, Slack, and email share
 `Checks.ChartData` and `assets/js/charts/check_chart.mjs`, including the same
 Chart.js version, curved series, alert colors, average, anomaly thresholds, axes,
 and legend. The snapshot freezes at the triggering run; later runs only change
-the live page. Failed runs leave gaps in both charts.
+the live page. Failed runs leave gaps in each chart.
 
-Images render locally with Node.js and `@napi-rs/canvas`. The Slack chart is
+Images render locally with Node.js and `@napi-rs/canvas`. The notification chart is
 960×280px with a 5px white border on each side, exported at double resolution
 (1940×580px); the live chart remains 256px tall. Animation and interaction are
 disabled for the image. Development
