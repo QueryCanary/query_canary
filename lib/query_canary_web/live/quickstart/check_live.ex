@@ -1,13 +1,13 @@
 defmodule QueryCanaryWeb.Quickstart.CheckLive do
   use QueryCanaryWeb, :live_view
 
-  import Crontab.CronExpression
-
   alias QueryCanary.Servers
   alias QueryCanary.Checks
   alias QueryCanary.Checks.Check
+  alias QueryCanaryWeb.ScheduleForm
   alias QueryCanaryWeb.NotificationComponents
   import QueryCanaryWeb.NotificationComponents, only: [notification_fields: 1]
+  import QueryCanaryWeb.Components.SchedulePicker, only: [schedule_picker: 1]
 
   def render(assigns) do
     ~H"""
@@ -42,25 +42,12 @@ defmodule QueryCanaryWeb.Quickstart.CheckLive do
             />
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 items-center">
-            <div>
-              <label class="font-medium mb-1 block">Schedule</label>
-              <.input
-                field={@form[:schedule]}
-                type="text"
-                value={@form[:schedule].value || "0 8 * * *"}
-              />
-            </div>
-
-            <div class="text-right">
-              <label class="font-medium mb-1 block">Next Runs for Schedule</label>
-              <ul>
-                <li :for={d <- @next_schedule} class="text-sm">
-                  {Calendar.strftime(d, "%Y-%m-%d %H:%M:%S")}
-                </li>
-              </ul>
-            </div>
-          </div>
+          <.schedule_picker
+            form={@form}
+            ui={@schedule_ui}
+            next_runs={@next_runs}
+            auto_timezone={@auto_timezone}
+          />
           <.notification_fields
             form={@form}
             settings={@notification_settings}
@@ -91,9 +78,12 @@ defmodule QueryCanaryWeb.Quickstart.CheckLive do
 
   def mount(%{"server_id" => server_id}, _session, socket) do
     server = Servers.get_server!(socket.assigns.current_scope, server_id)
-    check = %Check{user_id: socket.assigns.current_scope.user.id, server_id: server.id}
 
-    # CronExpression.Parser.parse!("0 8 * * *")
+    check = %Check{
+      user_id: socket.assigns.current_scope.user.id,
+      server_id: server.id,
+      schedule: "0 8 * * *"
+    }
 
     {:ok,
      socket
@@ -104,10 +94,9 @@ defmodule QueryCanaryWeb.Quickstart.CheckLive do
        NotificationComponents.settings(socket.assigns.current_scope, server, connected?(socket))
      )
      |> assign(:result, nil)
-     |> assign(
-       :next_schedule,
-       Enum.take(Crontab.Scheduler.get_next_run_dates(~e[0 8 * * *]), 3)
-     )
+     |> assign(:schedule_ui, ScheduleForm.initial_ui(check))
+     |> assign(:next_runs, Checks.Schedule.next_runs(check.schedule, check.timezone))
+     |> assign(:auto_timezone, true)
      |> assign(
        :form,
        to_form(Checks.change_check(socket.assigns.current_scope, check))
@@ -120,6 +109,9 @@ defmodule QueryCanaryWeb.Quickstart.CheckLive do
         {:noreply,
          socket
          |> assign(:check, check)
+         |> assign(:schedule_ui, ScheduleForm.initial_ui(check))
+         |> assign(:next_runs, Checks.Schedule.next_runs(check.schedule, check.timezone))
+         |> assign(:auto_timezone, false)
          |> assign(
            :form,
            to_form(Checks.change_check(socket.assigns.current_scope, check))
@@ -137,21 +129,72 @@ defmodule QueryCanaryWeb.Quickstart.CheckLive do
     {:noreply, socket}
   end
 
-  def handle_event("validate", %{"check" => check_params}, socket) do
+  def handle_event("validate", %{"check" => check_params} = params, socket) do
+    {check_params, ui, error} =
+      ScheduleForm.prepare(
+        check_params,
+        params["schedule_ui"],
+        socket.assigns.schedule_ui,
+        socket.assigns.form[:schedule].value
+      )
+
     changeset =
       Checks.change_check(
         socket.assigns.current_scope,
         socket.assigns.check,
         check_params
       )
+      |> ScheduleForm.add_schedule_error(error)
 
     {:noreply,
      socket
-     |> maybe_put_next_schedule(changeset)
-     |> assign(form: to_form(changeset, action: :validate))}
+     |> assign(
+       form: to_form(changeset, action: :validate),
+       schedule_ui: ui,
+       next_runs: ScheduleForm.next_runs(changeset),
+       auto_timezone: false
+     )}
   end
 
-  def handle_event("save", %{"check" => check_params}, socket) do
+  def handle_event("save", %{"check" => check_params} = params, socket) do
+    {check_params, ui, error} =
+      ScheduleForm.prepare(
+        check_params,
+        params["schedule_ui"],
+        socket.assigns.schedule_ui,
+        socket.assigns.form[:schedule].value
+      )
+
+    socket = assign(socket, schedule_ui: ui, auto_timezone: false)
+
+    if error do
+      changeset =
+        Checks.change_check(socket.assigns.current_scope, socket.assigns.check, check_params)
+        |> ScheduleForm.add_schedule_error(error)
+
+      {:noreply, assign(socket, form: to_form(changeset), next_runs: [])}
+    else
+      save_check(socket, check_params)
+    end
+  end
+
+  def handle_event("detect_timezone", %{"timezone" => timezone}, socket) do
+    if socket.assigns.auto_timezone and
+         match?({:ok, _}, DateTime.shift_zone(DateTime.utc_now(), timezone)) do
+      changeset = Ecto.Changeset.put_change(socket.assigns.form.source, :timezone, timezone)
+
+      {:noreply,
+       assign(socket,
+         form: to_form(changeset),
+         next_runs: ScheduleForm.next_runs(changeset),
+         auto_timezone: false
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  defp save_check(socket, check_params) do
     current_scope = socket.assigns.current_scope
 
     check =
@@ -198,24 +241,8 @@ defmodule QueryCanaryWeb.Quickstart.CheckLive do
         end
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
-    end
-  end
-
-  def maybe_put_next_schedule(socket, changeset) do
-    schedule = Ecto.Changeset.get_change(changeset, :schedule)
-
-    try do
-      next_schedule =
-        case Crontab.CronExpression.Parser.parse(schedule || "") do
-          {:ok, exp} -> Enum.take(Crontab.Scheduler.get_next_run_dates(exp), 3)
-          _ -> socket.assigns.next_schedule
-        end
-
-      socket |> assign(:next_schedule, next_schedule)
-    catch
-      _e ->
-        socket.assigns.next_schedule
+        {:noreply,
+         assign(socket, form: to_form(changeset), next_runs: ScheduleForm.next_runs(changeset))}
     end
   end
 

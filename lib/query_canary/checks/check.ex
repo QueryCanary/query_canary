@@ -9,6 +9,7 @@ defmodule QueryCanary.Checks.Check do
   schema "checks" do
     field :name, :string
     field :schedule, :string
+    field :timezone, :string, default: "Etc/UTC"
     field :enabled, :boolean, default: false
     field :query, :string
     field :expectation, :map
@@ -30,6 +31,7 @@ defmodule QueryCanary.Checks.Check do
     |> cast(attrs, [
       :name,
       :schedule,
+      :timezone,
       :enabled,
       :query,
       :server_id,
@@ -40,12 +42,14 @@ defmodule QueryCanary.Checks.Check do
     |> validate_required([
       :name,
       :schedule,
+      :timezone,
       :enabled,
       :query,
       :server_id,
       :notification_preferences
     ])
     |> validate_cron_expression(:schedule)
+    |> validate_timezone()
     |> foreign_key_constraint(:server_id)
     |> validate_server_id_unchanged()
     |> validate_server_access(user_scope)
@@ -92,6 +96,15 @@ defmodule QueryCanary.Checks.Check do
           {:ok, _} -> []
           {:error, message} -> [{field, message}]
         end
+      end
+    end)
+  end
+
+  defp validate_timezone(changeset) do
+    validate_change(changeset, :timezone, fn _, timezone ->
+      case DateTime.shift_zone(DateTime.utc_now(), timezone) do
+        {:ok, _} -> []
+        {:error, _} -> [timezone: "is not a valid time zone"]
       end
     end)
   end

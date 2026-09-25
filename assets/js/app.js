@@ -28,6 +28,7 @@ import SQLEditor from "./hooks/sql_editor";
 import CheckChart from "./hooks/check_chart";
 import HomeChart from "./hooks/home_chart";
 import ReportMetricDrag from "./hooks/report_metric_drag";
+import ScheduleTimezone from "./hooks/schedule_timezone";
 import "prismjs";
 import "prismjs/components/prism-sql";
 
@@ -37,6 +38,7 @@ Hooks.SQLEditor = SQLEditor;
 Hooks.CheckChart = CheckChart;
 Hooks.HomeChart = HomeChart;
 Hooks.ReportMetricDrag = ReportMetricDrag;
+Hooks.ScheduleTimezone = ScheduleTimezone;
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
