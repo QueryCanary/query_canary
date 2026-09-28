@@ -55,6 +55,58 @@ defmodule QueryCanaryWeb.CheckLiveTest do
       assert html =~ check.query
     end
 
+    test "sorts teams by name and disabled checks last within each section", %{
+      conn: conn,
+      scope: scope,
+      check: check
+    } do
+      zeta = check_fixture(scope, %{name: "zeta", server_id: check.server_id})
+      alpha = check_fixture(scope, %{name: "Alpha", server_id: check.server_id})
+
+      disabled =
+        check_fixture(scope, %{name: "Aardvark", enabled: false, server_id: check.server_id})
+
+      zeta_team = team_fixture(scope, %{name: "Zeta Team"})
+      alpha_team = team_fixture(scope, %{name: "alpha Team"})
+      zeta_server = server_fixture(scope, %{team_id: zeta_team.id})
+      alpha_server = server_fixture(scope, %{team_id: alpha_team.id})
+      zeta_team_check = check_fixture(scope, %{name: "Team Check", server_id: zeta_server.id})
+      alpha_team_check = check_fixture(scope, %{name: "Team Check", server_id: alpha_server.id})
+
+      disabled_team_check =
+        check_fixture(scope, %{name: "Aardvark", enabled: false, server_id: alpha_server.id})
+
+      {:ok, index_live, html} = live(conn, ~p"/checks")
+
+      assert check_table_ids(html) == [
+               "checks-personal",
+               "checks-#{alpha_team.id}",
+               "checks-#{zeta_team.id}"
+             ]
+
+      assert check_row_ids(html, "checks-personal") == [
+               "checks-#{alpha.id}",
+               "checks-#{check.id}",
+               "checks-#{zeta.id}",
+               "checks-#{disabled.id}"
+             ]
+
+      assert check_row_ids(html, "checks-#{alpha_team.id}") == [
+               "checks-#{alpha_team_check.id}",
+               "checks-#{disabled_team_check.id}"
+             ]
+
+      assert check_row_ids(html, "checks-#{zeta_team.id}") == ["checks-#{zeta_team_check.id}"]
+
+      index_live |> element("#checks-#{alpha.id} a", "Delete") |> render_click()
+
+      assert check_row_ids(render(index_live), "checks-personal") == [
+               "checks-#{check.id}",
+               "checks-#{zeta.id}",
+               "checks-#{disabled.id}"
+             ]
+    end
+
     test "updates check in listing", %{conn: conn, check: check} do
       {:ok, index_live, _html} = live(conn, ~p"/checks")
 
@@ -87,6 +139,18 @@ defmodule QueryCanaryWeb.CheckLiveTest do
       assert index_live |> element("#checks-#{check.id} a", "Delete") |> render_click()
       refute has_element?(index_live, "#checks-#{check.id}")
     end
+  end
+
+  defp check_table_ids(html) do
+    html
+    |> Floki.find("tbody[id^='checks-']")
+    |> Enum.map(fn tbody -> tbody |> Floki.attribute("id") |> List.first() end)
+  end
+
+  defp check_row_ids(html, table_id) do
+    html
+    |> Floki.find("##{table_id} tr")
+    |> Enum.map(fn row -> row |> Floki.attribute("id") |> List.first() end)
   end
 
   describe "Show" do

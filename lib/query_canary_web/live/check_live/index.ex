@@ -127,8 +127,7 @@ defmodule QueryCanaryWeb.CheckLive.Index do
 
     checks = Checks.list_checks_with_status(socket.assigns.current_scope)
 
-    # Group checks by team
-    grouped_checks = Enum.group_by(checks, & &1.server.team)
+    grouped_checks = group_and_sort_checks(checks)
 
     # Calculate overall success rate and alert count
     {success_rate, alert_count} = calculate_dashboard_metrics(checks)
@@ -149,7 +148,7 @@ defmodule QueryCanaryWeb.CheckLive.Index do
     {:ok, _} = Checks.delete_check(socket.assigns.current_scope, check)
 
     checks = Checks.list_checks_with_status(socket.assigns.current_scope)
-    grouped_checks = Enum.group_by(checks, & &1.server.team)
+    grouped_checks = group_and_sort_checks(checks)
 
     {:noreply,
      socket
@@ -162,6 +161,24 @@ defmodule QueryCanaryWeb.CheckLive.Index do
   end
 
   # Helper functions
+  defp group_and_sort_checks(checks) do
+    checks
+    |> Enum.group_by(& &1.server.team)
+    |> Enum.sort_by(fn
+      {nil, _checks} -> {0, "", 0}
+      {team, _checks} -> {1, String.downcase(team.name), team.id}
+    end)
+    |> Enum.map(fn {team, team_checks} ->
+      sorted_checks =
+        Enum.sort_by(team_checks, fn check ->
+          {not check.enabled, String.downcase(check.name || ""),
+           String.downcase(check.server.name), check.id}
+        end)
+
+      {team, sorted_checks}
+    end)
+  end
+
   defp format_time_ago(nil), do: "Never"
 
   defp format_time_ago(datetime) do
