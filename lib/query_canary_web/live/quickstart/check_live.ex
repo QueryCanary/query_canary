@@ -17,7 +17,7 @@ defmodule QueryCanaryWeb.Quickstart.CheckLive do
       <section>
         <h2 class="text-2xl font-semibold mb-2">2. Configure a Data Integrity Check</h2>
         <p class="mb-4">
-          Write a SQL query that returns a number or boolean. This will be monitored for unexpected values or anomalies.
+          Write a query that returns a number or boolean. This will be monitored for unexpected values or anomalies.
         </p>
         <.form for={@form} id="check-form" phx-change="validate" phx-submit="save" class="">
           <div class="mb-4">
@@ -32,7 +32,9 @@ defmodule QueryCanaryWeb.Quickstart.CheckLive do
           </div>
 
           <div class="mb-4">
-            <label class="font-medium mb-1 block">SQL Query</label>
+            <label class="font-medium mb-1 block">
+              {if @server.db_engine == "mongodb", do: "MongoDB JSON Query", else: "SQL Query"}
+            </label>
             <.live_component
               module={QueryCanaryWeb.Components.SQLEditor}
               id="check-sql-editor"
@@ -82,6 +84,7 @@ defmodule QueryCanaryWeb.Quickstart.CheckLive do
     check = %Check{
       user_id: socket.assigns.current_scope.user.id,
       server_id: server.id,
+      query: if(server.db_engine == "mongodb", do: ~s({"count": "your_collection", "query": {}})),
       schedule: "0 8 * * *"
     }
 

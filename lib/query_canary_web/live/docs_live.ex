@@ -30,6 +30,7 @@ defmodule QueryCanaryWeb.DocsLive do
               <li><.link navigate={~p"/docs/servers/postgresql"}>PostgreSQL</.link></li>
               <li><.link navigate={~p"/docs/servers/mysql"}>MySQL</.link></li>
               <li><.link navigate={~p"/docs/servers/clickhouse"}>ClickHouse</.link></li>
+              <li><.link navigate={~p"/docs/servers/mongodb"}>MongoDB</.link></li>
               <li><.link navigate={~p"/docs/servers/ssh-tunnel"}>SSH Tunnel</.link></li>
             </ul>
           </li>

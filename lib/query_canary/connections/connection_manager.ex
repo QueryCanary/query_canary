@@ -85,5 +85,7 @@ defmodule QueryCanary.Connections.ConnectionManager do
   defp connection_test_query(%Server{db_engine: "prometheus"}),
     do: QueryCanary.Connections.Adapters.Prometheus.version_query()
 
+  defp connection_test_query(%Server{db_engine: "mongodb"}), do: ~s({"ping": 1})
+
   defp connection_test_query(_server), do: "SELECT now()"
 end

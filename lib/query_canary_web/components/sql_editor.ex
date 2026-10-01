@@ -11,6 +11,10 @@ defmodule QueryCanaryWeb.Components.SQLEditor do
   def render(assigns) do
     ~H"""
     <div id={@id} class="w-full" phx-update="ignore">
+      <p :if={@server.db_engine == "mongodb"} class="mb-2 text-sm text-base-content/70">
+        Enter a JSON find, count, distinct or aggregate command.
+        <a href="/docs/servers/mongodb" target="_blank" class="link">MongoDB query examples</a>
+      </p>
       <div
         id={"#{@id}-editor"}
         phx-hook="SQLEditor"

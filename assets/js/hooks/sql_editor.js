@@ -2,6 +2,7 @@ import { EditorView, basicSetup } from 'codemirror';
 import { EditorState } from '@codemirror/state';
 import { keymap } from "@codemirror/view"
 import { sql, PostgreSQL, MySQL } from '@codemirror/lang-sql';
+import { json } from '@codemirror/lang-json';
 import { indentWithTab } from "@codemirror/commands";
 import {
     acceptCompletion
@@ -47,7 +48,7 @@ const SQLEditor = {
     }
      
     // Configure SQL extension with properly formatted schema
-    const sqlLang = sql({
+    const sqlLang = this.el.dataset.dialect === 'mongodb' ? json() : sql({
       dialect: dialect,
       schema: schemaData || []
     });

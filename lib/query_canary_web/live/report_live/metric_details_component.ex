@@ -157,7 +157,7 @@ defmodule QueryCanaryWeb.ReportLive.MetricDetailsComponent do
                       rows="3"
                     />
                     <div class="space-y-1">
-                      <label class="label text-sm font-medium">SQL</label>
+                      <label class="label text-sm font-medium">Query</label>
                       <%= if server = selected_metric_editor_server(
                                    @servers,
                                    @selected_metric_form,
@@ -228,7 +228,7 @@ defmodule QueryCanaryWeb.ReportLive.MetricDetailsComponent do
                       </dd>
                     </div>
                     <div>
-                      <dt class="text-xs uppercase tracking-wide text-base-content/50">SQL</dt>
+                      <dt class="text-xs uppercase tracking-wide text-base-content/50">Query</dt>
                       <dd class="mt-1">
                         <pre class="overflow-x-auto rounded-lg bg-base-200 px-3 py-3 text-sm"><code class="language-sql">{metric_sql(@selected_metric.metric)}</code></pre>
                       </dd>

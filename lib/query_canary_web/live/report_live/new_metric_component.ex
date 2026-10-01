@@ -72,7 +72,12 @@ defmodule QueryCanaryWeb.ReportLive.NewMetricComponent do
               label="Description"
               rows="2"
             />
-            <.input field={@new_metric_form[:sql]} type="textarea" label="SQL" rows="6" />
+            <.input
+              field={@new_metric_form[:sql]}
+              type="textarea"
+              label="Query (SQL or MongoDB JSON)"
+              rows="6"
+            />
             <div class="grid gap-3 md:grid-cols-3">
               <.input
                 field={@new_metric_form[:granularity]}
