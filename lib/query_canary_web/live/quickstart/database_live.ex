@@ -127,13 +127,23 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
                     </span>
                   </label>
 
-                  <label class="flex flex-col items-center border rounded-lg p-4 border-base-300 opacity-60 relative">
-                    <input type="radio" disabled class="hidden" />
+                  <label class={
+                    "flex flex-col items-center border rounded-lg p-4 cursor-pointer " <>
+                      if(Phoenix.HTML.Form.input_value(@form, :db_engine) == "mongodb",
+                        do: "border-primary bg-primary/10",
+                        else: "border-base-300"
+                      )
+                  }>
+                    <input
+                      type="radio"
+                      id={Phoenix.HTML.Form.input_id(@form, :db_engine, "mongodb")}
+                      name={Phoenix.HTML.Form.input_name(@form, :db_engine)}
+                      value="mongodb"
+                      checked={Phoenix.HTML.Form.input_value(@form, :db_engine) == "mongodb"}
+                      class="hidden"
+                    />
                     <img src={~p"/images/mongodb-original.svg"} alt="MongoDB" class="w-8 h-8 mb-2" />
                     <span>MongoDB</span>
-                    <span class="badge badge-warning text-xs absolute top-1 right-1">
-                      Coming Soon
-                    </span>
                   </label>
                 </div>
               </div>
@@ -165,6 +175,14 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
             >
               ClickHouse Setup Documentation <.icon name="hero-arrow-right" />
             </.link>
+            <.link
+              :if={Phoenix.HTML.Form.input_value(@form, :db_engine) == "mongodb"}
+              class="link link-hover text-lg link-info"
+              target="_blank"
+              navigate={~p"/docs/servers/mongodb"}
+            >
+              MongoDB Setup Documentation <.icon name="hero-arrow-right" />
+            </.link>
           </div>
 
           <div class="md:col-span-3">
@@ -181,7 +199,7 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
           <div class="md:col-span-2">
             <.input field={@form[:db_hostname]} type="text" label="Hostname" />
           </div>
-          <.input field={@form[:db_port]} type="number" label="Port" value="5432" />
+          <.input field={@form[:db_port]} type="number" label="Port" />
           <.input field={@form[:db_username]} type="text" label="Username" />
           <.input
             field={@form[:db_password_input]}
@@ -190,6 +208,34 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
             placeholder={password_placeholder(@form, :db_password)}
           />
           <.input field={@form[:db_name]} type="text" label="Database" />
+          <.input
+            :if={Phoenix.HTML.Form.input_value(@form, :db_engine) == "mongodb"}
+            field={@form[:db_auth_source]}
+            type="text"
+            label="Authentication Database"
+            placeholder="Defaults to Database; use admin for Atlas or admin users"
+          />
+          <.input
+            :if={Phoenix.HTML.Form.input_value(@form, :db_engine) == "mongodb"}
+            field={@form[:db_ssl_mode]}
+            type="select"
+            label="TLS"
+            options={[
+              {"Disabled", "disable"},
+              {"Required", "require"},
+              {"Verify server certificate", "verify-full"}
+            ]}
+          />
+          <div
+            :if={Phoenix.HTML.Form.input_value(@form, :db_engine) == "mongodb"}
+            class="md:col-span-3"
+          >
+            <.input
+              field={@form[:db_ssl_ca_cert]}
+              type="textarea"
+              label="CA Certificate (PEM, optional)"
+            />
+          </div>
           <div class="md:col-span-3 mb-2">
             <div class="flex items-center">
               <.input field={@form[:ssh_tunnel]} type="checkbox" label="Use SSH Tunnel?" />
@@ -268,7 +314,7 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    server = %Server{user_id: socket.assigns.current_scope.user.id}
+    server = %Server{user_id: socket.assigns.current_scope.user.id, db_port: 5432}
 
     # Generate SSH keys when the component mounts
     # These will be stored in the session and used when saving
@@ -325,6 +371,15 @@ defmodule QueryCanaryWeb.Quickstart.DatabaseLive do
 
   @impl true
   def handle_event("validate", %{"server" => server_params}, socket) do
+    previous_engine = Phoenix.HTML.Form.input_value(socket.assigns.form, :db_engine)
+
+    server_params =
+      if server_params["db_engine"] == "mongodb" and previous_engine != "mongodb" do
+        Map.merge(server_params, %{"db_port" => "27017", "db_ssl_mode" => "disable"})
+      else
+        server_params
+      end
+
     changeset =
       Servers.change_server(
         socket.assigns.current_scope,

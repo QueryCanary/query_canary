@@ -210,6 +210,9 @@ defmodule QueryCanary.Connections.ConnectionServer do
       username: server.db_username,
       password: server.db_password,
       database: server.db_name,
+      auth_source: server.db_auth_source,
+      direct_connection: server.ssh_tunnel == true,
+      tls_hostname: server.db_hostname,
       ssl_mode: server.db_ssl_mode,
       ssl_cert: server.db_ssl_cert,
       ssl_key: server.db_ssl_key,
@@ -271,6 +274,9 @@ defmodule QueryCanary.Connections.ConnectionServer do
 
   defp adapter_for(%Server{db_engine: "clickhouse"}),
     do: QueryCanary.Connections.Adapters.ClickHouse
+
+  defp adapter_for(%Server{db_engine: "mongodb"}),
+    do: QueryCanary.Connections.Adapters.MongoDB
 
   defp adapter_for(%Server{db_engine: "prometheus"}),
     do: QueryCanary.Connections.Adapters.Prometheus

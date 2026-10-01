@@ -148,6 +148,7 @@ defmodule QueryCanary.Connections.ConnectionTester do
   # Get appropriate version query based on DB engine
   defp get_version_query(%Server{db_engine: "postgresql"}), do: "SELECT version();"
   defp get_version_query(%Server{db_engine: "mysql"}), do: "SELECT VERSION();"
+  defp get_version_query(%Server{db_engine: "mongodb"}), do: ~s({"buildInfo": 1})
 
   defp get_version_query(%Server{db_engine: "prometheus"}),
     do: QueryCanary.Connections.Adapters.Prometheus.version_query()

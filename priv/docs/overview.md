@@ -33,7 +33,7 @@ QueryCanary helps you recognize that by letting you:
 
 ## How It Works
 ### 1. Connect your database
-We currently support [Postgres](/docs/servers/postgresql/) / [MySQL](/docs/servers/mysql/) + [SSH tunneling](/docs/servers/ssh-tunnel/). Our Quickstart will walk you through setting up a read only user. 
+We support [Postgres](/docs/servers/postgresql/), [MySQL](/docs/servers/mysql/), [ClickHouse](/docs/servers/clickhouse/) and [MongoDB](/docs/servers/mongodb/) with [SSH tunneling](/docs/servers/ssh-tunnel/). MongoDB checks use JSON commands. Our Quickstart will walk you through setting up a read only user.
 
 More database engines will be introduced as requested, if you need one, please email support@querycanary.com
 

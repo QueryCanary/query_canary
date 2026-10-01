@@ -19,6 +19,39 @@ defmodule QueryCanaryWeb.ServerLiveTest do
 
   setup :register_and_log_in_user
 
+  test "creates a MongoDB server with its authentication database", %{conn: conn, scope: scope} do
+    {:ok, view, _} = live(conn, ~p"/servers/new")
+    assert has_element?(view, "#server_db_engine option[value=mongodb]", "MongoDB")
+
+    view
+    |> form("#server-form", server: %{db_engine: "mongodb"})
+    |> render_change()
+
+    assert has_element?(view, "#server_db_port[value='27017']")
+    assert has_element?(view, "#server_db_auth_source")
+
+    view
+    |> form("#server-form",
+      server: %{
+        name: "MongoDB metrics",
+        db_engine: "mongodb",
+        db_hostname: "localhost",
+        db_port: 27017,
+        db_name: "analytics",
+        db_auth_source: "admin",
+        db_username: "reader",
+        db_password_input: "test_password",
+        db_ssl_mode: "disable"
+      }
+    )
+    |> render_submit()
+
+    assert_redirect(view, ~p"/servers")
+
+    assert [%{db_engine: "mongodb", db_port: 27017, db_auth_source: "admin"}] =
+             QueryCanary.Servers.list_servers(scope)
+  end
+
   defp create_server(%{scope: scope}) do
     server = server_fixture(scope)
     %{server: server}

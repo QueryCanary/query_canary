@@ -31,6 +31,7 @@ defmodule QueryCanaryWeb.ServerLive.Form do
             PostgreSQL: "postgresql",
             MySQL: "mysql",
             ClickHouse: "clickhouse",
+            MongoDB: "mongodb",
             Prometheus: "prometheus"
           ]}
           label="Engine"
@@ -47,6 +48,13 @@ defmodule QueryCanaryWeb.ServerLive.Form do
           placeholder={password_placeholder(@form, :db_password)}
         />
         <.input field={@form[:db_name]} type="text" label="Database" />
+        <.input
+          :if={Phoenix.HTML.Form.input_value(@form, :db_engine) == "mongodb"}
+          field={@form[:db_auth_source]}
+          type="text"
+          label="Authentication Database"
+          placeholder="Defaults to Database; use admin for Atlas or admin users"
+        />
         <div class="md:col-span-3 mb-2">
           <div class="flex items-center">
             <.input field={@form[:ssh_tunnel]} type="checkbox" label="Use SSH Tunnel?" />
@@ -63,10 +71,7 @@ defmodule QueryCanaryWeb.ServerLive.Form do
             <.input field={@form[:ssh_username]} type="text" label="SSH Username" />
           </div>
         </div>
-        <div
-          :if={Phoenix.HTML.Form.input_value(@form, :db_ssl_mode) != "disable"}
-          class="md:col-span-3 p-4 bg-base-200 rounded-lg mb-2"
-        >
+        <div class="md:col-span-3 p-4 bg-base-200 rounded-lg mb-2">
           <h3 class="font-semibold mb-2">SSL Connection Configuration</h3>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="md:col-span-3 mb-2">
@@ -74,17 +79,27 @@ defmodule QueryCanaryWeb.ServerLive.Form do
                 field={@form[:db_ssl_mode]}
                 type="select"
                 label="SSL Mode"
-                options={
-                  [
-                    {"disable - Don't allow a SSL connection", "disable"},
-                    {"allow - Use SSL if the server requires it", "allow"},
-                    {"prefer - Try SSL but allow falling back to non-SSL", "prefer"},
-                    {"require - Force SSL, don't allow connection without", "require"},
-                    {"verify-ca - Force SSL, and verify the server has a valid certificate",
-                     "verify-ca"}
-                    # {"verify-full - Force SSL, and verify the server has a specific SSL certificate", "verify-full"}
-                  ]
-                }
+                options={[
+                  {"disable - Don't allow a SSL connection", "disable"},
+                  {"allow - Use SSL if the server requires it", "allow"},
+                  {"prefer - Try SSL but allow falling back to non-SSL", "prefer"},
+                  {"require - Force SSL, don't allow connection without", "require"},
+                  {"verify-ca - Force SSL, and verify the server has a valid certificate",
+                   "verify-ca"},
+                  {"verify-full - Verify the server certificate and hostname", "verify-full"}
+                ]}
+              />
+              <p
+                :if={Phoenix.HTML.Form.input_value(@form, :db_engine) == "mongodb"}
+                class="text-sm text-base-content/70"
+              >
+                MongoDB uses plain TCP with allow or prefer. Choose require or verify-full for TLS.
+              </p>
+              <.input
+                :if={Phoenix.HTML.Form.input_value(@form, :db_engine) == "mongodb"}
+                field={@form[:db_ssl_ca_cert]}
+                type="textarea"
+                label="CA Certificate (PEM, optional)"
               />
             </div>
             <%!-- <div class="md:col-span-3 mb-2">
@@ -163,6 +178,15 @@ defmodule QueryCanaryWeb.ServerLive.Form do
 
   @impl true
   def handle_event("validate", %{"server" => server_params}, socket) do
+    previous_engine = Phoenix.HTML.Form.input_value(socket.assigns.form, :db_engine)
+
+    server_params =
+      if server_params["db_engine"] == "mongodb" and previous_engine != "mongodb" do
+        Map.merge(server_params, %{"db_port" => "27017", "db_ssl_mode" => "disable"})
+      else
+        server_params
+      end
+
     changeset =
       Servers.change_server(socket.assigns.current_scope, socket.assigns.server, server_params)
 

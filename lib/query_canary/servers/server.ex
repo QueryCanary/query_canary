@@ -9,6 +9,7 @@ defmodule QueryCanary.Servers.Server do
     field :db_hostname, :string
     field :db_port, :integer
     field :db_name, :string
+    field :db_auth_source, :string
     field :db_username, :string
     field :db_password, :string, redact: true
     field :db_password_input, :string, virtual: true
@@ -43,6 +44,7 @@ defmodule QueryCanary.Servers.Server do
       :db_hostname,
       :db_port,
       :db_name,
+      :db_auth_source,
       :db_username,
       :db_password_input,
       :db_ssl_mode,

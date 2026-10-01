@@ -15,6 +15,18 @@ permissions:
 jobs:
   test:
     services:
+      mongodb:
+        image: mongo:8.0
+        env:
+          MONGO_INITDB_ROOT_USERNAME: test_user
+          MONGO_INITDB_ROOT_PASSWORD: test_pass
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd="mongosh --quiet --eval 'db.adminCommand({ping: 1})'"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
       db:
         image: postgres:12
         ports: ["5432:5432"]
@@ -123,6 +135,7 @@ jobs:
 
       - name: Seed adapter test databases
         run: |
+          docker exec -i ${{ job.services.mongodb.id }} mongosh --quiet -u test_user -p test_pass --authenticationDatabase admin < test/support/adapters/mongodb-seed.js
           PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c "CREATE DATABASE test_db;"
           PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f test/support/adapters/postgresql-seed.sql
           mysql -h 127.0.0.1 -uroot -proot_pass -e "CREATE DATABASE IF NOT EXISTS test_db;"

@@ -346,13 +346,16 @@ defmodule QueryCanaryWeb.HomeLive do
                 <div class="badge badge-outline mt-2">Coming Soon</div>
               </div>
             </div>
-            <div class="card bg-base-200 border border-base-300 opacity-60 shadow-none ">
+            <.link
+              navigate={~p"/docs/servers/mongodb"}
+              class="card bg-base-200 border border-base-300 shadow-sm hover:shadow-md transition-shadow"
+            >
               <div class="card-body items-center">
                 <img src={~p"/images/mongodb-original.svg"} alt="MongoDB" class="w-8 h-8 mb-2" />
                 <h4 class="font-semibold text-lg">MongoDB</h4>
-                <div class="badge badge-outline mt-2">Coming Soon</div>
+                <div class="badge badge-success badge-outline mt-2">Supported</div>
               </div>
-            </div>
+            </.link>
           </div>
         </div>
 

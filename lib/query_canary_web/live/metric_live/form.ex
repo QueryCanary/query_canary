@@ -43,7 +43,17 @@ defmodule QueryCanaryWeb.MetricLive.Form do
 
     <.form for={@changeset} as={:metric} phx-change="validate" phx-submit="save">
       <.input name="metric[name]" value={@changeset.data.name} label="Name" />
-      <.input name="metric[sql]" type="textarea" value={@changeset.data.sql} label="SQL" rows="6" />
+      <.input
+        name="metric[sql]"
+        type="textarea"
+        value={@changeset.data.sql}
+        label="Query (SQL or MongoDB JSON)"
+        rows="6"
+      />
+      <p class="mb-2 text-xs text-base-content/70">
+        MongoDB queries can use &quot;$1&quot; and &quot;$2&quot; as date parameters for the metric window.
+        <a href="/docs/servers/mongodb" class="link">MongoDB examples</a>
+      </p>
       <.input
         name="metric[granularity]"
         type="select"
